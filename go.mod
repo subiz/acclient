@@ -1,4 +1,4 @@
-module github.com/subiz/acclient
+module github.com/subiz/acclient/v2
 
 go 1.14
 
