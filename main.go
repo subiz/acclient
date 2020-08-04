@@ -1,6 +1,9 @@
 package acclient
 
 import (
+	"sync"
+	"time"
+
 	"github.com/dgraph-io/ristretto"
 	"github.com/gocql/gocql"
 	"github.com/subiz/cassandra"
@@ -8,8 +11,6 @@ import (
 	"github.com/subiz/goutils/conv"
 	pb "github.com/subiz/header/account"
 	clientpb "github.com/subiz/header/client"
-	"sync"
-	"time"
 )
 
 const (
@@ -20,21 +21,26 @@ const (
 	tblGroups     = "groups"
 	tblGroupAgent = "group_agent"
 
-	tblPresence = "convoconversations.presence"
+	convokeyspace = "convoconversations"
+	tblPresence   = "presence"
 
-	tableClients    = "auth_auth.mclients"
-	tableClientById = "auth_auth.client_by_id"
+	authkeyspace    = "auth_auth"
+	tableClients    = "mclients"
+	tableClientById = "client_by_id"
 )
 
 var (
 	readyLock *sync.Mutex
 	ready     bool
-	session   *gocql.Session
-	cql       *cassandra.Query
-	cache     *ristretto.Cache
 
-	accthrott    Throttler
-	clientthrott Throttler
+	cql      *cassandra.Query
+	authcql  *cassandra.Query
+	convocql *cassandra.Query
+
+	cache          *ristretto.Cache
+	accthrott      Throttler
+	clientthrott   Throttler
+	presencethrott Throttler
 )
 
 func Init(seeds []string) {
@@ -45,13 +51,26 @@ func Init(seeds []string) {
 		if err := cql.Connect(seeds, acckeyspace); err != nil {
 			panic(err)
 		}
-		session = cql.Session
+
+		convocql = &cassandra.Query{}
+		if err := convocql.Connect(seeds, convokeyspace); err != nil {
+			panic(err)
+		}
+
+		authcql = &cassandra.Query{}
+		if err := authcql.Connect(seeds, authkeyspace); err != nil {
+			panic(err)
+		}
 
 		accthrott = NewThrottler(func(key string, payloads []interface{}) {
 			getAccountDB(key)
 			listAgentsDB(key)
 			listGroupsDB(key)
 		}, 30000)
+
+		presencethrott = NewThrottler(func(key string, payloads []interface{}) {
+			listPresencesDB(key)
+		}, 5000)
 
 		clientthrott = NewThrottler(func(key string, payloads []interface{}) {
 			getClientDB(key)
@@ -182,7 +201,7 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 
 func listAgentInGroupDB(accid, groupid string) ([]string, error) {
 	waitUntilReady()
-	iter := session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? LIMIT 1000`, groupid).Iter()
+	iter := cql.Session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? LIMIT 1000`, groupid).Iter()
 	var ids = make([]string, 0)
 	var id string
 	for iter.Scan(&id) {
@@ -194,10 +213,26 @@ func listAgentInGroupDB(accid, groupid string) ([]string, error) {
 	return ids, nil
 }
 
-func ListAgentPresence(accid string) ([]*pb.Presence, error) {
+func ListPresences(accid string) ([]*pb.Presence, error) {
+	waitUntilReady()
+	// cache exists
+	if value, found := cache.Get("PS_" + accid); found {
+		presencethrott.Push(accid, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		return value.([]*pb.Presence), nil
+	}
+
+	presencethrott.Push(accid, nil) // trigger reading from db for future read
+	return listPresencesDB(accid)
+
+}
+
+func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	presences := make([]*pb.Presence, 0)
-	err := cql.List(tblPresence, &presences, map[string]interface{}{
+	err := convocql.List(tblPresence, &presences, map[string]interface{}{
 		"account_id=": accid,
 	}, 1000)
 	if err != nil {
@@ -230,7 +265,7 @@ func getClientDB(id string) (*clientpb.Client, error) {
 	}
 
 	var accid string
-	err := session.Query(`SELECT account_id FROM `+tableClientById+
+	err := authcql.Session.Query(`SELECT account_id FROM `+tableClientById+
 		` WHERE id=?`, id).Scan(&accid)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		return nil, nil
@@ -240,7 +275,7 @@ func getClientDB(id string) (*clientpb.Client, error) {
 	}
 
 	c := &clientpb.Client{}
-	err = cql.Read(tableClients, c, &clientpb.Client{AccountId: &accid, Id: &id})
+	err = authcql.Read(tableClients, c, &clientpb.Client{AccountId: &accid, Id: &id})
 	if err != nil {
 		return nil, errors.Wrap(err, 500, errors.E_database_error, id, accid)
 	}
