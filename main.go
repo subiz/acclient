@@ -7,6 +7,7 @@ import (
 	"github.com/subiz/errors"
 	"github.com/subiz/goutils/conv"
 	pb "github.com/subiz/header/account"
+	clientpb "github.com/subiz/header/client"
 	"sync"
 	"time"
 )
@@ -19,8 +20,10 @@ const (
 	tblGroups     = "groups"
 	tblGroupAgent = "group_agent"
 
-	convokeyspace = "convoconversations"
-	tblPresence   = "presence"
+	tblPresence = "convoconversations.presence"
+
+	tableClients    = "auth_auth.mclients"
+	tableClientById = "auth_auth.client_by_id"
 )
 
 var (
@@ -30,7 +33,8 @@ var (
 	cql       *cassandra.Query
 	cache     *ristretto.Cache
 
-	accthrott Throttler
+	accthrott    Throttler
+	clientthrott Throttler
 )
 
 func Init(seeds []string) {
@@ -48,6 +52,11 @@ func Init(seeds []string) {
 			listAgentsDB(key)
 			listGroupsDB(key)
 		}, 30000)
+
+		clientthrott = NewThrottler(func(key string, payloads []interface{}) {
+			getClientDB(key)
+		}, 30000)
+
 		cache, err := ristretto.NewCache(&ristretto.Config{
 			NumCounters: 1e4, // number of keys to track frequency of (10k).
 			MaxCost:     1e7, // maximum cost of cache (10MB).
@@ -58,6 +67,7 @@ func Init(seeds []string) {
 		}
 		cache = cache
 		ready = true
+		readyLock.Unlock()
 	}()
 }
 
@@ -70,6 +80,7 @@ func waitUntilReady() {
 }
 
 func getAccountDB(id string) (*pb.Account, error) {
+	waitUntilReady()
 	acc := &pb.Account{}
 	err := cql.Read(tblAccounts, acc, pb.Account{Id: &id})
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
@@ -99,6 +110,7 @@ func GetAccount(accid string) (*pb.Account, error) {
 }
 
 func listAgentsDB(accid string) ([]*pb.Agent, error) {
+	waitUntilReady()
 	var arr = make([]*pb.Agent, 0)
 	err := cql.List(tblAgents, &arr, map[string]interface{}{"account_id=": accid}, int(1000))
 	if err != nil {
@@ -118,6 +130,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 }
 
 func ListAgents(accid string) ([]*pb.Agent, error) {
+	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("AG_" + accid); found {
 		accthrott.Push(accid, nil) // trigger reading from db for future read
@@ -132,6 +145,7 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 }
 
 func ListGroups(accid string) ([]*pb.AgentGroup, error) {
+	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("GR_" + accid); found {
 		accthrott.Push(accid, nil) // trigger reading from db for future read
@@ -146,6 +160,7 @@ func ListGroups(accid string) ([]*pb.AgentGroup, error) {
 }
 
 func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
+	waitUntilReady()
 	var arr = make([]*pb.AgentGroup, 0)
 	err := cql.List(tblGroups, &arr, map[string]interface{}{"account_id=": accid}, 1000)
 	if err != nil {
@@ -166,6 +181,7 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 }
 
 func listAgentInGroupDB(accid, groupid string) ([]string, error) {
+	waitUntilReady()
 	iter := session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? LIMIT 1000`, groupid).Iter()
 	var ids = make([]string, 0)
 	var id string
@@ -179,8 +195,9 @@ func listAgentInGroupDB(accid, groupid string) ([]string, error) {
 }
 
 func ListAgentPresence(accid string) ([]*pb.Presence, error) {
+	waitUntilReady()
 	presences := make([]*pb.Presence, 0)
-	err := cql.List(convokeyspace+"."+tblPresence, &presences, map[string]interface{}{
+	err := cql.List(tblPresence, &presences, map[string]interface{}{
 		"account_id=": accid,
 	}, 1000)
 	if err != nil {
@@ -189,4 +206,44 @@ func ListAgentPresence(accid string) ([]*pb.Presence, error) {
 
 	cache.SetWithTTL("PS_"+accid, presences, int64(len(presences)*20), 10*time.Second)
 	return presences, nil
+}
+
+func GetClient(id string) (*clientpb.Client, error) {
+	waitUntilReady()
+	// cache exists
+	if value, found := cache.Get("CL_" + id); found {
+		clientthrott.Push(id, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		return value.(*clientpb.Client), nil
+	}
+
+	clientthrott.Push(id, nil) // trigger reading from db for future read
+	return getClientDB(id)
+}
+
+func getClientDB(id string) (*clientpb.Client, error) {
+	waitUntilReady()
+	if id == "" {
+		return nil, nil
+	}
+
+	var accid string
+	err := session.Query(`SELECT account_id FROM `+tableClientById+
+		` WHERE id=?`, id).Scan(&accid)
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, 500, errors.E_database_error)
+	}
+
+	c := &clientpb.Client{}
+	err = cql.Read(tableClients, c, &clientpb.Client{AccountId: &accid, Id: &id})
+	if err != nil {
+		return nil, errors.Wrap(err, 500, errors.E_database_error, id, accid)
+	}
+	cache.SetWithTTL("CL_"+id, c, 1000, 60*time.Second)
+	return c, nil
 }
