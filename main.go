@@ -148,6 +148,39 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	return list, nil
 }
 
+func GetAgent(accid, agid string) (*pb.Agent, error) {
+	agents, err := ListAgents(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ag := range agents {
+		if ag.GetId() == agid {
+			return ag, nil
+		}
+	}
+	return nil, nil
+}
+
+func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
+	groups, err := ListGroups(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, group := range groups {
+		if group.GetId() == groupid {
+			out := make([]*pb.Agent, 0)
+			for _, ag := range group.GetMembers() {
+				ag, _ = GetAgent(accid, ag.GetId())
+				out = append(out, ag)
+			}
+			return out, nil
+		}
+	}
+	return nil, nil
+}
+
 func ListAgents(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 	// cache exists
