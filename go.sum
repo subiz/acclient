@@ -84,6 +84,10 @@ github.com/subiz/header v1.0.45/go.mod h1:/uwYNYsAs8yogRxbH4Sk8slK47yurd/kH8SSiT
 github.com/subiz/header v1.0.87/go.mod h1:/uwYNYsAs8yogRxbH4Sk8slK47yurd/kH8SSiTNkl6I=
 github.com/subiz/header v1.0.94 h1:ldVXGP1uwVVdHKRARe1BQPI6yNAhzX6K30+MBjayKKs=
 github.com/subiz/header v1.0.94/go.mod h1:/uwYNYsAs8yogRxbH4Sk8slK47yurd/kH8SSiTNkl6I=
+github.com/subiz/header v1.0.97 h1:37fuW0Z1MZZSLkWGvErqLqgZRlilASLeNsEPy0FI/fw=
+github.com/subiz/header v1.0.97/go.mod h1:/uwYNYsAs8yogRxbH4Sk8slK47yurd/kH8SSiTNkl6I=
+github.com/subiz/header v1.0.98 h1:hMD3Kk9/6v2iB3K9JuHZ1/4y5zyRAMDQMoVVnq3msxk=
+github.com/subiz/header v1.0.98/go.mod h1:/uwYNYsAs8yogRxbH4Sk8slK47yurd/kH8SSiTNkl6I=
 github.com/subiz/kafka v0.0.13/go.mod h1:AAol5hCftZlCucsFN8PESy+JYtGb3qe0EgnM5NRc0Bk=
 github.com/subiz/squasher v1.0.0/go.mod h1:EuZYb4blggw+zV85V0FpZghUV1EeuBdQtRrlR+BauQ8=
 github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c/go.mod h1:lB8K/P019DLNhemzwFU4jHLhdvlE6uDZjXFejJXr49I=

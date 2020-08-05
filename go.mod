@@ -10,6 +10,6 @@ require (
 	github.com/subiz/cassandra v0.0.0-20190130101259-98e243db0ea8
 	github.com/subiz/errors v1.0.7
 	github.com/subiz/goutils v0.1.4
-	github.com/subiz/header v1.0.94
+	github.com/subiz/header v1.0.98
 	google.golang.org/protobuf v1.25.0 // indirect
 )
