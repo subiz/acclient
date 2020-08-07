@@ -234,7 +234,7 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 
 func listAgentInGroupDB(accid, groupid string) ([]string, error) {
 	waitUntilReady()
-	iter := cql.Session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? LIMIT 1000`, groupid).Iter()
+	iter := cql.Session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? AND account_id=? LIMIT 1000`, groupid, accid).Iter()
 	var ids = make([]string, 0)
 	var id string
 	for iter.Scan(&id) {
