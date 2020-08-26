@@ -117,7 +117,7 @@ func getAccountDB(id string) (*pb.Account, error) {
 func GetAccount(accid string) (*pb.Account, error) {
 	waitUntilReady()
 	// cache hit
-	if value, found := cache.Get("AG" + accid); found {
+	if value, found := cache.Get("ACC_" + accid); found {
 		accthrott.Push(accid, nil) // trigger reading from db for future read
 
 		if value == nil {
