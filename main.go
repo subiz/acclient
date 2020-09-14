@@ -76,7 +76,8 @@ func Init(seeds []string) {
 			getClientDB(key)
 		}, 30000)
 
-		cache, err := ristretto.NewCache(&ristretto.Config{
+		var err error
+		cache, err = ristretto.NewCache(&ristretto.Config{
 			NumCounters: 1e4, // number of keys to track frequency of (10k).
 			MaxCost:     1e7, // maximum cost of cache (10MB).
 			BufferItems: 64,  // number of keys per Get buffer.
@@ -84,7 +85,6 @@ func Init(seeds []string) {
 		if err != nil {
 			panic(err)
 		}
-		cache = cache
 		ready = true
 		readyLock.Unlock()
 	}()
