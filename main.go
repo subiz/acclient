@@ -6,10 +6,12 @@ import (
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/gocql/gocql"
+	"github.com/golang/protobuf/proto"
 	"github.com/subiz/cassandra"
 	"github.com/subiz/errors"
 	"github.com/subiz/goutils/conv"
 	pb "github.com/subiz/header/account"
+	botpb "github.com/subiz/header/bot"
 	clientpb "github.com/subiz/header/client"
 )
 
@@ -27,6 +29,9 @@ const (
 	authkeyspace    = "auth_auth"
 	tableClients    = "mclients"
 	tableClientById = "client_by_id"
+
+	botkeyspace = "bizbotbizbot"
+	tblBots     = "bots"
 )
 
 var (
@@ -36,11 +41,13 @@ var (
 	cql      *cassandra.Query
 	authcql  *cassandra.Query
 	convocql *cassandra.Query
+	botcql   *cassandra.Query
 
 	cache          *ristretto.Cache
 	accthrott      Throttler
 	clientthrott   Throttler
 	presencethrott Throttler
+	botthrott      Throttler
 )
 
 func Init(seeds []string) {
@@ -62,11 +69,20 @@ func Init(seeds []string) {
 			panic(err)
 		}
 
+		botcql = &cassandra.Query{}
+		if err := botcql.Connect(seeds, botkeyspace); err != nil {
+			panic(err)
+		}
+
 		accthrott = NewThrottler(func(key string, payloads []interface{}) {
 			getAccountDB(key)
 			listAgentsDB(key)
 			listGroupsDB(key)
 		}, 30000)
+
+		botthrott = NewThrottler(func(accid string, payloads []interface{}) {
+			listBotsDB(accid)
+		}, 10000)
 
 		presencethrott = NewThrottler(func(key string, payloads []interface{}) {
 			listPresencesDB(key)
@@ -145,6 +161,27 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	}
 
 	cache.SetWithTTL("AG_"+accid, list, int64(len(list)*1000), 30*time.Second)
+	return list, nil
+}
+
+func listBotsDB(accid string) ([]*botpb.Bot, error) {
+	waitUntilReady()
+	iter := botcql.Session.Query(`SELECT bot FROM `+tblBots+`WHERE account_id=?`, accid).Iter()
+	var botb []byte
+	list := make([]*botpb.Bot, 0)
+	for iter.Scan(&botb) {
+		bot := &botpb.Bot{}
+		proto.Unmarshal(botb, bot)
+		if bot.GetState() != pb.Agent_deleted.String() {
+			list = append(list, bot)
+		}
+	}
+	err := iter.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, 500, errors.E_database_error, "read all bots", accid)
+	}
+
+	cache.SetWithTTL("BOT_"+accid, list, int64(len(list)*1000), 10*time.Second)
 	return list, nil
 }
 
@@ -314,4 +351,33 @@ func getClientDB(id string) (*clientpb.Client, error) {
 	}
 	cache.SetWithTTL("CL_"+id, c, 1000, 60*time.Second)
 	return c, nil
+}
+
+func GetBot(accid, botid string) (*botpb.Bot, error) {
+	bots, err := ListBots(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bot := range bots {
+		if bot.GetId() == botid {
+			return bot, nil
+		}
+	}
+	return nil, nil
+}
+
+func ListBots(accid string) ([]*botpb.Bot, error) {
+	waitUntilReady()
+	// cache exists
+	if value, found := cache.Get("BOT_" + accid); found {
+		botthrott.Push(accid, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		return value.([]*botpb.Bot), nil
+	}
+
+	botthrott.Push(accid, nil) // trigger reading from db for future read
+	return listBotsDB(accid)
 }
