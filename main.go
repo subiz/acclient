@@ -13,6 +13,7 @@ import (
 	pb "github.com/subiz/header/account"
 	botpb "github.com/subiz/header/bot"
 	clientpb "github.com/subiz/header/client"
+	compb "github.com/subiz/header/common"
 )
 
 const (
@@ -196,7 +197,32 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 			return ag, nil
 		}
 	}
+
+	bots, err := ListBots(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bot := range bots {
+		if bot.GetId() == agid {
+			return bot2agent(bot), nil
+		}
+	}
+
 	return nil, nil
+}
+
+func bot2agent(bot *botpb.Bot) *pb.Agent {
+	return &pb.Agent{
+		AccountId: &bot.AccountId,
+		Id:        &bot.Id,
+		State:     &bot.State,
+		Fullname:  &bot.Fullname,
+		Type:      conv.S(compb.Type_bot),
+		Modified:  &bot.Updated,
+		Joined:    &bot.Created,
+		InvitedBy: &bot.CreatedBy,
+	}
 }
 
 func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
@@ -220,17 +246,33 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 
 func ListAgents(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
+
+	agents := []*pb.Agent{}
 	// cache exists
 	if value, found := cache.Get("AG_" + accid); found {
 		accthrott.Push(accid, nil) // trigger reading from db for future read
 		if value == nil {
 			return nil, nil
 		}
-		return value.([]*pb.Agent), nil
+		agents = value.([]*pb.Agent)
 	}
 
 	accthrott.Push(accid, nil) // trigger reading from db for future read
-	return listAgentsDB(accid)
+	var err error
+	agents, err = listAgentsDB(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	bots, err := ListBots(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bot := range bots {
+		agents = append(agents, bot2agent(bot))
+	}
+	return agents, nil
 }
 
 func ListGroups(accid string) ([]*pb.AgentGroup, error) {
@@ -296,7 +338,6 @@ func ListPresences(accid string) ([]*pb.Presence, error) {
 
 	presencethrott.Push(accid, nil) // trigger reading from db for future read
 	return listPresencesDB(accid)
-
 }
 
 func listPresencesDB(accid string) ([]*pb.Presence, error) {
