@@ -166,7 +166,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 
 func listBotsDB(accid string) ([]*botpb.Bot, error) {
 	waitUntilReady()
-	iter := botcql.Session.Query(`SELECT bot FROM `+tblBots+`WHERE account_id=?`, accid).Iter()
+	iter := botcql.Session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
 	var botb []byte
 	list := make([]*botpb.Bot, 0)
 	for iter.Scan(&botb) {
