@@ -205,18 +205,19 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 
 	for _, bot := range bots {
 		if bot.GetId() == agid {
-			return bot2agent(bot), nil
+			return Bot2Agent(bot), nil
 		}
 	}
 
 	return nil, nil
 }
 
-func bot2agent(bot *botpb.Bot) *pb.Agent {
+func Bot2Agent(bot *botpb.Bot) *pb.Agent {
 	return &pb.Agent{
 		AccountId: &bot.AccountId,
 		Id:        &bot.Id,
 		State:     &bot.State,
+		AvatarUrl: &bot.AvatarUrl,
 		Fullname:  &bot.Fullname,
 		Type:      conv.S(compb.Type_bot),
 		Modified:  &bot.Updated,
@@ -270,7 +271,7 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 	}
 
 	for _, bot := range bots {
-		agents = append(agents, bot2agent(bot))
+		agents = append(agents, Bot2Agent(bot))
 	}
 	return agents, nil
 }
