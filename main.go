@@ -344,10 +344,20 @@ func ListPresences(accid string) ([]*pb.Presence, error) {
 func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	presences := make([]*pb.Presence, 0)
-	err := convocql.List(tblPresence, &presences, map[string]interface{}{
-		"account_id=": accid,
-	}, 1000)
-	if err != nil {
+
+	iter := convocql.Session.Query(`SELECT user_id, ip, pinged, ua FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
+	uid, ip, ua := "", "", ""
+	pinged := int64(0)
+	for iter.Scan(&uid, &ip, &pinged, &ua) {
+		presences = append(presences, &pb.Presence{
+			AccountId: conv.S(accid),
+			UserId:    conv.S(uid),
+			Ip:        conv.S(ip),
+			Pinged:    conv.PI64(int(pinged)),
+			Ua:        conv.S(ua),
+		})
+	}
+	if err := iter.Close(); err != nil {
 		return nil, errors.Wrap(err, 500, errors.E_database_error)
 	}
 
