@@ -256,13 +256,13 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 			return nil, nil
 		}
 		agents = value.([]*pb.Agent)
-	}
-
-	accthrott.Push(accid, nil) // trigger reading from db for future read
-	var err error
-	agents, err = listAgentsDB(accid)
-	if err != nil {
-		return nil, err
+	} else {
+		accthrott.Push(accid, nil) // trigger reading from db for future read
+		var err error
+		agents, err = listAgentsDB(accid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	bots, err := ListBots(accid)
