@@ -10,6 +10,10 @@ require (
 	github.com/subiz/cassandra v0.0.0-20190130101259-98e243db0ea8
 	github.com/subiz/errors v1.0.8
 	github.com/subiz/goutils v0.1.6
-	github.com/subiz/header v1.1.80
-	google.golang.org/protobuf v1.25.0 // indirect
+	github.com/subiz/header v1.2.4
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
+	golang.org/x/sys v0.0.0-20201126233918-771906719818 // indirect
+	golang.org/x/text v0.3.4 // indirect
+	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
+	google.golang.org/grpc v1.33.2 // indirect
 )
