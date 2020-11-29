@@ -10,9 +10,8 @@ import (
 	"github.com/subiz/cassandra"
 	"github.com/subiz/errors"
 	"github.com/subiz/goutils/conv"
+	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
-	botpb "github.com/subiz/header/bot"
-	clientpb "github.com/subiz/header/client"
 	compb "github.com/subiz/header/common"
 )
 
@@ -165,13 +164,13 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	return list, nil
 }
 
-func listBotsDB(accid string) ([]*botpb.Bot, error) {
+func listBotsDB(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
 	iter := botcql.Session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
 	var botb []byte
-	list := make([]*botpb.Bot, 0)
+	list := make([]*header.Bot, 0)
 	for iter.Scan(&botb) {
-		bot := &botpb.Bot{}
+		bot := &header.Bot{}
 		proto.Unmarshal(botb, bot)
 		if bot.GetState() != pb.Agent_deleted.String() {
 			list = append(list, bot)
@@ -212,7 +211,7 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 	return nil, nil
 }
 
-func Bot2Agent(bot *botpb.Bot) *pb.Agent {
+func Bot2Agent(bot *header.Bot) *pb.Agent {
 	return &pb.Agent{
 		AccountId: &bot.AccountId,
 		Id:        &bot.Id,
@@ -365,7 +364,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	return presences, nil
 }
 
-func GetClient(id string) (*clientpb.Client, error) {
+func GetClient(id string) (*header.Client, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("CL_" + id); found {
@@ -373,14 +372,14 @@ func GetClient(id string) (*clientpb.Client, error) {
 		if value == nil {
 			return nil, nil
 		}
-		return value.(*clientpb.Client), nil
+		return value.(*header.Client), nil
 	}
 
 	clientthrott.Push(id, nil) // trigger reading from db for future read
 	return getClientDB(id)
 }
 
-func getClientDB(id string) (*clientpb.Client, error) {
+func getClientDB(id string) (*header.Client, error) {
 	waitUntilReady()
 	if id == "" {
 		return nil, nil
@@ -396,8 +395,8 @@ func getClientDB(id string) (*clientpb.Client, error) {
 		return nil, errors.Wrap(err, 500, errors.E_database_error)
 	}
 
-	c := &clientpb.Client{}
-	err = authcql.Read(tableClients, c, &clientpb.Client{AccountId: &accid, Id: &id})
+	c := &header.Client{}
+	err = authcql.Read(tableClients, c, &header.Client{AccountId: accid, Id: id})
 	if err != nil {
 		return nil, errors.Wrap(err, 500, errors.E_database_error, id, accid)
 	}
@@ -405,7 +404,7 @@ func getClientDB(id string) (*clientpb.Client, error) {
 	return c, nil
 }
 
-func GetBot(accid, botid string) (*botpb.Bot, error) {
+func GetBot(accid, botid string) (*header.Bot, error) {
 	bots, err := ListBots(accid)
 	if err != nil {
 		return nil, err
@@ -419,7 +418,7 @@ func GetBot(accid, botid string) (*botpb.Bot, error) {
 	return nil, nil
 }
 
-func ListBots(accid string) ([]*botpb.Bot, error) {
+func ListBots(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("BOT_" + accid); found {
@@ -427,7 +426,7 @@ func ListBots(accid string) ([]*botpb.Bot, error) {
 		if value == nil {
 			return nil, nil
 		}
-		return value.([]*botpb.Bot), nil
+		return value.([]*header.Bot), nil
 	}
 
 	botthrott.Push(accid, nil) // trigger reading from db for future read
