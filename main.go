@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	readyLock *sync.Mutex
+	readyLock = &sync.Mutex{}
 	ready     bool
 
 	cql      *cassandra.Query
@@ -51,7 +51,6 @@ var (
 )
 
 func Init(seeds []string) {
-	readyLock = &sync.Mutex{}
 	go func() {
 		readyLock.Lock()
 		cql = &cassandra.Query{}
