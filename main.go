@@ -26,10 +26,6 @@ const (
 	convokeyspace = "convoconversations"
 	tblPresence   = "presence"
 
-	authkeyspace    = "auth_auth"
-	tableClients    = "mclients"
-	tableClientById = "client_by_id"
-
 	botkeyspace = "bizbotbizbot"
 	tblBots     = "bots"
 )
@@ -39,7 +35,6 @@ var (
 	ready     bool
 
 	cql      *cassandra.Query
-	authcql  *cassandra.Query
 	convocql *cassandra.Query
 	botcql   *cassandra.Query
 
@@ -63,11 +58,6 @@ func Init(seeds []string) {
 			panic(err)
 		}
 
-		authcql = &cassandra.Query{}
-		if err := authcql.Connect(seeds, authkeyspace); err != nil {
-			panic(err)
-		}
-
 		botcql = &cassandra.Query{}
 		if err := botcql.Connect(seeds, botkeyspace); err != nil {
 			panic(err)
@@ -86,10 +76,6 @@ func Init(seeds []string) {
 		presencethrott = NewThrottler(func(key string, payloads []interface{}) {
 			listPresencesDB(key)
 		}, 5000)
-
-		clientthrott = NewThrottler(func(key string, payloads []interface{}) {
-			getClientDB(key)
-		}, 30000)
 
 		var err error
 		cache, err = ristretto.NewCache(&ristretto.Config{
@@ -361,46 +347,6 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 
 	cache.SetWithTTL("PS_"+accid, presences, int64(len(presences)*20), 10*time.Second)
 	return presences, nil
-}
-
-func GetClient(id string) (*header.Client, error) {
-	waitUntilReady()
-	// cache exists
-	if value, found := cache.Get("CL_" + id); found {
-		clientthrott.Push(id, nil) // trigger reading from db for future read
-		if value == nil {
-			return nil, nil
-		}
-		return value.(*header.Client), nil
-	}
-
-	clientthrott.Push(id, nil) // trigger reading from db for future read
-	return getClientDB(id)
-}
-
-func getClientDB(id string) (*header.Client, error) {
-	waitUntilReady()
-	if id == "" {
-		return nil, nil
-	}
-
-	var accid string
-	err := authcql.Session.Query(`SELECT account_id FROM `+tableClientById+
-		` WHERE id=?`, id).Scan(&accid)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error)
-	}
-
-	c := &header.Client{}
-	err = authcql.Read(tableClients, c, &header.Client{AccountId: accid, Id: id})
-	if err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error, id, accid)
-	}
-	cache.SetWithTTL("CL_"+id, c, 1000, 60*time.Second)
-	return c, nil
 }
 
 func GetBot(accid, botid string) (*header.Bot, error) {
