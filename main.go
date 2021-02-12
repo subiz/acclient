@@ -49,7 +49,7 @@ func Init(seeds []string) {
 	go func() {
 		readyLock.Lock()
 		cql = &cassandra.Query{}
-		if err := cql.Connect(seeds, acckeyspace); err != nil {
+		if err := cql.Connect([]string{"cas-0"}, acckeyspace); err != nil {
 			panic(err)
 		}
 
@@ -59,7 +59,7 @@ func Init(seeds []string) {
 		}
 
 		botcql = &cassandra.Query{}
-		if err := botcql.Connect(seeds, botkeyspace); err != nil {
+		if err := botcql.Connect([]string{"cas-0"}, botkeyspace); err != nil {
 			panic(err)
 		}
 
