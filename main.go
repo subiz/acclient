@@ -45,7 +45,7 @@ var (
 	botthrott      Throttler
 )
 
-func Init(seeds []string) {
+func Init() {
 	go func() {
 		readyLock.Lock()
 		cql = &cassandra.Query{}
@@ -54,7 +54,7 @@ func Init(seeds []string) {
 		}
 
 		convocql = &cassandra.Query{}
-		if err := convocql.Connect(seeds, convokeyspace); err != nil {
+		if err := convocql.Connect([]string{"cas-0"}, convokeyspace); err != nil {
 			panic(err)
 		}
 
