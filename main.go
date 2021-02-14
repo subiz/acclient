@@ -16,17 +16,13 @@ import (
 )
 
 const (
-	acckeyspace   = "accountaccounts"
 	tblAccounts   = "accounts"
 	tblAgents     = "agents"
 	tblPresences  = "presences"
 	tblGroups     = "groups"
 	tblGroupAgent = "group_agent"
 
-	convokeyspace = "convoconversations"
 	tblPresence   = "presence"
-
-	botkeyspace = "bizbotbizbot"
 	tblBots     = "bots"
 )
 
@@ -49,17 +45,17 @@ func Init() {
 	go func() {
 		readyLock.Lock()
 		cql = &cassandra.Query{}
-		if err := cql.Connect([]string{"cas-0"}, acckeyspace); err != nil {
+		if err := cql.Connect([]string{"db-0"}, "account"); err != nil {
 			panic(err)
 		}
 
 		convocql = &cassandra.Query{}
-		if err := convocql.Connect([]string{"cas-0"}, convokeyspace); err != nil {
+		if err := convocql.Connect([]string{"db-0"}, "convo"); err != nil {
 			panic(err)
 		}
 
 		botcql = &cassandra.Query{}
-		if err := botcql.Connect([]string{"cas-0"}, botkeyspace); err != nil {
+		if err := botcql.Connect([]string{"db-0"}, "bizbot"); err != nil {
 			panic(err)
 		}
 
