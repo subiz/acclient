@@ -285,8 +285,6 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 		for _, agid := range agids {
 			g.Members = append(g.Members, &pb.Agent{Id: conv.S(agid)})
 		}
-
-		g.MembersCount = conv.PI32(len(g.Members))
 	}
 	cache.SetWithTTL("GR_"+accid, arr, int64(len(arr)*1000), 30*time.Second)
 	return arr, nil
