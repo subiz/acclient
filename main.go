@@ -111,6 +111,7 @@ func getAccountDB(id string) (*pb.Account, error) {
 	return acc, nil
 }
 
+// TODO return proto clone of other methods
 func GetAccount(accid string) (*pb.Account, error) {
 	waitUntilReady()
 	// cache hit
@@ -120,9 +121,15 @@ func GetAccount(accid string) (*pb.Account, error) {
 		if value == nil {
 			return nil, nil
 		}
-		return value.(*pb.Account), nil
+		acc := value.(*pb.Account)
+		return proto.Clone(acc).(*pb.Account), nil
 	}
-	return getAccountDB(accid)
+
+	acc, err := getAccountDB(accid)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Clone(acc).(*pb.Account), nil
 }
 
 func listAgentsDB(accid string) ([]*pb.Agent, error) {
