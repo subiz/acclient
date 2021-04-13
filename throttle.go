@@ -53,8 +53,11 @@ func (me Throttler) run(key string) {
 
 	me.Lock()
 	delete(me.runningM, key)
+	if len(me.cache[key]) > 0 {
+		// there is unfinished job
+		go me.run(key)
+	}
 	me.Unlock()
-	go me.run(key)
 }
 
 /*
