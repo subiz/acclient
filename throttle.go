@@ -13,8 +13,8 @@ type Throttler struct {
 	handler  func(string, []interface{})
 }
 
-func NewThrottler(handler func(string, []interface{}), wait int64) Throttler {
-	me := Throttler{
+func NewThrottler(handler func(string, []interface{}), wait int64) *Throttler {
+	me := &Throttler{
 		Mutex:    &sync.Mutex{},
 		wait:     time.Duration(wait) * time.Millisecond,
 		runningM: make(map[string]bool),
@@ -24,7 +24,7 @@ func NewThrottler(handler func(string, []interface{}), wait int64) Throttler {
 	return me
 }
 
-func (me Throttler) Push(key string, i interface{}) {
+func (me *Throttler) Push(key string, i interface{}) {
 	me.Lock()
 	me.cache[key] = append(me.cache[key], i)
 	running := me.runningM[key]
@@ -35,7 +35,7 @@ func (me Throttler) Push(key string, i interface{}) {
 	go me.run(key)
 }
 
-func (me Throttler) run(key string) {
+func (me *Throttler) run(key string) {
 	me.Lock()
 	if me.runningM[key] {
 		me.Unlock()

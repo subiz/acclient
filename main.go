@@ -35,56 +35,51 @@ var (
 	botcql   *cassandra.Query
 
 	cache          *ristretto.Cache
-	accthrott      Throttler
-	clientthrott   Throttler
-	presencethrott Throttler
-	botthrott      Throttler
+	accthrott      *Throttler
+	clientthrott   *Throttler
+	presencethrott *Throttler
+	botthrott      *Throttler
 )
 
-func Init() {
-	go func() {
-		readyLock.Lock()
-		cql = &cassandra.Query{}
-		if err := cql.Connect([]string{"db-0"}, "account"); err != nil {
-			panic(err)
-		}
+func _init() {
+	cql = &cassandra.Query{}
+	if err := cql.Connect([]string{"db-0"}, "account"); err != nil {
+		panic(err)
+	}
 
-		convocql = &cassandra.Query{}
-		if err := convocql.Connect([]string{"db-0"}, "convo"); err != nil {
-			panic(err)
-		}
+	convocql = &cassandra.Query{}
+	if err := convocql.Connect([]string{"db-0"}, "convo"); err != nil {
+		panic(err)
+	}
 
-		botcql = &cassandra.Query{}
-		if err := botcql.Connect([]string{"db-0"}, "bizbot"); err != nil {
-			panic(err)
-		}
+	botcql = &cassandra.Query{}
+	if err := botcql.Connect([]string{"db-0"}, "bizbot"); err != nil {
+		panic(err)
+	}
 
-		accthrott = NewThrottler(func(key string, payloads []interface{}) {
-			getAccountDB(key)
-			listAgentsDB(key)
-			listGroupsDB(key)
-		}, 30000)
+	accthrott = NewThrottler(func(key string, payloads []interface{}) {
+		getAccountDB(key)
+		listAgentsDB(key)
+		listGroupsDB(key)
+	}, 30000)
 
-		botthrott = NewThrottler(func(accid string, payloads []interface{}) {
-			listBotsDB(accid)
-		}, 10000)
+	botthrott = NewThrottler(func(accid string, payloads []interface{}) {
+		listBotsDB(accid)
+	}, 10000)
 
-		presencethrott = NewThrottler(func(key string, payloads []interface{}) {
-			listPresencesDB(key)
-		}, 5000)
+	presencethrott = NewThrottler(func(key string, payloads []interface{}) {
+		listPresencesDB(key)
+	}, 5000)
 
-		var err error
-		cache, err = ristretto.NewCache(&ristretto.Config{
-			NumCounters: 1e4, // number of keys to track frequency of (10k).
-			MaxCost:     1e7, // maximum cost of cache (10MB).
-			BufferItems: 64,  // number of keys per Get buffer.
-		})
-		if err != nil {
-			panic(err)
-		}
-		ready = true
-		readyLock.Unlock()
-	}()
+	var err error
+	cache, err = ristretto.NewCache(&ristretto.Config{
+		NumCounters: 1e4, // number of keys to track frequency of (10k).
+		MaxCost:     1e7, // maximum cost of cache (10MB).
+		BufferItems: 64,  // number of keys per Get buffer.
+	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func waitUntilReady() {
@@ -92,6 +87,12 @@ func waitUntilReady() {
 		return
 	}
 	readyLock.Lock()
+	if ready {
+		readyLock.Unlock()
+		return
+	}
+	_init()
+	ready = true
 	readyLock.Unlock()
 }
 
