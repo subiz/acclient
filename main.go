@@ -1,6 +1,7 @@
 package acclient
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -17,12 +18,13 @@ import (
 
 const (
 	tblAccounts   = "accounts"
+	tblLocale     = "lang"
 	tblAgents     = "agents"
 	tblPresences  = "presences"
 	tblGroups     = "groups"
 	tblGroupAgent = "group_agent"
 
-	tblPresence   = "presence"
+	tblPresence = "presence"
 	tblBots     = "bots"
 )
 
@@ -36,6 +38,7 @@ var (
 
 	cache          *ristretto.Cache
 	accthrott      *Throttler
+	langthrott     *Throttler
 	clientthrott   *Throttler
 	presencethrott *Throttler
 	botthrott      *Throttler
@@ -61,6 +64,14 @@ func _init() {
 		getAccountDB(key)
 		listAgentsDB(key)
 		listGroupsDB(key)
+	}, 30000)
+
+	langthrott = NewThrottler(func(key string, payloads []interface{}) {
+		ks := strings.Split(key, ";")
+		if len(ks) != 2 {
+			return
+		}
+		listLocaleMessagesDB(ks[0], ks[1])
 	}, 30000)
 
 	botthrott = NewThrottler(func(accid string, payloads []interface{}) {
@@ -110,6 +121,71 @@ func getAccountDB(id string) (*pb.Account, error) {
 
 	cache.SetWithTTL("ACC_"+id, acc, 1000, 30*time.Second)
 	return acc, nil
+}
+
+func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
+	waitUntilReady()
+	lang := &header.Lang{}
+	iter := cql.Session.Query(`SELECT k, message, is_editable, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
+	var message, lastmsg, updatedby string
+	var updated int64
+	var k string
+	var editable bool
+
+	for iter.Scan(&k, &message, &editable, &lastmsg, &updated, &updatedby) {
+		if message != "" {
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, IsEditable: editable, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+		}
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, errors.Wrap(err, 500, errors.E_database_error)
+	}
+
+	iter = cql.Session.Query(`SELECT k, message, is_editable, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", locale).Iter()
+	for iter.Scan(&k, &message, &editable, &lastmsg, &updated, &updatedby) {
+		found := false
+		if message == "" {
+			continue
+		}
+		for _, m := range lang.Messages {
+			if k == m.Key {
+				found = true
+				break
+			}
+		}
+
+		// add missing key
+		if !found {
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, IsEditable: editable, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+		}
+	}
+
+	lang.AccountId = accid
+	lang.Locale = locale
+
+	cache.SetWithTTL("LANG_"+accid+"_"+locale, lang, 1000*1000, 30*time.Second)
+	return lang, nil
+}
+
+// see https://www.localeplanet.com/icu/
+func GetLocale(accid, locale string) (*header.Lang, error) {
+	if !header.LocaleM[locale] {
+		return &header.Lang{}, nil
+	}
+	if value, found := cache.Get("LANG_" + accid + "_" + locale); found {
+		langthrott.Push(accid+";"+locale, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		return value.(*header.Lang), nil
+	}
+
+	lang, err := listLocaleMessagesDB(accid, locale)
+	if err != nil {
+		return nil, err
+	}
+	return lang, nil
 }
 
 // TODO return proto clone of other methods
