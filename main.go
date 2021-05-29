@@ -126,15 +126,15 @@ func getAccountDB(id string) (*pb.Account, error) {
 func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
 	waitUntilReady()
 	lang := &header.Lang{}
-	iter := cql.Session.Query(`SELECT k, message, is_editable, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
+	iter := cql.Session.Query(`SELECT k, message, is_draft, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
 	var message, lastmsg, updatedby string
 	var updated int64
 	var k string
-	var editable bool
+	var draft bool
 
-	for iter.Scan(&k, &message, &editable, &lastmsg, &updated, &updatedby) {
+	for iter.Scan(&k, &message, &draft, &lastmsg, &updated, &updatedby) {
 		if message != "" {
-			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, IsEditable: editable, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, IsDraft: draft, LastMessage: lastmsg, Updated: updated, Author: updatedby})
 		}
 	}
 
@@ -142,8 +142,8 @@ func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
 		return nil, errors.Wrap(err, 500, errors.E_database_error)
 	}
 
-	iter = cql.Session.Query(`SELECT k, message, is_editable, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", locale).Iter()
-	for iter.Scan(&k, &message, &editable, &lastmsg, &updated, &updatedby) {
+	iter = cql.Session.Query(`SELECT k, message, is_draft, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", locale).Iter()
+	for iter.Scan(&k, &message, &draft, &lastmsg, &updated, &updatedby) {
 		found := false
 		if message == "" {
 			continue
@@ -157,7 +157,7 @@ func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
 
 		// add missing key
 		if !found {
-			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, IsEditable: editable, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: true, Message: message, IsDraft: draft, LastMessage: lastmsg, Updated: updated, Author: updatedby})
 		}
 	}
 
