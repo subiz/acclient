@@ -123,18 +123,16 @@ func getAccountDB(id string) (*pb.Account, error) {
 	return acc, nil
 }
 
-func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
-	waitUntilReady()
+func ListLocaleMessageDB(accid, locale string) (*header.Lang, error) {
 	lang := &header.Lang{}
-	iter := cql.Session.Query(`SELECT k, message, is_draft, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
-	var message, lastmsg, updatedby string
+	iter := cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
+	var message, lastmsg, updatedby, public string
 	var updated int64
 	var k string
-	var draft bool
 
-	for iter.Scan(&k, &message, &draft, &lastmsg, &updated, &updatedby) {
+	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby) {
 		if message != "" {
-			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, IsDraft: draft, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, Message: message, PublicState: "public", LastMessage: lastmsg, Updated: updated, Author: updatedby})
 		}
 	}
 
@@ -142,8 +140,9 @@ func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
 		return nil, errors.Wrap(err, 500, errors.E_database_error)
 	}
 
-	iter = cql.Session.Query(`SELECT k, message, is_draft, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", locale).Iter()
-	for iter.Scan(&k, &message, &draft, &lastmsg, &updated, &updatedby) {
+	// fallback to default locale in subiz
+	iter = cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", locale).Iter()
+	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby) {
 		found := false
 		if message == "" {
 			continue
@@ -157,13 +156,71 @@ func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
 
 		// add missing key
 		if !found {
-			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: true, Message: message, IsDraft: draft, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: true, Message: message, PublicState: public, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+		}
+	}
+
+	// fallback to primary_locale of acount
+	acc, err := GetAccount(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	if acc.GetLocale() != "" && acc.GetLocale() != "en-US" {
+		// check to see missing key in the en-US locale - the most completed locale
+		iter = cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", acc.GetLocale()).Iter()
+		for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby) {
+			found := false
+			if message == "" {
+				continue
+			}
+			for _, m := range lang.Messages {
+				if k == m.Key {
+					found = true
+					break
+				}
+			}
+
+			// add missing key
+			if !found {
+				lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: true, Message: message, PublicState: public, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			}
+		}
+	}
+
+	if locale != "en-US" {
+		// check to see missing key in the en-US locale - the most completed locale
+		iter = cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", "en-US").Iter()
+		for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby) {
+			found := false
+			if message == "" {
+				continue
+			}
+			for _, m := range lang.Messages {
+				if k == m.Key {
+					found = true
+					break
+				}
+			}
+
+			// add missing key
+			if !found {
+				lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: true, Message: message, PublicState: public, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			}
 		}
 	}
 
 	lang.AccountId = accid
 	lang.Locale = locale
+	return lang, nil
+}
 
+func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
+	waitUntilReady()
+	lang, err := ListLocaleMessageDB(accid, locale)
+	if err != nil {
+		return nil, err
+	}
 	cache.SetWithTTL("LANG_"+accid+"_"+locale, lang, 1000*1000, 30*time.Second)
 	return lang, nil
 }
