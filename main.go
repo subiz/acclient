@@ -129,7 +129,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 	var updated int64
 	var k string
 
-	iter := cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, "subiz", locale).Iter()
+	iter := cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
 	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby) {
 		if message == "" {
 			continue
