@@ -10,10 +10,10 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/subiz/cassandra v0.0.0-20190130101259-98e243db0ea8
 	github.com/subiz/errors v1.0.9
-	github.com/subiz/goutils v0.1.9
-	github.com/subiz/header v1.3.59
+	github.com/subiz/goutils v0.1.10
+	github.com/subiz/header v1.3.63
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
-	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea // indirect
+	golang.org/x/sys v0.0.0-20210531225629-47163c9f4e4f // indirect
 	google.golang.org/genproto v0.0.0-20210524171403-669157292da3 // indirect
 	google.golang.org/grpc v1.38.0 // indirect
 )
