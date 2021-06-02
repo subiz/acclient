@@ -196,9 +196,25 @@ func ListLocaleMessageDB(accid, locale string) (*header.Lang, error) {
 	}
 
 	// finally, fallback to the en-US locale - the most completed locale
-	lang, err = loadLangDB("subiz", "en-US", lang, true)
+	enlang := &header.Lang{}
+	enlang, err = loadLangDB("subiz", "en-US", enlang, true)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, enmess := range enlang.GetMessages() {
+		found := false
+		for _, m := range lang.GetMessages() {
+			if enmess.Key == m.Key {
+				found = true
+				m.PublicState = enmess.PublicState
+				break
+			}
+		}
+
+		if !found {
+			lang.Messages = append(lang.Messages, enmess)
+		}
 	}
 
 	lang.AccountId = accid
