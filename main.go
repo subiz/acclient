@@ -125,18 +125,23 @@ func getAccountDB(id string) (*pb.Account, error) {
 
 func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.Lang, error) {
 	lang := &header.Lang{}
-	var message, lastmsg, updatedby, public string
+	var message, lastmsg, updatedby, public, category string
 	var updated int64
 	var k string
 
-	iter := cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
-	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby) {
+	iter := cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author, category FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
+	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby, &category) {
 		if message == "" {
 			continue
 		}
 		found := false
 		for _, m := range old.GetMessages() {
 			if k == m.Key {
+				// only category in locale en-US of acc subiz is valid
+				// so this override all categories
+				if accid == "subiz" && locale == "en-US" {
+					m.Category = category
+				}
 				found = true
 				break
 			}
@@ -144,7 +149,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 
 		// add missing key
 		if !found {
-			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: fallback, Message: message, PublicState: public, LastMessage: lastmsg, Updated: updated, Author: updatedby})
+			lang.Messages = append(lang.Messages, &header.LangMessage{Key: k, FromDefault: fallback, Message: message, PublicState: public, LastMessage: lastmsg, Updated: updated, Author: updatedby, Locale: locale, Category: category})
 		}
 	}
 	if err := iter.Close(); err != nil {
