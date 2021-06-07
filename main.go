@@ -172,7 +172,7 @@ func ListLocaleMessageDB(accid, locale string) (*header.Lang, error) {
 	}
 	if locale != "en-US" {
 		// fallback to default locale in subiz
-		lang, err = loadLangDB("subiz", locale, lang, true)
+		lang, err = loadLangDB("subiz", locale, lang, false)
 		if err != nil {
 			return nil, err
 		}
@@ -202,7 +202,8 @@ func ListLocaleMessageDB(accid, locale string) (*header.Lang, error) {
 
 	// finally, fallback to the en-US locale - the most completed locale
 	enlang := &header.Lang{}
-	enlang, err = loadLangDB("subiz", "en-US", enlang, true)
+	isfromdef := locale != "en-US"
+	enlang, err = loadLangDB("subiz", "en-US", enlang, isfromdef)
 	if err != nil {
 		return nil, err
 	}
