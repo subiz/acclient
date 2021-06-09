@@ -14,18 +14,19 @@ import (
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
 	compb "github.com/subiz/header/common"
+	pm "github.com/subiz/header/payment"
 )
 
 const (
-	tblAccounts   = "accounts"
-	tblLocale     = "lang"
-	tblAgents     = "agents"
-	tblPresences  = "presences"
-	tblGroups     = "groups"
-	tblGroupAgent = "group_agent"
-
-	tblPresence = "presence"
-	tblBots     = "bots"
+	tblAccounts     = "accounts"
+	tblLocale       = "lang"
+	tblAgents       = "agents"
+	tblPresences    = "presences"
+	tblGroups       = "groups"
+	tblGroupAgent   = "group_agent"
+	tblSubscription = "subs"
+	tblPresence     = "presence"
+	tblBots         = "bots"
 )
 
 var (
@@ -107,20 +108,32 @@ func waitUntilReady() {
 	readyLock.Unlock()
 }
 
-func getAccountDB(id string) (*pb.Account, error) {
+func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	waitUntilReady()
 	acc := &pb.Account{}
 	err := cql.Read(tblAccounts, acc, pb.Account{Id: &id})
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.SetWithTTL("ACC_"+id, nil, 1000, 30*time.Second)
-		return nil, nil
+		return nil, nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error, id)
+		return nil, nil, errors.Wrap(err, 500, errors.E_database_error, id)
 	}
 
 	cache.SetWithTTL("ACC_"+id, acc, 1000, 30*time.Second)
-	return acc, nil
+
+	sub := &pm.Subscription{}
+	err = cql.Read(tblSubscription, sub, pm.Subscription{AccountId: &id})
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		cache.SetWithTTL("SUB_"+id, nil, 1000, 30*time.Second)
+		return acc, nil, nil
+	}
+	if err != nil {
+		return nil, nil, errors.Wrap(err, 500, errors.E_database_error, id)
+	}
+
+	cache.SetWithTTL("SUB_"+id, acc, 1000, 30*time.Second)
+	return acc, sub, nil
 }
 
 func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.Lang, error) {
@@ -272,11 +285,30 @@ func GetAccount(accid string) (*pb.Account, error) {
 		return proto.Clone(acc).(*pb.Account), nil
 	}
 
-	acc, err := getAccountDB(accid)
+	acc, _, err := getAccountDB(accid)
 	if err != nil {
 		return nil, err
 	}
 	return proto.Clone(acc).(*pb.Account), nil
+}
+
+func GetSubscription(accid string) (*pm.Subscription, error) {
+	waitUntilReady()
+	// cache hit
+	if value, found := cache.Get("SUB_" + accid); found {
+		accthrott.Push(accid, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		sub := value.(*pm.Subscription)
+		return proto.Clone(sub).(*pm.Subscription), nil
+	}
+
+	_, sub, err := getAccountDB(accid)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Clone(sub).(*pm.Subscription), nil
 }
 
 func listAgentsDB(accid string) ([]*pb.Agent, error) {
