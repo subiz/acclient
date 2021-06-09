@@ -132,7 +132,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return nil, nil, errors.Wrap(err, 500, errors.E_database_error, id)
 	}
 
-	cache.SetWithTTL("SUB_"+id, acc, 1000, 30*time.Second)
+	cache.SetWithTTL("SUB_"+id, sub, 1000, 30*time.Second)
 	return acc, sub, nil
 }
 
