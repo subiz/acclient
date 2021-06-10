@@ -21,12 +21,11 @@ const (
 	tblAccounts     = "accounts"
 	tblLocale       = "lang"
 	tblAgents       = "agents"
-	tblPresences    = "presences"
 	tblGroups       = "groups"
 	tblGroupAgent   = "group_agent"
 	tblSubscription = "subs"
-	tblPresence     = "presence"
-	tblBots         = "bots"
+	tblPresence     = "convo.presence"
+	tblBots         = "bizbot.bots"
 )
 
 var (
@@ -34,8 +33,6 @@ var (
 	ready     bool
 
 	cql      *cassandra.Query
-	convocql *cassandra.Query
-	botcql   *cassandra.Query
 
 	cache          *ristretto.Cache
 	accthrott      *Throttler
@@ -48,16 +45,6 @@ var (
 func _init() {
 	cql = &cassandra.Query{}
 	if err := cql.Connect([]string{"db-0"}, "account"); err != nil {
-		panic(err)
-	}
-
-	convocql = &cassandra.Query{}
-	if err := convocql.Connect([]string{"db-0"}, "convo"); err != nil {
-		panic(err)
-	}
-
-	botcql = &cassandra.Query{}
-	if err := botcql.Connect([]string{"db-0"}, "bizbot"); err != nil {
 		panic(err)
 	}
 
@@ -333,7 +320,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 
 func listBotsDB(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
-	iter := botcql.Session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
+	iter := cql.Session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
 	var botb []byte
 	list := make([]*header.Bot, 0)
 	for iter.Scan(&botb) {
@@ -509,7 +496,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	presences := make([]*pb.Presence, 0)
 
-	iter := convocql.Session.Query(`SELECT user_id, ip, pinged, ua FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
+	iter := cql.Session.Query(`SELECT user_id, ip, pinged, ua FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
 	uid, ip, ua := "", "", ""
 	pinged := int64(0)
 	for iter.Scan(&uid, &ip, &pinged, &ua) {
