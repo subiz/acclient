@@ -34,8 +34,10 @@ func flush() {
 			}
 		}
 
-		fmt.Println("METRIC FLUSHING DONE:", len(metricmap), "in", time.Since(start))
-		time.Sleep(3 * time.Second)
+		if len(metricmapcopy) > 0 {
+			fmt.Println("METRIC FLUSHED:", len(metricmapcopy), "in", time.Since(start))
+		}
+		time.Sleep(30 * time.Second)
 	}
 }
 
