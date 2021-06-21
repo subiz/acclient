@@ -13,10 +13,11 @@ require (
 	github.com/subiz/cassandra v0.0.0-20190130101259-98e243db0ea8
 	github.com/subiz/errors v1.0.9
 	github.com/subiz/goutils v0.1.10
-	github.com/subiz/header v1.3.73
+	github.com/subiz/header v1.3.80
+	github.com/thanhpk/throttle v0.0.1
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
-	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
-	golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 // indirect
-	google.golang.org/genproto v0.0.0-20210608205507-b6d2f5bf0d7d // indirect
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22 // indirect
+	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced // indirect
 	google.golang.org/grpc v1.38.0 // indirect
 )
