@@ -15,6 +15,7 @@ import (
 	pb "github.com/subiz/header/account"
 	compb "github.com/subiz/header/common"
 	pm "github.com/subiz/header/payment"
+	"github.com/thanhpk/throttle"
 )
 
 const (
@@ -32,14 +33,14 @@ var (
 	readyLock = &sync.Mutex{}
 	ready     bool
 
-	cql      *cassandra.Query
+	cql *cassandra.Query
 
 	cache          *ristretto.Cache
-	accthrott      *Throttler
-	langthrott     *Throttler
-	clientthrott   *Throttler
-	presencethrott *Throttler
-	botthrott      *Throttler
+	accthrott      *throttle.Throttler
+	langthrott     *throttle.Throttler
+	clientthrott   *throttle.Throttler
+	presencethrott *throttle.Throttler
+	botthrott      *throttle.Throttler
 )
 
 func _init() {
@@ -48,13 +49,13 @@ func _init() {
 		panic(err)
 	}
 
-	accthrott = NewThrottler(func(key string, payloads []interface{}) {
+	accthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		getAccountDB(key)
 		listAgentsDB(key)
 		listGroupsDB(key)
 	}, 30000)
 
-	langthrott = NewThrottler(func(key string, payloads []interface{}) {
+	langthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		ks := strings.Split(key, ";")
 		if len(ks) != 2 {
 			return
@@ -62,11 +63,11 @@ func _init() {
 		listLocaleMessagesDB(ks[0], ks[1])
 	}, 30000)
 
-	botthrott = NewThrottler(func(accid string, payloads []interface{}) {
+	botthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
 		listBotsDB(accid)
 	}, 10000)
 
-	presencethrott = NewThrottler(func(key string, payloads []interface{}) {
+	presencethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		listPresencesDB(key)
 	}, 5000)
 
