@@ -36,6 +36,8 @@ github.com/gocql/gocql v0.0.0-20210413161705-87a5d7a5ff74 h1:7KrFf0CDfa2THypOvFU
 github.com/gocql/gocql v0.0.0-20210413161705-87a5d7a5ff74/go.mod h1:DL0ekTmBSTdlNF25Orwt/JMzqIq3EJ4MVa/J/uK64OY=
 github.com/gocql/gocql v0.0.0-20210515062232-b7ef815b4556 h1:N/MD/sr6o61X+iZBAT2qEUF023s4KbA8RWfKzl0L6MQ=
 github.com/gocql/gocql v0.0.0-20210515062232-b7ef815b4556/go.mod h1:DL0ekTmBSTdlNF25Orwt/JMzqIq3EJ4MVa/J/uK64OY=
+github.com/gocql/gocql v0.0.0-20210621133426-d83b80dfb480 h1:rmlJozzx6nJlyFgj0lGkS+hNA/0iiUWerwWmlRb+TFo=
+github.com/gocql/gocql v0.0.0-20210621133426-d83b80dfb480/go.mod h1:cEKzC83ex1C9wpmMPXU3krF/XOiF0GcyOgWljKFxTWw=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/glog v0.0.0-20210429001901-424d2337a529 h1:2voWjNECnrZRbfwXxHB1/j8wa6xdKn85B5NzgVL/pTU=
 github.com/golang/glog v0.0.0-20210429001901-424d2337a529/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
@@ -71,6 +73,9 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/pierrec/lz4/v4 v4.1.7/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
+github.com/pierrec/lz4/v4 v4.1.8 h1:ieHkV+i2BRzngO4Wd/3HGowuZStgq6QkPsD1eolNAO4=
+github.com/pierrec/lz4/v4 v4.1.8/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
@@ -85,6 +90,8 @@ github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/subiz/cassandra v0.0.0-20190130101259-98e243db0ea8 h1:RGIussnTpcAsKVzeuggEjpAifBIaQjTfvAJi6OoFaXc=
 github.com/subiz/cassandra v0.0.0-20190130101259-98e243db0ea8/go.mod h1:6v4NumsWwvDIBec1+mvImpYO98Y1DuulD/e0e1k2mHg=
+github.com/subiz/cassandra v0.0.2 h1:9foY/u67YeT94dA1RIPIuqQdtofmOO0V0za6F7ioUz0=
+github.com/subiz/cassandra v0.0.2/go.mod h1:R81waSU3OhXNOqfI7IpET/lsfkphY9S02b1cukmAoUo=
 github.com/subiz/errors v1.0.9 h1:cx8QwWjvi49yMrklfvHWKWxt2lly10v/Nqht4tC3a+Q=
 github.com/subiz/errors v1.0.9/go.mod h1:ekt37JU/XoTNinNLwNJactKWIVVRSKXiTwGg4csqUIM=
 github.com/subiz/goutils v0.1.8 h1:d7SypR0ujZzebR7r/ShzXgxWpFvJKqGQeMv+eNWCLB4=
@@ -121,6 +128,8 @@ github.com/subiz/header v1.3.73 h1:ZwhIK4zfRPECwEWqZWRuaiTgWWEqsoYTzas/CRQ9Iqc=
 github.com/subiz/header v1.3.73/go.mod h1:gPDwN6A2atRcKJulgJ3Iz0XoNoUgysRR7uIdKjx3j2Y=
 github.com/subiz/header v1.3.80 h1:Oa7w+08cCMZpZGse04we9YdguZemFCsz/heKjniX9vc=
 github.com/subiz/header v1.3.80/go.mod h1:gPDwN6A2atRcKJulgJ3Iz0XoNoUgysRR7uIdKjx3j2Y=
+github.com/subiz/header v1.3.82 h1:8FMTt4se4YcyBrSNpePsLCflpMyN/cZJwrotnCXi/xk=
+github.com/subiz/header v1.3.82/go.mod h1:gPDwN6A2atRcKJulgJ3Iz0XoNoUgysRR7uIdKjx3j2Y=
 github.com/thanhpk/throttle v0.0.1 h1:SOyINM0hdVhKHkJaeWIZmEIt6jBM8lOcltE2oFZ2SMI=
 github.com/thanhpk/throttle v0.0.1/go.mod h1:vQbCO4ymuMGBUW5cSQHAM6ClgkGRXbdyu2rYyAVuHs0=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
