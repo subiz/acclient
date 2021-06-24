@@ -9,7 +9,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/golang/protobuf/proto"
 	"github.com/subiz/cassandra"
-	"github.com/subiz/errors"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
@@ -105,11 +104,10 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return nil, nil, nil
 	}
 	if err != nil {
-		return nil, nil, errors.Wrap(err, 500, errors.E_database_error, id)
+		return nil, nil, header.E500(err, header.E_database_error, id)
 	}
 
 	cache.SetWithTTL("ACC_"+id, acc, 1000, 30*time.Second)
-
 	sub := &pm.Subscription{}
 	err = cql.Read(tblSubscription, sub, pm.Subscription{AccountId: &id})
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
@@ -117,7 +115,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return acc, nil, nil
 	}
 	if err != nil {
-		return nil, nil, errors.Wrap(err, 500, errors.E_database_error, id)
+		return nil, nil, header.E500(err, header.E_database_error, id)
 	}
 
 	cache.SetWithTTL("SUB_"+id, sub, 1000, 30*time.Second)
@@ -154,7 +152,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error)
+		return nil, header.E500(err, header.E_database_error)
 	}
 
 	old.Messages = append(old.Messages, lang.Messages...)
@@ -304,7 +302,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var arr = make([]*pb.Agent, 0)
 	err := cql.List(tblAgents, &arr, map[string]interface{}{"account_id=": accid}, int(1000))
 	if err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error, accid)
+		return nil, header.E500(err, header.E_database_error, accid)
 	}
 
 	list := make([]*pb.Agent, 0)
@@ -333,7 +331,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	}
 	err := iter.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error, "read all bots", accid)
+		return nil, header.E500(err, header.E_database_error, "read all bots", accid)
 	}
 
 	cache.SetWithTTL("BOT_"+accid, list, int64(len(list)*1000), 10*time.Second)
@@ -450,7 +448,7 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 	var arr = make([]*pb.AgentGroup, 0)
 	err := cql.List(tblGroups, &arr, map[string]interface{}{"account_id=": accid}, 1000)
 	if err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error, accid)
+		return nil, header.E500(err, header.E_database_error, accid)
 	}
 
 	// list few member in group
@@ -473,7 +471,7 @@ func listAgentInGroupDB(accid, groupid string) ([]string, error) {
 		ids = append(ids, id)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error)
+		return nil, header.E500(err, header.E_database_error, accid, groupid)
 	}
 	return ids, nil
 }
@@ -510,7 +508,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 		})
 	}
 	if err := iter.Close(); err != nil {
-		return nil, errors.Wrap(err, 500, errors.E_database_error)
+		return nil, header.E500(err, header.E_database_error)
 	}
 
 	cache.SetWithTTL("PS_"+accid, presences, int64(len(presences)*20), 10*time.Second)
