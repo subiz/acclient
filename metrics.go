@@ -32,6 +32,9 @@ func flush() {
 			if err != nil || resp.StatusCode != 200 {
 				fmt.Println("METRIC ERR", err.Error())
 			}
+			if resp != nil {
+				resp.Body.Close()
+			}
 		}
 
 		if len(metricmapcopy) > 0 {

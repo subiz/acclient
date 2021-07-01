@@ -9,6 +9,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/golang/protobuf/proto"
 	"github.com/subiz/cassandra"
+	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
@@ -52,6 +53,7 @@ func _init() {
 		getAccountDB(key)
 		listAgentsDB(key)
 		listGroupsDB(key)
+		listAttrDefsDB(key)
 	}, 30000)
 
 	langthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
@@ -64,11 +66,11 @@ func _init() {
 
 	botthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
 		listBotsDB(accid)
-	}, 10000)
+	}, 20000)
 
 	presencethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		listPresencesDB(key)
-	}, 5000)
+	}, 10000)
 
 	var err error
 	cache, err = ristretto.NewCache(&ristretto.Config{
@@ -317,6 +319,36 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	return list, nil
 }
 
+func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error) {
+	defs := make(map[string]*header.AttributeDefinition, 0)
+
+	iter := cql.Session.Query("SELECT key, description, kind, list_items, name, type, updated FROM user.attribute_definitions WHERE account_id=? LIMIT 1000", accid).Iter()
+	key, desc, kind, name, typ := "", "", "", "", ""
+	var updated int64
+	list_items := make([]string, 0)
+	for iter.Scan(&key, &desc, &kind, &list_items, &name, &typ, &updated) {
+		list := make([]string, 0)
+		for _, item := range list_items {
+			list = append(list, item)
+		}
+		defs[key] = &header.AttributeDefinition{
+			AccountId:   accid,
+			Key:         key,
+			Description: desc,
+			Kind:        kind,
+			Name:        name,
+			Type:        typ,
+			ListItems:   list_items,
+			Updated:     clock.UnixMili(updated),
+		}
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error)
+	}
+	cache.SetWithTTL("ATTRDEF_"+accid, defs, int64(len(defs)*1000), 60*time.Second)
+	return defs, nil
+}
+
 func listBotsDB(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
 	iter := cql.Session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
@@ -542,4 +574,18 @@ func ListBots(accid string) ([]*header.Bot, error) {
 
 	botthrott.Push(accid, nil) // trigger reading from db for future read
 	return listBotsDB(accid)
+}
+
+func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
+	waitUntilReady()
+	if value, found := cache.Get("ATTRDEF_" + accid); found {
+		accthrott.Push(accid, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		return value.(map[string]*header.AttributeDefinition), nil
+	}
+
+	accthrott.Push(accid, nil) // trigger reading from db for future read
+	return listAttrDefsDB(accid)
 }
