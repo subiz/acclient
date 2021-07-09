@@ -8,7 +8,6 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/gocql/gocql"
 	"github.com/golang/protobuf/proto"
-	"github.com/subiz/cassandra"
 	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
@@ -33,7 +32,7 @@ var (
 	readyLock = &sync.Mutex{}
 	ready     bool
 
-	cql *cassandra.Query
+	session *gocql.Session
 
 	cache          *ristretto.Cache
 	accthrott      *throttle.Throttler
@@ -44,8 +43,13 @@ var (
 )
 
 func _init() {
-	cql = &cassandra.Query{}
-	if err := cql.Connect([]string{"db-0"}, "account"); err != nil {
+	cluster := gocql.NewCluster("db-0")
+	cluster.Timeout = 60 * time.Second
+	cluster.ConnectTimeout = 60 * time.Second
+	cluster.Keyspace = "account"
+	var err error
+	session, err = cluster.CreateSession()
+	if err != nil {
 		panic(err)
 	}
 
@@ -72,7 +76,6 @@ func _init() {
 		listPresencesDB(key)
 	}, 10000)
 
-	var err error
 	cache, err = ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e4, // number of keys to track frequency of (10k).
 		MaxCost:     1e7, // maximum cost of cache (10MB).
@@ -99,19 +102,78 @@ func waitUntilReady() {
 
 func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	waitUntilReady()
-	acc := &pb.Account{}
-	err := cql.Read(tblAccounts, acc, pb.Account{Id: &id})
+	var businesshourb, feature, force_feature, leadsetting, monitorsetting []byte
+	var supportedlocales []string
+	var address, city, country, dateformat, facebook, lang, locale, logo_url, name, ownerid, phone, referrer_from, region, state, tax_id, timezone, twitter, url string
+	var confirmed, created, lasttokenrequested, modified int64
+	var zipcode int32
+
+	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.SetWithTTL("ACC_"+id, nil, 1000, 30*time.Second)
 		return nil, nil, nil
 	}
+
 	if err != nil {
 		return nil, nil, header.E500(err, header.E_database_error, id)
 	}
 
+	ms := &pb.WebpageMonitorSetting{}
+	proto.Unmarshal(monitorsetting, ms)
+
+	ls := &pb.LeadSetting{}
+	proto.Unmarshal(leadsetting, ls)
+
+	f := &pb.Feature{}
+	ff := &pb.Feature{}
+	proto.Unmarshal(feature, f)
+	proto.Unmarshal(force_feature, ff)
+
+	bh := &pb.BusinessHours{}
+	proto.Unmarshal(businesshourb, bh)
+	acc := &pb.Account{
+		Id:                    &id,
+		Address:               &address,
+		BusinessHours:         bh,
+		City:                  &city,
+		Confirmed:             &confirmed,
+		Country:               &country,
+		Created:               &created,
+		DateFormat:            &dateformat,
+		Facebook:              &facebook,
+		Feature:               f,
+		ForceFeature:          ff,
+		Lang:                  &lang,
+		LastTokenRequested:    &lasttokenrequested,
+		LeadSetting:           ls,
+		Locale:                &locale,
+		LogoUrl:               &logo_url,
+		Modified:              &modified,
+		Name:                  &name,
+		OwnerId:               &ownerid,
+		Phone:                 &phone,
+		ReferrerFrom:          &referrer_from,
+		State:                 &state,
+		SupportedLocales:      supportedlocales,
+		TaxId:                 &tax_id,
+		Timezone:              &timezone,
+		Twitter:               &twitter,
+		Url:                   &url,
+		WebpageMonitorSetting: ms,
+		ZipCode:               &zipcode,
+	}
 	cache.SetWithTTL("ACC_"+id, acc, 1000, 30*time.Second)
-	sub := &pm.Subscription{}
-	err = cql.Read(tblSubscription, sub, pm.Subscription{AccountId: &id})
+
+	var autocharge, autorenew bool
+	var subname, plan, pmmethod, promo, referralby string
+	var subcreated, ended, started int64
+	var billingcyclemonth, next_billing_cycle_month uint32
+	var credit float32
+	var customerb, limitb []byte
+	notebs := make([][]byte, 0)
+
+	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, limit, name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?").Scan(
+		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &limitb, &subname, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.SetWithTTL("SUB_"+id, nil, 1000, 30*time.Second)
 		return acc, nil, nil
@@ -120,6 +182,36 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return nil, nil, header.E500(err, header.E_database_error, id)
 	}
 
+	limit := &pm.Limit{}
+	proto.Unmarshal(limitb, limit)
+
+	notes := []*pm.Note{}
+	for _, noteb := range notebs {
+		note := &pm.Note{}
+		proto.Unmarshal(noteb, note)
+		notes = append(notes, note)
+	}
+
+	customer := &pm.Customer{}
+	proto.Unmarshal(customerb, customer)
+	sub := &pm.Subscription{
+		AccountId:             &id,
+		AutoRenew:             &autorenew,
+		BillingCycleMonth:     &billingcyclemonth,
+		Created:               &subcreated,
+		Credit:                &credit,
+		Customer:              customer,
+		Ended:                 &ended,
+		Limit:                 limit,
+		Name:                  &subname,
+		Notes:                 notes,
+		Plan:                  &plan,
+		NextBillingCycleMonth: &next_billing_cycle_month,
+		PrimaryPaymentMethod:  &pmmethod,
+		PromotionCode:         &promo,
+		ReferralBy:            &referralby,
+		Started:               &started,
+	}
 	cache.SetWithTTL("SUB_"+id, sub, 1000, 30*time.Second)
 	return acc, sub, nil
 }
@@ -130,7 +222,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 	var updated int64
 	var k string
 
-	iter := cql.Session.Query(`SELECT k, message, public_state, last_message, updated, author, category FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
+	iter := session.Query(`SELECT k, message, public_state, last_message, updated, author, category FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
 	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby, &category) {
 		if message == "" {
 			continue
@@ -302,8 +394,52 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 	var arr = make([]*pb.Agent, 0)
-	err := cql.List(tblAgents, &arr, map[string]interface{}{"account_id=": accid}, int(1000))
-	if err != nil {
+
+	var id, avatar_url, client_id, country_code, email, encrypted_password, fullname, gender string
+	var invited_by, jobtitle, lang, phone string
+	var isowner, issupervisor bool
+	var emails, phones, scopes []string
+	var joined, lasttokenrequested, passwordchanged int64
+	var dashboard_setting []byte
+	var modified int64
+
+	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, emails, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, last_token_requested, modified, password_changed, phone, phones, scopes").Iter()
+	for iter.Scan(&id, &avatar_url, &client_id, &country_code, &dashboard_setting, &email, &emails, &encrypted_password, &fullname, &gender, &invited_by,
+		&isowner, &issupervisor, &jobtitle, &joined, &lang, &lasttokenrequested, &modified, &passwordchanged, &phone, &phones, &scopes) {
+		ds := &pb.DashboardAgent{}
+		proto.Unmarshal(dashboard_setting, ds)
+		ag := &pb.Agent{
+			AccountId:          conv.S(accid),
+			Id:                 conv.S(id),
+			AvatarUrl:          conv.S(avatar_url),
+			ClientId:           conv.S(client_id),
+			CountryCode:        conv.S(country_code),
+			DashboardSetting:   ds,
+			Email:              conv.S(email),
+			Emails:             emails,
+			EncryptedPassword:  conv.S(encrypted_password),
+			Fullname:           conv.S(fullname),
+			Gender:             conv.S(gender),
+			InvitedBy:          conv.S(invited_by),
+			IsOwner:            conv.B(isowner),
+			IsSupervisor:       conv.B(issupervisor),
+			JobTitle:           conv.S(jobtitle),
+			Joined:             conv.PI64(int(joined)),
+			Lang:               conv.S(lang),
+			LastTokenRequested: conv.PI64(int(lasttokenrequested)),
+			Modified:           conv.PI64(int(modified)),
+			PasswordChanged:    conv.PI64(int(passwordchanged)),
+			Phone:              conv.S(phone),
+			Phones:             phones,
+			Scopes:             scopes,
+		}
+		emails = make([]string, 0)
+		phones = make([]string, 0)
+		scopes = make([]string, 0)
+		arr = append(arr, ag)
+	}
+
+	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error, accid)
 	}
 
@@ -322,7 +458,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error) {
 	defs := make(map[string]*header.AttributeDefinition, 0)
 
-	iter := cql.Session.Query("SELECT key, description, kind, list_items, name, type, updated FROM user.attribute_definitions WHERE account_id=? LIMIT 1000", accid).Iter()
+	iter := session.Query("SELECT key, description, kind, list_items, name, type, updated FROM user.attribute_definitions WHERE account_id=? LIMIT 1000", accid).Iter()
 	key, desc, kind, name, typ := "", "", "", "", ""
 	var updated int64
 	list_items := make([]string, 0)
@@ -351,7 +487,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 
 func listBotsDB(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
-	iter := cql.Session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
+	iter := session.Query(`SELECT bot FROM `+tblBots+` WHERE account_id=?`, accid).Iter()
 	var botb []byte
 	list := make([]*header.Bot, 0)
 	for iter.Scan(&botb) {
@@ -478,8 +614,21 @@ func ListGroups(accid string) ([]*pb.AgentGroup, error) {
 func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 	waitUntilReady()
 	var arr = make([]*pb.AgentGroup, 0)
-	err := cql.List(tblGroups, &arr, map[string]interface{}{"account_id=": accid}, 1000)
-	if err != nil {
+
+	iter := session.Query("SELET id, created, logo_url, modified, name FROM account.groups WHERE account_id=? LIMIT 500", accid).Iter()
+	var id, name, logourl string
+	var created, modified int64
+	for iter.Scan(&id, &created, &logourl, &modified, &name) {
+		group := &pb.AgentGroup{
+			AccountId: conv.S(accid),
+			Id:        conv.S(id),
+			Created:   conv.PI64(int(created)),
+			Modified:  conv.PI64(int(modified)),
+			Name:      conv.S(name),
+		}
+		arr = append(arr, group)
+	}
+	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error, accid)
 	}
 
@@ -496,7 +645,7 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 
 func listAgentInGroupDB(accid, groupid string) ([]string, error) {
 	waitUntilReady()
-	iter := cql.Session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? AND account_id=? LIMIT 1000`, groupid, accid).Iter()
+	iter := session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? AND account_id=? LIMIT 1000`, groupid, accid).Iter()
 	var ids = make([]string, 0)
 	var id string
 	for iter.Scan(&id) {
@@ -527,7 +676,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	presences := make([]*pb.Presence, 0)
 
-	iter := cql.Session.Query(`SELECT user_id, ip, pinged, ua FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
+	iter := session.Query(`SELECT user_id, ip, pinged, ua FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
 	uid, ip, ua := "", "", ""
 	pinged := int64(0)
 	for iter.Scan(&uid, &ip, &pinged, &ua) {
