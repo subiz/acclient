@@ -172,7 +172,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var customerb, limitb []byte
 	notebs := make([][]byte, 0)
 
-	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, limit, name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?").Scan(
+	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, \"limit\", name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
 		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &limitb, &subname, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.SetWithTTL("SUB_"+id, nil, 1000, 30*time.Second)
@@ -403,7 +403,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var dashboard_setting []byte
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, emails, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, last_token_requested, modified, password_changed, phone, phones, scopes").Iter()
+	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, emails, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, last_token_requested, modified, password_changed, phone, phones, scopes FROM account.agents where account_id=?", accid).Iter()
 	for iter.Scan(&id, &avatar_url, &client_id, &country_code, &dashboard_setting, &email, &emails, &encrypted_password, &fullname, &gender, &invited_by,
 		&isowner, &issupervisor, &jobtitle, &joined, &lang, &lasttokenrequested, &modified, &passwordchanged, &phone, &phones, &scopes) {
 		ds := &pb.DashboardAgent{}
