@@ -619,7 +619,7 @@ func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
 	waitUntilReady()
 	var arr = make([]*pb.AgentGroup, 0)
 
-	iter := session.Query("SELET id, created, logo_url, modified, name FROM account.groups WHERE account_id=? LIMIT 500", accid).Iter()
+	iter := session.Query("SELECT id, created, logo_url, modified, name FROM account.groups WHERE account_id=? LIMIT 500", accid).Iter()
 	var id, name, logourl string
 	var created, modified int64
 	for iter.Scan(&id, &created, &logourl, &modified, &name) {
