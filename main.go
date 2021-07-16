@@ -13,6 +13,7 @@ import (
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
 	compb "github.com/subiz/header/common"
+	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
 	"github.com/thanhpk/throttle"
 )
@@ -34,12 +35,13 @@ var (
 
 	session *gocql.Session
 
-	cache          *ristretto.Cache
-	accthrott      *throttle.Throttler
-	langthrott     *throttle.Throttler
-	clientthrott   *throttle.Throttler
-	presencethrott *throttle.Throttler
-	botthrott      *throttle.Throttler
+	cache           *ristretto.Cache
+	accthrott       *throttle.Throttler
+	langthrott      *throttle.Throttler
+	clientthrott    *throttle.Throttler
+	presencethrott  *throttle.Throttler
+	botthrott       *throttle.Throttler
+	n5settingthrott *throttle.Throttler
 )
 
 func _init() {
@@ -71,6 +73,16 @@ func _init() {
 	botthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
 		listBotsDB(accid)
 	}, 20000)
+
+	n5settingthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
+		ks := strings.Split(key, ";")
+		if len(ks) != 2 {
+			return
+		}
+
+		accid, agid := ks[0], ks[1]
+		getNotificationSettingDB(accid, agid)
+	}, 30000)
 
 	presencethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		listPresencesDB(key)
@@ -372,6 +384,26 @@ func GetAccount(accid string) (*pb.Account, error) {
 	return proto.Clone(acc).(*pb.Account), nil
 }
 
+func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
+	waitUntilReady()
+
+	if value, found := cache.Get("N5Setting_" + accid + "_" + agid); found {
+		n5settingthrott.Push(accid+";"+agid, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		setting := value.(*n5pb.Setting)
+		return proto.Clone(setting).(*n5pb.Setting), nil
+	}
+
+	setting, err := getNotificationSettingDB(accid, agid)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Clone(setting).(*n5pb.Setting), nil
+
+}
+
 func GetSubscription(accid string) (*pm.Subscription, error) {
 	waitUntilReady()
 	// cache hit
@@ -487,6 +519,46 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	}
 	cache.SetWithTTL("ATTRDEF_"+accid, defs, int64(len(defs)*1000), 60*time.Second)
 	return defs, nil
+}
+
+func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
+	waitUntilReady()
+
+	dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
+	var instant_mute_until, updated int64
+	err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		setting := &n5pb.Setting{AccountId: &accid, AgentId: &agid}
+		cache.SetWithTTL("N5Setting_"+accid+"_"+agid, setting, 1000, 30*time.Second)
+		return setting, nil
+	}
+	if err != nil {
+		return nil, header.E500(err, header.E_database_error, "read noti setting", accid, agid)
+	}
+
+	dnds := &n5pb.DoNotDisturb{}
+	proto.Unmarshal(dnd, dnds)
+
+	webs := &n5pb.Subscription{}
+	proto.Unmarshal(web, webs)
+	mobiles := &n5pb.Subscription{}
+	proto.Unmarshal(mobile, mobiles)
+	email := &n5pb.Subscription{}
+	proto.Unmarshal(em, email)
+
+	setting := &n5pb.Setting{
+		AccountId:        &accid,
+		AgentId:          &agid,
+		DoNotDisturb:     dnds,
+		InstantMuteUntil: &instant_mute_until,
+		Updated:          &updated,
+		Web:              webs,
+		Mobile:           mobiles,
+		Email:            email,
+	}
+
+	cache.SetWithTTL("N5Setting_"+accid+"_"+agid, setting, 1000, 30*time.Second)
+	return setting, nil
 }
 
 func listBotsDB(accid string) ([]*header.Bot, error) {
