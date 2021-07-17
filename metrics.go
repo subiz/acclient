@@ -16,7 +16,6 @@ func init() {
 }
 
 func flush() {
-	return
 	// flush periodically in 30s
 	for {
 		start := time.Now()
