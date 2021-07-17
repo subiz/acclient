@@ -16,6 +16,7 @@ func init() {
 }
 
 func flush() {
+	return
 	// flush periodically in 30s
 	for {
 		start := time.Now()
@@ -29,8 +30,11 @@ func flush() {
 
 		for k, v := range metricmapcopy {
 			resp, err := http.Post("http://metric-0.metric/gauges/"+k+"/collects/"+strconv.FormatFloat(v, 'E', -1, 32), "", nil)
-			if err != nil || resp.StatusCode != 200 {
+			if err != nil {
 				fmt.Println("METRIC ERR", err.Error())
+			}
+			if resp.StatusCode != 200 {
+				fmt.Println("METRIC ERR", resp.StatusCode)
 			}
 			if resp != nil {
 				resp.Body.Close()
