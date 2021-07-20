@@ -60,7 +60,7 @@ func _init() {
 		listAgentsDB(key)
 		listGroupsDB(key)
 		listAttrDefsDB(key)
-	}, 30000)
+	}, 60000)
 
 	langthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		ks := strings.Split(key, ";")
@@ -174,7 +174,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		WebpageMonitorSetting: ms,
 		ZipCode:               &zipcode,
 	}
-	cache.SetWithTTL("ACC_"+id, acc, 1000, 30*time.Second)
+	cache.SetWithTTL("ACC_"+id, acc, 1000, 60*time.Second)
 
 	var autocharge, autorenew bool
 	var subname, plan, pmmethod, promo, referralby string
@@ -528,7 +528,18 @@ func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
 	var instant_mute_until, updated int64
 	err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		setting := &n5pb.Setting{AccountId: &accid, AgentId: &agid}
+		// default setting
+		setting := &n5pb.Setting{
+			AccountId: &accid, AgentId: &agid,
+			Web: &n5pb.Subscription{
+				NewMessage:            conv.B(true),
+				UserCreated:           conv.B(true),
+				UserReturned:          conv.B(true),
+				CampaignUserConverted: conv.B(true),
+				UserOpenedEmail:       conv.B(true),
+			},
+			Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
+		}
 		cache.SetWithTTL("N5Setting_"+accid+"_"+agid, setting, 1000, 30*time.Second)
 		return setting, nil
 	}
