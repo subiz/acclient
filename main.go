@@ -517,6 +517,12 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error)
 	}
+
+	defaults := ListDefaultDefs()
+	for _, a := range defaults {
+		defs[a.Key] = a
+	}
+
 	cache.SetWithTTL("ATTRDEF_"+accid, defs, int64(len(defs)*1000), 60*time.Second)
 	return defs, nil
 }
