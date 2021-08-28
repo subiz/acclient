@@ -15,13 +15,49 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 		&header.AttributeDefinition{
 			Name: "Email",
 			Key:  "emails",
-			Kind: header.AttributeDefinition_system.String(),
+			Kind: header.AttributeDefinition_default.String(),
+			Type: "text",
+		},
+		&header.AttributeDefinition{
+			Name: "Rank",
+			Key:  "rank",
+			Kind: header.AttributeDefinition_default.String(),
+			Type: "number",
+		},
+		&header.AttributeDefinition{
+			Name: "Zalo",
+			Key:  "zalo",
+			Kind: header.AttributeDefinition_default.String(),
+			Type: "text",
+		},
+		&header.AttributeDefinition{
+			Name: "External ID",
+			Key:  "external_id",
+			Kind: header.AttributeDefinition_default.String(),
+			Type: "text",
+		},
+		&header.AttributeDefinition{
+			Name: "Facebook",
+			Key:  "facebook",
+			Kind: header.AttributeDefinition_default.String(),
+			Type: "text",
+		},
+		&header.AttributeDefinition{
+			Name: "Job title",
+			Key:  "job_title",
+			Kind: header.AttributeDefinition_default.String(),
+			Type: "text",
+		},
+		&header.AttributeDefinition{
+			Name: "Status",
+			Key:  "status",
+			Kind: header.AttributeDefinition_default.String(),
 			Type: "text",
 		},
 		&header.AttributeDefinition{
 			Name: "Fullname",
 			Key:  "fullname",
-			Kind: header.AttributeDefinition_system.String(),
+			Kind: header.AttributeDefinition_default.String(),
 			Type: "text",
 		},
 		&header.AttributeDefinition{
@@ -67,12 +103,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type: "datetime",
 		},
 		&header.AttributeDefinition{
-			Name: "Unsubscribed",
-			Key:  "_unsubscribed",
-			Kind: header.AttributeDefinition_system.String(),
-			Type: "boolean",
-		},
-		&header.AttributeDefinition{
 			Name: "Modified",
 			Key:  "modified",
 			Kind: header.AttributeDefinition_system.String(),
@@ -87,12 +117,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 		&header.AttributeDefinition{
 			Name: "Total conversations",
 			Key:  "total_conversations",
-			Kind: header.AttributeDefinition_system.String(),
-			Type: "number",
-		},
-		&header.AttributeDefinition{
-			Name: "Total open tickets",
-			Key:  "total_open_tickets",
 			Kind: header.AttributeDefinition_system.String(),
 			Type: "number",
 		},
@@ -133,12 +157,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type: "boolean",
 		},
 		&header.AttributeDefinition{
-			Name: "Number of open ticket",
-			Key:  "total_open_tickets",
-			Kind: header.AttributeDefinition_system.String(),
-			Type: "number",
-		},
-		&header.AttributeDefinition{
 			Name: "Last message sent time",
 			Key:  "last_message_sent",
 			Kind: header.AttributeDefinition_system.String(),
@@ -150,28 +168,24 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Kind: header.AttributeDefinition_system.String(),
 			Type: "text",
 		},
-
 		&header.AttributeDefinition{
 			Name: "First channel",
 			Key:  "first_channel",
 			Kind: header.AttributeDefinition_system.String(),
 			Type: "text",
 		},
-
 		&header.AttributeDefinition{
 			Name: "Latest channel",
 			Key:  "latest_channel",
 			Kind: header.AttributeDefinition_system.String(),
 			Type: "text",
 		},
-
 		&header.AttributeDefinition{
 			Name: "First session channel source",
 			Key:  "first_session_source",
 			Kind: header.AttributeDefinition_system.String(),
 			Type: "text",
 		},
-
 		&header.AttributeDefinition{
 			Name: "First session source referer",
 			Key:  "first_session_referer",
@@ -185,7 +199,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Kind:        header.AttributeDefinition_system.String(),
 			Type:        "text",
 		},
-
 		&header.AttributeDefinition{
 			Name: "Latest channel source",
 			Key:  "lastest_session_source",
@@ -217,13 +230,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Kind: header.AttributeDefinition_system.String(),
 			Type: "text",
 		},
-		&header.AttributeDefinition{
-			Name: "Chat with",
-			Key:  "chat_with",
-			Kind: header.AttributeDefinition_system.String(),
-			Type: "text",
-		},
-
 		&header.AttributeDefinition{
 			Name: "First Interact",
 			Key:  "first_interact",
