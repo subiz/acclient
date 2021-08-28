@@ -3,16 +3,17 @@ module github.com/subiz/acclient/v2
 go 1.16
 
 require (
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.0
-	github.com/gocql/gocql v0.0.0-20210707082121-9a3953d1826d
-	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
+	github.com/gocql/gocql v0.0.0-20210817081954-bc256bbb90de
+	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/subiz/cassandra v0.0.2 // indirect
 	github.com/subiz/goutils v0.1.10
-	github.com/subiz/header v1.4.39
-	github.com/thanhpk/throttle v0.0.1
-	golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985 // indirect
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
-	google.golang.org/genproto v0.0.0-20210729151513-df9385d47c1b // indirect
+	github.com/subiz/header v1.4.57
+	github.com/thanhpk/throttle v0.0.2
+	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
+	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
+	golang.org/x/text v0.3.7 // indirect
+	google.golang.org/genproto v0.0.0-20210827211047-25e5f791fe06 // indirect
 )
