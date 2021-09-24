@@ -10,7 +10,8 @@ import (
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
-const API = "https://api.subiz.com.vn"
+// const API = "https://api.subiz.com.vn"
+const API = "http://api"
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
 	if url == "" {
