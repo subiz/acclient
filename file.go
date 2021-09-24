@@ -10,7 +10,40 @@ import (
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
-const API = "http://api"
+const API = "https://api.subiz.com.vn"
+
+func UploadFileUrl(accid, url string) (*header.File, error) {
+	if url == "" {
+		return &header.File{}, nil
+	}
+	body, _ := json.Marshal(&header.FileUrlDownloadRequest{AccountId: accid, Url: url})
+
+	resp, err := http.Post(API+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, header.E500(err, header.E_subiz_call_failed)
+	}
+
+	defer resp.Body.Close()
+	out, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		// try to cast to error
+		e := &header.Error{}
+		if jserr := json.Unmarshal(out, e); jserr == nil {
+			if e.Code != "" && e.Class != 0 {
+				return nil, e
+			}
+		}
+		return nil, header.E500(err, header.E_subiz_call_failed)
+	}
+
+	file := &header.File{}
+	if err = json.Unmarshal(out, file); err != nil {
+		return nil, header.E500(err, header.E_invalid_json)
+	}
+
+	return file, nil
+}
 
 func UploadFile(accid, name, mimetype string, data []byte) (string, error) {
 	if len(data) > MAX_SIZE {
