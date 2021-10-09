@@ -31,12 +31,15 @@ func flush() {
 			resp, err := http.Post("http://metric-0.metric/gauges/"+k+"/collects/"+strconv.FormatFloat(v, 'E', -1, 32), "", nil)
 			if err != nil {
 				fmt.Println("METRIC ERR", err.Error())
-			}
-			if resp.StatusCode != 200 {
-				fmt.Println("METRIC ERR", resp.StatusCode)
+				continue
 			}
 			if resp != nil {
-				resp.Body.Close()
+				if resp.StatusCode != 200 {
+					fmt.Println("METRIC ERR", resp.StatusCode)
+				}
+				if resp.Body != nil {
+					resp.Body.Close()
+				}
 			}
 		}
 
