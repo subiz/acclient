@@ -55,11 +55,12 @@ func _init() {
 		panic(err)
 	}
 
-	accthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
-		getAccountDB(key)
-		listAgentsDB(key)
-		listGroupsDB(key)
-		listAttrDefsDB(key)
+	accthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
+		getAccountDB(accid)
+		listAgentsDB(accid)
+		listGroupsDB(accid)
+		listAttrDefsDB(accid)
+		getShopSettingDb(accid)
 	}, 60000)
 
 	langthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
@@ -226,6 +227,26 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	}
 	cache.SetWithTTL("SUB_"+id, sub, 1000, 30*time.Second)
 	return acc, sub, nil
+}
+
+func getShopSettingDb(id string) (*header.ShopSetting, error) {
+	waitUntilReady()
+	var data = []byte{}
+	err := session.Query("SELECT data FROM account.shop_setting WHERE account_id=?", id).Scan(&data)
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		cache.SetWithTTL("SHOPSETTING_"+id, nil, 1000, 30*time.Second)
+		return &header.ShopSetting{}, nil
+	}
+
+	if err != nil {
+		return nil, header.E500(err, header.E_database_error, id)
+	}
+
+	setting := &header.ShopSetting{}
+	proto.Unmarshal(data, setting)
+
+	cache.SetWithTTL("SHOPSETTING_"+id, setting, 1000, 60*time.Second)
+	return setting, nil
 }
 
 func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.Lang, error) {
@@ -827,3 +848,63 @@ func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	accthrott.Push(accid, nil) // trigger reading from db for future read
 	return listAttrDefsDB(accid)
 }
+
+func GetShopSetting(accid string) (*header.ShopSetting, error) {
+	waitUntilReady()
+	// cache hit
+	if value, found := cache.Get("SHOPSETTING_" + accid); found {
+		accthrott.Push(accid, nil) // trigger reading from db for future read
+
+		if value == nil {
+			return nil, nil
+		}
+		setting := value.(*header.ShopSetting)
+		return proto.Clone(setting).(*header.ShopSetting), nil
+	}
+
+	setting, err := getShopSettingDb(accid)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Clone(setting).(*header.ShopSetting), nil
+}
+
+func ConvertMoney(accid string, price *header.Price) (*header.Price, error) {
+	acc, err := GetAccount(accid)
+	if err != nil {
+		return nil, err
+	}
+	setting, err := GetShopSetting(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	cur := strings.TrimSpace(acc.GetCurrency())
+	if cur == "" {
+		return nil, header.E400(nil, header.E_invalid_base_currency, "empty")
+	}
+
+	price = proto.Clone(price).(*header.Price)
+	// first, calculate fpv
+	fpv := header.CalcFPV(price, cur)
+	for _, cur := range setting.GetSupportedCurrencies() {
+		if cur.GetRate() >= 0 {
+			money := float32(fpv) * cur.GetRate() / 1000000
+			header.SetCurrency(price, cur.GetCode(), money)
+		}
+	}
+	return price, nil
+}
+
+// ConvertMoney(accid, product.GetPrice())
+// ConvertMoney(accid, &header.Price{
+//   VND: 323000,
+//   currency: "VND",
+// })
+//
+// => header.Price{
+//    currency: "VND",
+//    VND: 323000,
+//    USD: 20,
+//    FPV: 20000000,
+// }
