@@ -10,7 +10,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/subiz/goutils v0.1.11
-	github.com/subiz/header v1.5.20
+	github.com/subiz/header v1.5.21
 	github.com/thanhpk/throttle v0.0.2
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/sys v0.0.0-20211102192858-4dd72447c267 // indirect

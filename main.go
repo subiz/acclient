@@ -90,8 +90,8 @@ func _init() {
 	}, 10000)
 
 	cache, err = ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e4, // number of keys to track frequency of (10k).
-		MaxCost:     1e7, // maximum cost of cache (10MB).
+		NumCounters: 1e5, // number of keys to track frequency of (100k).
+		MaxCost:     4e7, // maximum cost of cache (40MB).
 		BufferItems: 64,  // number of keys per Get buffer.
 	})
 	if err != nil {
