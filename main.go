@@ -237,16 +237,14 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	waitUntilReady()
 	var data = []byte{}
 	err := session.Query("SELECT data FROM account.shop_setting WHERE account_id=?", id).Scan(&data)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.SetWithTTL("SHOPSETTING_"+id, nil, 1000, 30*time.Second)
-		return &header.ShopSetting{}, nil
-	}
-	if err != nil {
+	setting := &header.ShopSetting{}
+
+	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
 		return nil, header.E500(err, header.E_database_error, id)
 	}
-
-	setting := &header.ShopSetting{}
-	proto.Unmarshal(data, setting)
+	if len(data) > 0 {
+		proto.Unmarshal(data, setting)
+	}
 
 	poses := []*header.POS{}
 	// read pos
