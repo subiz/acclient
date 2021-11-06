@@ -7,6 +7,7 @@ import (
 	"github.com/subiz/header"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
@@ -14,6 +15,7 @@ const MAX_SIZE = 25 * 1024 * 1024 // 25MB
 const API = "http://api"
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
+	url = strings.TrimSpace(url)
 	if url == "" {
 		return &header.File{}, nil
 	}

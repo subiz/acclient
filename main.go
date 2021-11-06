@@ -7,7 +7,6 @@ import (
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/gocql/gocql"
-	"github.com/golang/protobuf/proto"
 	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
@@ -16,6 +15,7 @@ import (
 	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
 	"github.com/thanhpk/throttle"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -241,13 +241,28 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		cache.SetWithTTL("SHOPSETTING_"+id, nil, 1000, 30*time.Second)
 		return &header.ShopSetting{}, nil
 	}
-
 	if err != nil {
 		return nil, header.E500(err, header.E_database_error, id)
 	}
 
 	setting := &header.ShopSetting{}
 	proto.Unmarshal(data, setting)
+
+	poses := []*header.POS{}
+	// read pos
+	data = []byte{}
+	iter := session.Query(`SELECT data FROM account.pos WHERE account_id=?`, id).Iter()
+	for iter.Scan(&data) {
+		pos := header.POS{}
+		proto.Unmarshal(data, &pos)
+		poses = append(poses, &pos)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error)
+	}
+
+	setting.Poses = poses
+	setting.AccountId = id
 
 	cache.SetWithTTL("SHOPSETTING_"+id, setting, 1000, 60*time.Second)
 	return setting, nil
