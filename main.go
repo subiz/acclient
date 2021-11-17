@@ -918,7 +918,7 @@ func ConvertMoney(accid string, price *header.Price) (*header.Price, error) {
 	price = proto.Clone(price).(*header.Price)
 	// first, calculate fpv
 	fpv := header.CalcFPV(price, cur)
-	for _, cur := range setting.GetSupportedCurrencies() {
+	for _, cur := range setting.GetOtherCurrencies() {
 		if cur.GetRate() >= 0 {
 			money := float32(fpv) * cur.GetRate() / 1000000
 			header.SetCurrency(price, cur.GetCode(), money)
