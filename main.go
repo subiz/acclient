@@ -272,7 +272,21 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		return nil, header.E500(err, header.E_database_error)
 	}
 
+	paymentmethods := []*header.PaymentMethod{}
+	// read pos
+	data = []byte{}
+	iter = session.Query(`SELECT data FROM account.payment_method WHERE account_id=?`, id).Iter()
+	for iter.Scan(&data) {
+		pm := header.PaymentMethod{}
+		proto.Unmarshal(data, &pm)
+		paymentmethods = append(paymentmethods, &pm)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error)
+	}
+
 	setting.Taxes = taxes
+	setting.PaymentMethods = paymentmethods
 	setting.Poses = poses
 	setting.AccountId = id
 
