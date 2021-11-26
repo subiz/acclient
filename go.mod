@@ -9,7 +9,7 @@ require (
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/subiz/goutils v0.1.11
-	github.com/subiz/header v1.5.62
+	github.com/subiz/header v1.5.65
 	github.com/thanhpk/throttle v0.0.2
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/net v0.0.0-20211123203042-d83791d6bcd9 // indirect
