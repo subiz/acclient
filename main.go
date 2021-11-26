@@ -914,31 +914,43 @@ func GetShopSetting(accid string) (*header.ShopSetting, error) {
 	return proto.Clone(setting).(*header.ShopSetting), nil
 }
 
-func ConvertMoney(accid string, price *header.Price) (*header.Price, error) {
+// account currency /order currency  (E.g: order currency: VND, acc currency: USD, => currency_rate = 1/20k = 0.00005)
+func ConvertToFPV(accid string, price float32, order_cur string, order_rate float32) (int64, float32, error) {
+	if order_rate != 0 {
+		return int64(price * order_rate * 1000000), order_rate, nil
+	}
+
 	acc, err := GetAccount(accid)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 	setting, err := GetShopSetting(accid)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 
-	cur := strings.TrimSpace(acc.GetCurrency())
-	if cur == "" {
-		return nil, header.E400(nil, header.E_invalid_base_currency, "empty")
+	defcur := strings.TrimSpace(acc.GetCurrency())
+	if defcur == "" && order_cur != "" {
+		return 0, 0, header.E400(nil, header.E_invalid_base_currency, "empty")
 	}
 
-	price = proto.Clone(price).(*header.Price)
+	if defcur == order_cur {
+		return int64(price * order_rate * 1000000), 1, nil
+	}
+
+	// order_cur and defcur must not be empty and be difference
 	// first, calculate fpv
-	fpv := header.CalcFPV(price, cur)
 	for _, cur := range setting.GetOtherCurrencies() {
-		if cur.GetRate() >= 0 {
-			money := float32(fpv) * cur.GetRate() / 1000000
-			header.SetCurrency(price, cur.GetCode(), money)
+		if cur.GetCode() != order_cur {
+			continue
 		}
+
+		if cur.GetRate() <= 0 {
+			return 0, 0, header.E400(nil, header.E_invalid_currency, "invalid rate", cur.GetRate())
+		}
+		return int64(price * cur.GetRate() * 1000000), cur.GetRate(), nil
 	}
-	return price, nil
+	return 0, 0, header.E400(nil, header.E_invalid_currency, "not supported currency")
 }
 
 // ConvertMoney(accid, product.GetPrice())
