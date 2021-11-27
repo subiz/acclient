@@ -915,11 +915,7 @@ func GetShopSetting(accid string) (*header.ShopSetting, error) {
 }
 
 // account currency /order currency  (E.g: order currency: VND, acc currency: USD, => currency_rate = 1/20k = 0.00005)
-func ConvertToFPV(accid string, price float32, order_cur string, order_rate float32) (int64, float32, error) {
-	if order_rate != 0 {
-		return int64(price * order_rate * 1000000), order_rate, nil
-	}
-
+func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32, error) {
 	acc, err := GetAccount(accid)
 	if err != nil {
 		return 0, 0, err
@@ -939,7 +935,7 @@ func ConvertToFPV(accid string, price float32, order_cur string, order_rate floa
 	}
 
 	if defcur == order_cur {
-		return int64(price * order_rate * 1000000), 1, nil
+		return int64(price * 1000000), 1, nil
 	}
 
 	// order_cur and defcur must not be empty and be difference
