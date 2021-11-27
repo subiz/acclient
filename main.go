@@ -934,6 +934,10 @@ func ConvertToFPV(accid string, price float32, order_cur string, order_rate floa
 		return 0, 0, header.E400(nil, header.E_invalid_base_currency, "empty")
 	}
 
+	if order_cur == "" {
+		order_cur = defcur
+	}
+
 	if defcur == order_cur {
 		return int64(price * order_rate * 1000000), 1, nil
 	}
