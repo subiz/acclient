@@ -48,16 +48,17 @@ func UploadFileUrl(accid, url string) (*header.File, error) {
 	return file, nil
 }
 
-func UploadFile(accid, name, mimetype string, data []byte) (string, error) {
+func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, error) {
 	if len(data) > MAX_SIZE {
 		return "", header.E400(nil, header.E_invalid_payload_size, len(data))
 	}
 
 	presignres, err := presign(accid, &header.FileHeader{
-		Name:      name,
-		Size:      int64(len(data)),
-		Type:      mimetype,
-		AccountId: accid,
+		Name:               name,
+		Size:               int64(len(data)),
+		Type:               mimetype,
+		AccountId:          accid,
+		ContentDisposition: cd,
 	})
 	if err != nil {
 		return "", err
