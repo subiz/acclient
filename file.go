@@ -64,7 +64,7 @@ func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, e
 		return "", err
 	}
 
-	if err := uploadFile(presignres.SignedUrl, data, mimetype); err != nil {
+	if err := uploadFile(presignres.SignedUrl, data, mimetype, cd); err != nil {
 		return "", err
 	}
 
@@ -76,13 +76,15 @@ func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, e
 	return outurl, nil
 }
 
-func uploadFile(url string, data []byte, mimetype string) error {
+func uploadFile(url string, data []byte, mimetype, cd string) error {
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(data))
 	if mimetype == "" {
 		mimetype = "application/octet-stream"
 	}
 	req.Header.Set("Content-Type", mimetype)
-
+	if cd != "" {
+		req.Header.Set("Content-Disposition", cd)
+	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
