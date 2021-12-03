@@ -145,3 +145,37 @@ func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) 
 	}
 	return fileres, nil
 }
+
+// path must start with /
+func HTML2PDF(path, accid, filename, content_disposition string, input interface{}) (*header.File, error) {
+	body, err := json.Marshal(input)
+	if err != nil {
+		return nil, header.E500(nil, header.E_invalid_json)
+	}
+	url := "http://html2pdf:80" + path
+	fmt.Println("OUTDDDDDDDD URL", url)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	q := req.URL.Query()
+	q.Add("filename", filename)
+	q.Add("account_id", accid)
+	if content_disposition != "" {
+		q.Add("content_disposition", content_disposition)
+	}
+	req.URL.RawQuery = q.Encode()
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, header.E500(err, header.E_undefined)
+	}
+	defer resp.Body.Close()
+	out, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("OUTDDDDDDDD", string(out))
+	file := &header.File{}
+	if err := json.Unmarshal(out, file); err != nil {
+		return nil, header.E500(nil, header.E_invalid_json)
+	}
+	return file, nil
+}
