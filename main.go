@@ -285,9 +285,25 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		return nil, header.E500(err, header.E_database_error)
 	}
 
+	shops := make([]*header.ShopeeShop, 0)
+	iter = session.Query(`SELECT data from proder.shopee_shop WHERE account_id=? LIMIT 1000`, id).Iter()
+	b := make([]byte, 0)
+	for iter.Scan(&b) {
+		shop := &header.ShopeeShop{}
+		err := proto.Unmarshal(b, shop)
+		if err != nil {
+			return nil, header.E500(err, header.E_invalid_proto, id)
+		}
+		shops = append(shops, shop)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error, id)
+	}
+
 	setting.Taxes = taxes
 	setting.PaymentMethods = paymentmethods
 	setting.Poses = poses
+	setting.ShopeeShops = shops
 	setting.AccountId = id
 
 	cache.SetWithTTL("SHOPSETTING_"+id, setting, 1000, 60*time.Second)

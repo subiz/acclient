@@ -153,7 +153,6 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 		return nil, header.E500(nil, header.E_invalid_json)
 	}
 	url := "http://html2pdf:80" + path
-	fmt.Println("OUTDDDDDDDD URL", url)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -172,7 +171,6 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 	}
 	defer resp.Body.Close()
 	out, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("OUTDDDDDDDD", string(out))
 	file := &header.File{}
 	if err := json.Unmarshal(out, file); err != nil {
 		return nil, header.E500(nil, header.E_invalid_json)
