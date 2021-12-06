@@ -13,6 +13,12 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type: "text",
 		},
 		&header.AttributeDefinition{
+			Name: "First Paid Order",
+			Key:  "first_paid_order_id",
+			Kind: header.AttributeDefinition_system.String(),
+			Type: "text",
+		},
+		&header.AttributeDefinition{
 			Name: "Email",
 			Key:  "emails",
 			Kind: header.AttributeDefinition_default.String(),
