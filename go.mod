@@ -1,22 +1,28 @@
 module github.com/subiz/acclient/v2
 
-go 1.16
+go 1.17
+
+require (
+	github.com/dgraph-io/ristretto v0.1.0
+	github.com/gocql/gocql v0.0.0-20211015133455-b225f9b53fa1
+	github.com/subiz/goutils v0.1.13
+	github.com/subiz/header v1.6.3
+	github.com/thanhpk/throttle v0.0.2
+	google.golang.org/protobuf v1.27.1
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/dgraph-io/ristretto v0.1.0
-	github.com/gocql/gocql v0.0.0-20211015133455-b225f9b53fa1
+	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/subiz/goutils v0.1.13
-	github.com/subiz/header v1.5.88
-	github.com/thanhpk/throttle v0.0.2
-	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
-	golang.org/x/net v0.0.0-20211205041911-012df41ee64c // indirect
-	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect
+	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.5 // indirect
-	google.golang.org/genproto v0.0.0-20211203200212-54befc351ae9 // indirect
-	google.golang.org/grpc v1.42.0 // indirect
-	google.golang.org/protobuf v1.27.1
+	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
+	google.golang.org/grpc v1.43.0 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indirect
 )

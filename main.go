@@ -246,14 +246,14 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		proto.Unmarshal(data, setting)
 	}
 
-	poses := []*header.POS{}
+	shopAddresses := []*header.ShopAddress{}
 	// read pos
 	data = []byte{}
-	iter := session.Query(`SELECT data FROM account.pos WHERE account_id=?`, id).Iter()
+	iter := session.Query(`SELECT data FROM account.shop_address WHERE account_id=?`, id).Iter()
 	for iter.Scan(&data) {
-		pos := header.POS{}
-		proto.Unmarshal(data, &pos)
-		poses = append(poses, &pos)
+		shopAddress := header.ShopAddress{}
+		proto.Unmarshal(data, &shopAddress)
+		shopAddresses = append(shopAddresses, &shopAddress)
 	}
 	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error)
@@ -302,7 +302,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 
 	setting.Taxes = taxes
 	setting.PaymentMethods = paymentmethods
-	setting.Poses = poses
+	setting.Addresses = shopAddresses
 	setting.ShopeeShops = shops
 	setting.AccountId = id
 
