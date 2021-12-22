@@ -2,6 +2,7 @@ package acclient
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -26,9 +27,22 @@ var ratelimit_newdb map[string]map[string]map[int64]int64
 func init() {
 	resolver.SetDefaultScheme("dns")
 	ratelimit_config = make(map[string]*header.RateLimitEntity)
+	ratelimit_newdb = make(map[string]map[string]map[int64]int64)
+	go func() {
+		for {
+			syncRateLimit()
+			time.Sleep(30 * time.Second)
+		}
+	}()
 }
 
 func syncRateLimit() {
+	start := time.Now()
+	fmt.Println("RL SYNC")
+	defer func() {
+		recover()
+		fmt.Println("RL SYNC DONE", time.Since(start))
+	}()
 	ratelimitc_lock.Lock()
 	defer ratelimitc_lock.Unlock()
 	client, err := getRateLimitClient()
@@ -101,7 +115,10 @@ func getUsage(configkey, key string, no int64) int64 {
 
 func LimitRate(configkey, key string) error {
 	ratelimitc_lock.Lock()
-	defer ratelimitc_lock.Unlock()
+	defer func() {
+		recover()
+		ratelimitc_lock.Unlock()
+	}()
 
 	ts := time.Now().Unix()
 	config := ratelimit_config[configkey]
@@ -113,7 +130,7 @@ func LimitRate(configkey, key string) error {
 		tspercentage := float32(config.WindowSec-(ts%config.WindowSec)) / float32(config.WindowSec)
 		realUsage := int64(float32(lastUsage)*tspercentage) + curUsage
 		if realUsage < config.Capacity {
-			return header.E400(nil, header.E_too_many_requests)
+			return header.E400(nil, header.E_too_many_requests, tspercentage, config.WindowSec, curUsage, lastUsage)
 		}
 	}
 
