@@ -6,8 +6,11 @@ require (
 	github.com/dgraph-io/ristretto v0.1.0
 	github.com/gocql/gocql v0.0.0-20211015133455-b225f9b53fa1
 	github.com/subiz/goutils v0.1.13
-	github.com/subiz/header v1.6.3
+	github.com/subiz/header v1.6.12
+	github.com/subiz/log v0.0.9
+	github.com/subiz/sgrpc v1.0.11
 	github.com/thanhpk/throttle v0.0.2
+	google.golang.org/grpc v1.43.0
 	google.golang.org/protobuf v1.27.1
 )
 
@@ -22,7 +25,6 @@ require (
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
-	google.golang.org/grpc v1.43.0 // indirect
+	google.golang.org/genproto v0.0.0-20211221231510-d629cc9a93d5 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
