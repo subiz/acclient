@@ -932,7 +932,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 	waitUntilReady()
 	var accid, issuer, typ, keytype string
 	objects := make([]string, 0)
-	err := session.Query(`SELECT account_id, issuer, type, objects FROM account.signed_key WHERE key=?`, key).Scan(&accid, &issuer, &typ, &keytype, &objects)
+	err := session.Query(`SELECT account_id, issuer, type, key_type, objects FROM account.signed_key WHERE key=?`, key).Scan(&accid, &issuer, &typ, &keytype, &objects)
 	if err != nil {
 		return "", "", "", "", nil, header.E500(err, header.E_database_error, accid, issuer, typ)
 	}
