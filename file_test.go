@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+func TestRandomId(t *testing.T) {
+	fmt.Println("RANDOM", randomID("", 28))
+}
+
 func TestUploadFile(t *testing.T) {
 	url, err := UploadFile("acpxkgumifuoofoosble", "thanhtest", "text/plain;charset=UTF-8", []byte("Cộng hòa xã hội"), "")
 	if err != nil {

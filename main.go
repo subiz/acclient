@@ -1,6 +1,7 @@
 package acclient
 
 import (
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +44,10 @@ var (
 	botthrott       *throttle.Throttler
 	n5settingthrott *throttle.Throttler
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func _init() {
 	cluster := gocql.NewCluster("db-0")
@@ -896,6 +901,33 @@ func ListBots(accid string) ([]*header.Bot, error) {
 	return listBotsDB(accid)
 }
 
+func SignKey(accid, issuer, typ, keytype string, objects []string) (string, error) {
+	waitUntilReady()
+	key := randomID("SK", 28)
+	err := session.Query(`INSERT INTO account.signed_key(account_id, issuer, type, objects, key_type, key, created) VALUES(?,?,?,?,?,?,?)`, accid, issuer, typ, objects, keytype, key, time.Now().UnixNano()/1e6).Exec()
+	if err != nil {
+		return "", header.E500(err, header.E_database_error, accid, issuer, typ)
+	}
+
+	return key, nil
+}
+
+func LookupSignedKey(key string) (string, string, string, string, []string, error) {
+	waitUntilReady()
+	var accid, issuer, typ, keytype string
+	objects := make([]string, 0)
+	err := session.Query(`SELECT account_id, issuer, type, objects FROM account.signed_key WHERE key=?`, key).Scan(&accid, &issuer, &typ, &keytype, &objects)
+	if err != nil {
+		return "", "", "", "", nil, header.E500(err, header.E_database_error, accid, issuer, typ)
+	}
+
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		return "", "", "", "", nil, nil
+	}
+
+	return accid, issuer, typ, keytype, objects, nil
+}
+
 func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	waitUntilReady()
 	if value, found := cache.Get("ATTRDEF_" + accid); found {
@@ -967,6 +999,18 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 		return int64(price * cur.GetRate() * 1000000), cur.GetRate(), nil
 	}
 	return 0, 0, header.E400(nil, header.E_invalid_currency, "not supported currency")
+}
+
+// letterRunes (read-only) contains all runes which can be used in an ID
+var letterRunes = []rune("abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ123456789")
+
+func randomID(sign string, randomfactor int) string {
+	var sb strings.Builder
+	sb.WriteString(sign)
+	for i := 0; i < randomfactor; i++ {
+		sb.WriteRune(letterRunes[rand.Intn(len(letterRunes))])
+	}
+	return sb.String()
 }
 
 // ConvertMoney(accid, product.GetPrice())
