@@ -305,9 +305,25 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		return nil, header.E500(err, header.E_database_error, id)
 	}
 
+	iter = session.Query(`SELECT id, data FROM account.integrated_shipping WHERE account_id=? LIMIT ?`, id, 1000).Iter()
+	ishippings := make([]*header.IntegratedShipping, 0)
+	var shipid string
+	var ishippingb []byte
+	for iter.Scan(&shipid, &ishippingb) {
+		ishipping := &header.IntegratedShipping{}
+		proto.Unmarshal(ishippingb, ishipping)
+		ishipping.Id = shipid
+		ishipping.AccountId = id
+		ishippings = append(ishippings, ishipping)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error, "list-integrated-shippings", id)
+	}
+
 	setting.Taxes = taxes
 	setting.PaymentMethods = paymentmethods
 	setting.Addresses = shopAddresses
+	setting.Shippings = ishippings
 	setting.ShopeeShops = shops
 	setting.AccountId = id
 
