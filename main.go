@@ -251,12 +251,12 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		proto.Unmarshal(data, setting)
 	}
 
-	shopAddresses := []*header.ShopAddress{}
+	shopAddresses := []*header.Address{}
 	// read pos
 	data = []byte{}
 	iter := session.Query(`SELECT data FROM account.shop_address WHERE account_id=?`, id).Iter()
 	for iter.Scan(&data) {
-		shopAddress := header.ShopAddress{}
+		shopAddress := header.Address{}
 		proto.Unmarshal(data, &shopAddress)
 		shopAddresses = append(shopAddresses, &shopAddress)
 	}
@@ -320,10 +320,23 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		return nil, header.E500(err, header.E_database_error, "list-integrated-shippings", id)
 	}
 
+	sps := []*header.ShippingPolicy{}
+	data = []byte{}
+	iter = session.Query(`SELECT data FROM account.shipping_policy WHERE account_id=?`, id).Iter()
+	for iter.Scan(&data) {
+		sp := header.ShippingPolicy{}
+		proto.Unmarshal(data, &sp)
+		sps = append(sps, &sp)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error)
+	}
+
 	setting.Taxes = taxes
 	setting.PaymentMethods = paymentmethods
 	setting.Addresses = shopAddresses
 	setting.Shippings = ishippings
+	setting.ShippingPolicies = sps
 	setting.ShopeeShops = shops
 	setting.AccountId = id
 
