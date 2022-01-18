@@ -127,6 +127,18 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type: "number",
 		},
 		&header.AttributeDefinition{
+			Name: "Number of orders",
+			Key:  "num_orders",
+			Kind: header.AttributeDefinition_system.String(),
+			Type: "number",
+		},
+		&header.AttributeDefinition{
+			Name: "Total order value",
+			Key:  "total_order_value",
+			Kind: header.AttributeDefinition_system.String(),
+			Type: "number",
+		},
+		&header.AttributeDefinition{
 			Name: "Total sessions",
 			Key:  "total_sessions",
 			Kind: header.AttributeDefinition_system.String(),
