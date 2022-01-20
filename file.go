@@ -146,6 +146,24 @@ func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) 
 	return fileres, nil
 }
 
+func HTMLContent2PDF(html []byte) ([]byte, error) {
+	url := "http://html2pdf:80/content"
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(html))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, header.E500(err, header.E_undefined)
+	}
+	defer resp.Body.Close()
+
+	out, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, header.E500(err, header.E_undefined)
+	}
+
+	return out, nil
+}
+
 // path must start with /
 func HTML2PDF(path, accid, filename, content_disposition string, input interface{}) (*header.File, error) {
 	body, err := json.Marshal(input)
