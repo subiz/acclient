@@ -19,6 +19,12 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type: "text",
 		},
 		&header.AttributeDefinition{
+			Name: "User has been blocked",
+			Key:  "is_ban",
+			Kind: header.AttributeDefinition_system.String(),
+			Type: "boolean",
+		},
+		&header.AttributeDefinition{
 			Name: "Email",
 			Key:  "emails",
 			Kind: header.AttributeDefinition_default.String(),
