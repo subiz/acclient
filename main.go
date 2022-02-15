@@ -8,7 +8,6 @@ import (
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/gocql/gocql"
-	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
@@ -605,26 +604,14 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 
 func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error) {
 	defs := make(map[string]*header.AttributeDefinition, 0)
-
-	iter := session.Query("SELECT key, description, kind, list_items, name, type, updated FROM user.attribute_definitions WHERE account_id=? LIMIT 1000", accid).Iter()
-	key, desc, kind, name, typ := "", "", "", "", ""
-	var updated int64
-	list_items := make([]string, 0)
-	for iter.Scan(&key, &desc, &kind, &list_items, &name, &typ, &updated) {
-		list := make([]string, 0)
-		for _, item := range list_items {
-			list = append(list, item)
+	iter := session.Query("SELECT data FROM user.attr_defs WHERE account_id=? LIMIT 1000", accid).Iter()
+	var data []byte
+	for iter.Scan(data) {
+		def := &header.AttributeDefinition{}
+		if err := proto.Unmarshal(data, def); err != nil {
+			return nil, header.E500(err, header.E_database_error, accid)
 		}
-		defs[key] = &header.AttributeDefinition{
-			AccountId:   accid,
-			Key:         key,
-			Description: desc,
-			Kind:        kind,
-			Name:        name,
-			Type:        typ,
-			ListItems:   list_items,
-			Updated:     clock.UnixMili(updated),
-		}
+		defs[def.Key] = def
 	}
 	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error)
