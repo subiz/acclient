@@ -38,7 +38,6 @@ var (
 	cache           *ristretto.Cache
 	accthrott       *throttle.Throttler
 	langthrott      *throttle.Throttler
-	clientthrott    *throttle.Throttler
 	presencethrott  *throttle.Throttler
 	botthrott       *throttle.Throttler
 	n5settingthrott *throttle.Throttler
@@ -606,7 +605,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	defs := make(map[string]*header.AttributeDefinition, 0)
 	iter := session.Query("SELECT data FROM user.attr_defs WHERE account_id=? LIMIT 1000", accid).Iter()
 	var data []byte
-	for iter.Scan(data) {
+	for iter.Scan(&data) {
 		def := &header.AttributeDefinition{}
 		if err := proto.Unmarshal(data, def); err != nil {
 			return nil, header.E500(err, header.E_database_error, accid)
