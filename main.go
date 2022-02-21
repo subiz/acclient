@@ -759,7 +759,7 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 func ListAgents(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 
-	agents := []*pb.Agent{}
+	var agents []*pb.Agent
 	// cache exists
 	if value, found := cache.Get("AG_" + accid); found {
 		accthrott.Push(accid, nil) // trigger reading from db for future read

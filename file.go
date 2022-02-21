@@ -77,7 +77,7 @@ func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, e
 }
 
 func uploadFile(url string, data []byte, mimetype, cd string) error {
-	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(data))
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(data))
 	if mimetype == "" {
 		mimetype = "application/octet-stream"
 	}
@@ -123,7 +123,7 @@ func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) 
 	fullurl := fmt.Sprintf(API+"/4.0/accounts/%s/files", accid)
 
 	body, _ := json.Marshal(f)
-	req, err := http.NewRequest("POST", fullurl, bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", fullurl, bytes.NewBuffer(body))
 	req.Header.Set("X-By", "acclient")
 	req.Header.Set("Content-Type", "application/json")
 
@@ -148,7 +148,7 @@ func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) 
 
 func HTMLContent2PDF(html []byte) ([]byte, error) {
 	url := "http://html2pdf:80/content"
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(html))
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(html))
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -171,7 +171,7 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 		return nil, header.E500(nil, header.E_invalid_json)
 	}
 	url := "http://html2pdf:80" + path
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	q := req.URL.Query()
