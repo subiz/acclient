@@ -7,6 +7,7 @@ require (
 	github.com/gocql/gocql v0.0.0-20211222173705-d73e6b1002a7
 	github.com/subiz/goutils v0.1.13
 	github.com/subiz/header v1.6.93
+	github.com/subiz/idgen v0.1.22
 	github.com/subiz/log v0.0.9
 	github.com/subiz/sgrpc v1.0.11
 	github.com/thanhpk/throttle v0.0.2
