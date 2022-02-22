@@ -1,6 +1,7 @@
 package acclient
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -23,8 +24,11 @@ var taskCache = make(map[string]map[int64]map[string]task)
 // BookTask registers a new task that will be execute in the future
 // if the task is too old, it will be executed rightaway without
 // storing in the database
+// this function must be call after WaitTask since we are aiming for
+// not losing a single task
 func BookTask(ks, accid string, sec int64, data []byte) error {
 	nowsec := time.Now().Unix()
+	// execute the job rightaway if sec is near now to expired
 	if sec < nowsec+5 {
 		tlock.Lock()
 		cb := _cbm[ks+accid]
@@ -33,21 +37,14 @@ func BookTask(ks, accid string, sec int64, data []byte) error {
 			return header.E500(nil, header.E_database_error, "cb not registered")
 		}
 		tlock.Unlock()
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Info(accid, "EEEEEE", r)
-				}
-			}()
-			cb(data)
-		}()
+		go safeCall(cb, data)
 		return nil
 	}
 
 	id := idgen.NewScheduleItemID()
 	hour := sec / 3600
 	// write to cache if the task going to be execute within 2 hours
-	if sec < nowsec+3600*2 {
+	if hour < nowsec/3600+2 {
 		tlock.Lock()
 		if taskCache[ks+accid] == nil {
 			taskCache[ks+accid] = make(map[int64]map[string]task)
@@ -97,6 +94,7 @@ func loadTaskInHour(ks, accid string, hour int64) {
 }
 
 // WaitTask scheduler, this function dont die, even the database is disconnected
+// this function must be call before BookTask
 func WaitTask(ks, accid string, f func(data []byte)) {
 	// only accept one callback for each ks+accid
 	tlock.Lock()
@@ -107,13 +105,12 @@ func WaitTask(ks, accid string, f func(data []byte)) {
 	_cbm[ks+accid] = f
 	tlock.Unlock()
 
-	go func() {
-		hour := time.Now().Unix()/3600 - 48 // 2 days
-		for h := hour; h < time.Now().Unix()/3600; h++ {
-			loadTaskInHour(ks, accid, hour)
-		}
+	hour := time.Now().Unix()/3600 - 24 // 1 days
+	for ; hour < time.Now().Unix()/3600; hour++ {
+		loadTaskInHour(ks, accid, hour)
+	}
 
-		hour = time.Now().Unix() / 3600
+	go func() {
 		for {
 			if hour > time.Now().Unix()/3600 { // too fast, slow down
 				time.Sleep(5 * time.Second)
@@ -125,7 +122,7 @@ func WaitTask(ks, accid string, f func(data []byte)) {
 		}
 	}()
 
-	waitUntilReady()
+	waitUntilReady() // must call before accessing session db
 	go func() {
 		for {
 			nowsec := time.Now().Unix()
@@ -146,15 +143,7 @@ func WaitTask(ks, accid string, f func(data []byte)) {
 			tlock.Unlock()
 
 			for _, t := range tasks {
-				func() {
-					defer func() {
-						if r := recover(); r != nil {
-							log.Info(accid, "EEEEEE", r)
-						}
-					}()
-					f(t.data)
-				}()
-
+				safeCall(f, t.data)
 				for {
 					err := session.Query(`DELETE FROM account.task WHERE ks=? AND accid=? AND hour=? AND id=?`, ks, accid, t.sec/3600, t.id).Exec()
 					if err != nil {
@@ -183,10 +172,8 @@ func WaitTask(ks, accid string, f func(data []byte)) {
 func listTasks(ks, accid string, hour int64) ([]task, error) {
 	waitUntilReady()
 	tasks := make([]task, 0)
-	iter := session.Query("SELECT id, sec, data FROM task_sec WHERE ks=? AND accid=? AND hour=?", ks, accid).Iter()
-	var id string
-	var sec int64
-	var data []byte
+	iter := session.Query("SELECT id, sec, data FROM task WHERE ks=? AND accid=? AND hour=?", ks, accid, hour).Iter()
+	id, sec, data := "", int64(0), make([]byte, 0)
 	for iter.Scan(&id, &sec, &data) {
 		d := make([]byte, len(data))
 		copy(d, data)
@@ -196,4 +183,13 @@ func listTasks(ks, accid string, hour int64) ([]task, error) {
 		return nil, header.E500(err, header.E_database_error)
 	}
 	return tasks, nil
+}
+
+func safeCall(cb func([]byte), data []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Callback error", r)
+		}
+	}()
+	cb(data)
 }
