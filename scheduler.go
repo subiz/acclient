@@ -99,7 +99,7 @@ func WaitTask(ks, accid string, f func(data []byte)) {
 	// only accept one callback for each ks+accid
 	tlock.Lock()
 	if _cbm[ks+accid] != nil {
-		tlock.Lock()
+		tlock.Unlock()
 		return
 	}
 	_cbm[ks+accid] = f
