@@ -41,6 +41,7 @@ var (
 	presencethrott  *throttle.Throttler
 	botthrott       *throttle.Throttler
 	n5settingthrott *throttle.Throttler
+	pipelinethrott  *throttle.Throttler
 )
 
 func init() {
@@ -91,6 +92,10 @@ func _init() {
 	presencethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
 		listPresencesDB(key)
 	}, 10000)
+
+	pipelinethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
+		listPipelineDB(key)
+	}, 30000)
 
 	cache, err = ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e5, // number of keys to track frequency of (100k).
@@ -914,6 +919,45 @@ func ListBots(accid string) ([]*header.Bot, error) {
 
 	botthrott.Push(accid, nil) // trigger reading from db for future read
 	return listBotsDB(accid)
+}
+
+func listPipelineDB(accid string) ([]*header.Pipeline, error) {
+	waitUntilReady()
+	iter := session.Query(`SELECT id, pipeline FROM apiece.pipelines WHERE account_id=? LIMIT 100`, accid).Iter()
+	pipelines := make([]*header.Pipeline, 0)
+	var dbid string
+	var pipelineb []byte
+	for iter.Scan(&dbid, &pipelineb) {
+		pipeline := &header.Pipeline{}
+		proto.Unmarshal(pipelineb, pipeline)
+		pipeline.AccountId = accid
+		pipeline.Id = dbid
+		if pipeline.Id == "" {
+			pipeline.Id = "default"
+		}
+		pipelines = append(pipelines, pipeline)
+	}
+	err := iter.Close()
+	if err != nil {
+		return nil, header.E500(err, header.E_database_error, accid)
+	}
+	cache.SetWithTTL("PIPELINE_"+accid, pipelines, int64(len(pipelines)*20), 30*time.Second)
+	return pipelines, nil
+}
+
+func ListPipelines(accid string) ([]*header.Pipeline, error) {
+	waitUntilReady()
+	// cache exists
+	if value, found := cache.Get("PIPELINE_" + accid); found {
+		pipelinethrott.Push(accid, nil) // trigger reading from db for future read
+		if value == nil {
+			return nil, nil
+		}
+		return value.([]*header.Pipeline), nil
+	}
+
+	pipelinethrott.Push(accid, nil) // trigger reading from db for future read
+	return listPipelineDB(accid)
 }
 
 func SignKey(accid, issuer, typ, keytype string, objects []string) (string, error) {
