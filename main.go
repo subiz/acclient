@@ -932,9 +932,6 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 		proto.Unmarshal(pipelineb, pipeline)
 		pipeline.AccountId = accid
 		pipeline.Id = dbid
-		if pipeline.Id == "" {
-			pipeline.Id = "default"
-		}
 		pipelines = append(pipelines, pipeline)
 	}
 	err := iter.Close()
