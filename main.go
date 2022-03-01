@@ -792,7 +792,7 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 	return agents, nil
 }
 
-func ListGroups(accid string) ([]*pb.AgentGroup, error) {
+func ListGroups(accid string) ([]*header.AgentGroup, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("GR_" + accid); found {
@@ -800,27 +800,27 @@ func ListGroups(accid string) ([]*pb.AgentGroup, error) {
 		if value == nil {
 			return nil, nil
 		}
-		return value.([]*pb.AgentGroup), nil
+		return value.([]*header.AgentGroup), nil
 	}
 
 	accthrott.Push(accid, nil) // trigger reading from db for future read
 	return listGroupsDB(accid)
 }
 
-func listGroupsDB(accid string) ([]*pb.AgentGroup, error) {
+func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	waitUntilReady()
-	var arr = make([]*pb.AgentGroup, 0)
+	var arr = make([]*header.AgentGroup, 0)
 
 	iter := session.Query("SELECT id, created, logo_url, modified, name FROM account.groups WHERE account_id=? LIMIT 500", accid).Iter()
 	var id, name, logourl string
 	var created, modified int64
 	for iter.Scan(&id, &created, &logourl, &modified, &name) {
-		group := &pb.AgentGroup{
-			AccountId: conv.S(accid),
-			Id:        conv.S(id),
-			Created:   conv.PI64(int(created)),
-			Modified:  conv.PI64(int(modified)),
-			Name:      conv.S(name),
+		group := &header.AgentGroup{
+			AccountId: accid,
+			Id:        id,
+			Created:   int64(created),
+			Modified:  int64(modified),
+			Name:      name,
 		}
 		arr = append(arr, group)
 	}
