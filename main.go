@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
 	"github.com/gocql/gocql"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
@@ -14,6 +13,7 @@ import (
 	compb "github.com/subiz/header/common"
 	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
+	gocache "github.com/thanhpk/go-cache"
 	"github.com/thanhpk/throttle"
 	"google.golang.org/protobuf/proto"
 )
@@ -35,7 +35,7 @@ var (
 
 	session *gocql.Session
 
-	cache           *ristretto.Cache
+	cache           *gocache.Cache
 	accthrott       *throttle.Throttler
 	langthrott      *throttle.Throttler
 	presencethrott  *throttle.Throttler
@@ -97,14 +97,7 @@ func _init() {
 		listPipelineDB(key)
 	}, 30000)
 
-	cache, err = ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e5, // number of keys to track frequency of (100k).
-		MaxCost:     4e7, // maximum cost of cache (40MB).
-		BufferItems: 64,  // number of keys per Get buffer.
-	})
-	if err != nil {
-		panic(err)
-	}
+	cache = gocache.New(2 * time.Minute)
 }
 
 func waitUntilReady() {
@@ -133,7 +126,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 
 	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.SetWithTTL("ACC_"+id, nil, 1000, 30*time.Second)
+		cache.SetWithExpire("ACC_"+id, nil, 30*time.Second)
 		return nil, nil, nil
 	}
 
@@ -187,7 +180,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Currency:              &currency,
 		CurrencyLocked:        &currency_locked,
 	}
-	cache.SetWithTTL("ACC_"+id, acc, 1000, 60*time.Second)
+	cache.SetWithExpire("ACC_"+id, acc, 60*time.Second)
 
 	var autocharge, autorenew bool
 	var subname, plan, pmmethod, promo, referralby string
@@ -200,7 +193,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, \"limit\", name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
 		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &limitb, &subname, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.SetWithTTL("SUB_"+id, nil, 1000, 30*time.Second)
+		cache.SetWithExpire("SUB_"+id, nil, 30*time.Second)
 		return acc, nil, nil
 	}
 	if err != nil {
@@ -237,7 +230,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		ReferralBy:            &referralby,
 		Started:               &started,
 	}
-	cache.SetWithTTL("SUB_"+id, sub, 1000, 30*time.Second)
+	cache.SetWithExpire("SUB_"+id, sub, 30*time.Second)
 	return acc, sub, nil
 }
 
@@ -343,7 +336,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	setting.ShopeeShops = shops
 	setting.AccountId = id
 
-	cache.SetWithTTL("SHOPSETTING_"+id, setting, 1000, 60*time.Second)
+	cache.SetWithExpire("SHOPSETTING_"+id, setting, 60*time.Second)
 	return setting, nil
 }
 
@@ -458,7 +451,7 @@ func listLocaleMessagesDB(accid, locale string) (*header.Lang, error) {
 	if err != nil {
 		return nil, err
 	}
-	cache.SetWithTTL("LANG_"+accid+"_"+locale, lang, 1000*1000, 30*time.Second)
+	cache.SetWithExpire("LANG_"+accid+"_"+locale, lang, 30*time.Second)
 	return lang, nil
 }
 
@@ -602,7 +595,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 		}
 	}
 
-	cache.SetWithTTL("AG_"+accid, list, int64(len(list)*1000), 30*time.Second)
+	cache.SetWithExpire("AG_"+accid, list, 30*time.Second)
 	return list, nil
 }
 
@@ -626,7 +619,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 		defs[a.Key] = a
 	}
 
-	cache.SetWithTTL("ATTRDEF_"+accid, defs, int64(len(defs)*1000), 60*time.Second)
+	cache.SetWithExpire("ATTRDEF_"+accid, defs, 60*time.Second)
 	return defs, nil
 }
 
@@ -649,7 +642,7 @@ func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
 			},
 			Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
 		}
-		cache.SetWithTTL("N5Setting_"+accid+"_"+agid, setting, 1000, 30*time.Second)
+		cache.SetWithExpire("N5Setting_"+accid+"_"+agid, setting, 30*time.Second)
 		return setting, nil
 	}
 	if err != nil {
@@ -677,7 +670,7 @@ func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
 		Email:            email,
 	}
 
-	cache.SetWithTTL("N5Setting_"+accid+"_"+agid, setting, 1000, 30*time.Second)
+	cache.SetWithExpire("N5Setting_"+accid+"_"+agid, setting, 30*time.Second)
 	return setting, nil
 }
 
@@ -698,7 +691,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 		return nil, header.E500(err, header.E_database_error, "read all bots", accid)
 	}
 
-	cache.SetWithTTL("BOT_"+accid, list, int64(len(list)*1000), 10*time.Second)
+	cache.SetWithExpire("BOT_"+accid, list, 10*time.Second)
 	return list, nil
 }
 
@@ -835,7 +828,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 			g.Members = append(g.Members, &pb.Agent{Id: conv.S(agid)})
 		}
 	}
-	cache.SetWithTTL("GR_"+accid, arr, int64(len(arr)*1000), 30*time.Second)
+	cache.SetWithExpire("GR_"+accid, arr, 30*time.Second)
 	return arr, nil
 }
 
@@ -888,7 +881,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 		return nil, header.E500(err, header.E_database_error)
 	}
 
-	cache.SetWithTTL("PS_"+accid, presences, int64(len(presences)*20), 10*time.Second)
+	cache.SetWithExpire("PS_"+accid, presences, 10*time.Second)
 	return presences, nil
 }
 
@@ -938,7 +931,7 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 	if err != nil {
 		return nil, header.E500(err, header.E_database_error, accid)
 	}
-	cache.SetWithTTL("PIPELINE_"+accid, pipelines, int64(len(pipelines)*20), 30*time.Second)
+	cache.SetWithExpire("PIPELINE_"+accid, pipelines, 30*time.Second)
 	return pipelines, nil
 }
 
