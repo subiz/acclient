@@ -2,20 +2,24 @@ package acclient
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"time"
 
 	"github.com/subiz/header"
 	"github.com/subiz/sgrpc"
 )
 
 var searchc header.SearchClient
+var searchLock = &sync.Mutex{} // lock when connect to search client
 
-func Search(col, accid, query, owner string, limit int64, anchor string, parts ...string) ([]*header.DocHit, string, error) {
+func Search(col, accid, query, owner string, limit int64, anchor string, filter_parts ...string) ([]*header.DocHit, string, error) {
 	var owners []string
 	if owner != "" && owner != "*" {
 		owners = append(owners, owner)
 	}
 
-	res, err := searchc.Search(context.Background(), &header.DocSearchRequest{
+	res, err := getSearchClient().Search(context.Background(), &header.DocSearchRequest{
 		Collection:    col,
 		AccountId:     accid,
 		Query:         query,
@@ -23,7 +27,7 @@ func Search(col, accid, query, owner string, limit int64, anchor string, parts .
 		Limit:         limit,
 		IncludeOwners: owners,
 		DocDistinct:   true,
-		IncludeParts:  parts,
+		IncludeParts:  filter_parts,
 	})
 	if err != nil {
 		return nil, "", err
@@ -31,13 +35,13 @@ func Search(col, accid, query, owner string, limit int64, anchor string, parts .
 	return res.Hits, res.Anchor, nil
 }
 
-func SearchPart(col, accid, query, owner string, limit int64, anchor string, parts ...string) ([]*header.DocHit, string, error) {
+func SearchPart(col, accid, query, owner string, limit int64, anchor string, filter_parts ...string) ([]*header.DocHit, string, error) {
 	var owners []string
 	if owner != "" && owner != "*" {
 		owners = append(owners, owner)
 	}
 
-	res, err := searchc.Search(context.Background(), &header.DocSearchRequest{
+	res, err := getSearchClient().Search(context.Background(), &header.DocSearchRequest{
 		Collection:    col,
 		AccountId:     accid,
 		Query:         query,
@@ -45,7 +49,7 @@ func SearchPart(col, accid, query, owner string, limit int64, anchor string, par
 		Limit:         limit,
 		IncludeOwners: owners,
 		DocDistinct:   false,
-		IncludeParts:  parts,
+		IncludeParts:  filter_parts,
 	})
 	if err != nil {
 		return nil, "", err
@@ -54,28 +58,12 @@ func SearchPart(col, accid, query, owner string, limit int64, anchor string, par
 }
 
 func Index(col, accid, doc, part, name string, owners ...string) error {
-	_, err := searchc.Index(context.Background(), &header.DocIndexRequest{
+	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
 		Part:       part,
 		Content:    name,
-		IsName:     true,
-		Owners:     owners,
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func IndexName(col, accid, doc, part, content string, owners ...string) error {
-	_, err := searchc.Index(context.Background(), &header.DocIndexRequest{
-		Collection: col,
-		AccountId:  accid,
-		DocumentId: doc,
-		Part:       part,
-		Content:    content,
 		IsName:     false,
 		Owners:     owners,
 	})
@@ -85,8 +73,24 @@ func IndexName(col, accid, doc, part, content string, owners ...string) error {
 	return nil
 }
 
+func IndexFullname(col, accid, doc, part, fullname string, owners ...string) error {
+	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+		Collection: col,
+		AccountId:  accid,
+		DocumentId: doc,
+		Part:       part,
+		Content:    fullname,
+		IsName:     true,
+		Owners:     owners,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func IndexWithDay(col, accid, doc, part, content string, day int64, owners ...string) error {
-	_, err := searchc.Index(context.Background(), &header.DocIndexRequest{
+	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
@@ -106,7 +110,7 @@ func AddOwners(accid, docid string, owners ...string) error {
 	if len(owners) == 0 {
 		return nil
 	}
-	_, err := searchc.Index(context.Background(), &header.DocIndexRequest{
+	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
 		AccountId:  accid,
 		DocumentId: docid,
 		Owners:     owners,
@@ -118,21 +122,29 @@ func AddOwners(accid, docid string, owners ...string) error {
 }
 
 // not thread-safe
-func getSearchClient() (header.SearchClient, error) {
+func getSearchClient() header.SearchClient {
 	if searchc != nil {
-		return searchc, nil
+		return searchc
 	}
 
+	searchLock.Lock()
 	if searchc != nil {
-		return searchc, nil
+		searchLock.Unlock()
+		return searchc
 	}
-	if searchc == nil {
-		// address: [pod name] + "." + [service name] + ":" + [pod port]
+
+	for {
 		conn, err := dialGrpc("search-0.search:12844", sgrpc.WithShardRedirect())
 		if err != nil {
-			return nil, err
+			fmt.Println("CANNOT CONNECT TO SEARCH SERVICE AT search-0.search:12844")
+			fmt.Println("RETRY IN 5s")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 		searchc = header.NewSearchClient(conn)
+		break
 	}
-	return searchc, nil
+
+	searchLock.Unlock()
+	return searchc
 }
