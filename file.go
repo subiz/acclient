@@ -1,10 +1,11 @@
 package acclient
 
 import (
+	"github.com/subiz/header"
+
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/subiz/header"
 	"io/ioutil"
 	"net/http"
 	"strings"

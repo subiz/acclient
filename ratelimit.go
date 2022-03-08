@@ -11,6 +11,7 @@ import (
 	"github.com/subiz/sgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer/roundrobin"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var ratelimitc_lock = &sync.Mutex{}
@@ -26,11 +27,24 @@ var ratelimit_newdb map[string]map[string]map[int64]int64
 // configkey, timestamp(sec), key => usage
 var ratelimit_tmpdb map[string]map[string]map[int64]int64
 
-func init() {
+var _initRateLimit = false
+
+func waitInitRatelimit() {
+	if _initRateLimit {
+		return
+	}
+	ratelimitc_lock.Lock()
+	if _initRateLimit {
+		ratelimitc_lock.Unlock()
+		return
+	}
+	_initRateLimit = true
 	ratelimit_config = make(map[string]*header.RateLimitEntity)
 	ratelimit_db = make(map[string]map[int64]map[string]int64)
 	ratelimit_newdb = make(map[string]map[string]map[int64]int64)
 	ratelimit_tmpdb = make(map[string]map[string]map[int64]int64)
+	ratelimitc_lock.Unlock()
+
 	go func() {
 		for {
 			syncRateLimit()
@@ -177,6 +191,8 @@ func getUsage(configkey, key string, no int64) int64 {
 }
 
 func LimitRate(configkey, key string) error {
+	waitInitRatelimit()
+
 	ratelimitc_lock.Lock()
 	defer func() {
 		recover()
@@ -222,7 +238,7 @@ func LimitRate(configkey, key string) error {
 
 func dialGrpc(service string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts = append([]grpc.DialOption{}, opts...)
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	// Enabling WithBlock tells the client to not give up trying to find a server
 	opts = append(opts, grpc.WithBalancerName(roundrobin.Name))
 	// opts = append(opts, sgrpc.WithCache())
