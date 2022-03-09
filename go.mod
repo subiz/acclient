@@ -4,11 +4,11 @@ go 1.17
 
 require (
 	github.com/gocql/gocql v0.0.0-20220224095938-0eacd3183625
-	github.com/subiz/goutils v0.1.13
+	github.com/subiz/goutils v0.1.14
 	github.com/subiz/header v1.7.22
 	github.com/subiz/idgen v0.1.22
 	github.com/subiz/log v0.0.9
-	github.com/subiz/sgrpc v1.0.12
+	github.com/subiz/sgrpc v1.0.14
 	github.com/thanhpk/go-cache v1.0.1
 	github.com/thanhpk/throttle v0.0.2
 	google.golang.org/grpc v1.44.0
@@ -22,6 +22,6 @@ require (
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20220307174427-659dce7fcb03 // indirect
+	google.golang.org/genproto v0.0.0-20220308174144-ae0e22291548 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
