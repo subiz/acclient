@@ -57,13 +57,13 @@ func SearchPart(col, accid, query, owner string, limit int64, anchor string, fil
 	return res.Hits, res.Anchor, nil
 }
 
-func Index(col, accid, doc, part, name string, owners ...string) error {
+func Index(col, accid, doc, part, content string, owners ...string) error {
 	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
 		Part:       part,
-		Content:    name,
+		Content:    content,
 		IsName:     false,
 		Owners:     owners,
 	})
@@ -89,14 +89,31 @@ func IndexFullname(col, accid, doc, part, fullname string, owners ...string) err
 	return nil
 }
 
-func IndexWithDay(col, accid, doc, part, content string, day int64, owners ...string) error {
+func IndexID(col, accid, doc, part, value string, owners ...string) error {
+	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+		Collection: col,
+		AccountId:  accid,
+		DocumentId: doc,
+		Part:       part,
+		Content:    value,
+		IsId:       true,
+		Owners:     owners,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func IndexWithDay(col, accid, doc, part, content string, isName bool, isId bool, day int64, owners ...string) error {
 	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
 		Part:       part,
 		Content:    content,
-		IsName:     false,
+		IsName:     isName,
+		IsId:       isId,
 		Day:        day,
 		Owners:     owners,
 	})
