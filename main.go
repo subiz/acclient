@@ -328,6 +328,18 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		return nil, header.E500(err, header.E_database_error)
 	}
 
+	ccs := []*header.CancellationCode{}
+	iter = session.Query(`SELECT data FROM account.cancellation_code WHERE account_id=?`, id).Iter()
+	for iter.Scan(&data) {
+		cc := header.CancellationCode{}
+		proto.Unmarshal(data, &cc)
+		ccs = append(ccs, &cc)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, header.E500(err, header.E_database_error)
+	}
+
+	setting.CancellationCodes = ccs
 	setting.Taxes = taxes
 	setting.PaymentMethods = paymentmethods
 	setting.Addresses = shopAddresses

@@ -33,7 +33,7 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 		},
 		&header.AttributeDefinition{
 			Name:        "Avatar",
-			Label:       " Ảnh đại diện",
+			Label:       "Ảnh đại diện",
 			Description: "Ảnh cá nhân của người dùng",
 			I18NLabel: &header.I18NString{
 				Vi_VN: "Ảnh đại diện",
@@ -46,8 +46,12 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
-			Name:     "Email",
-			Label:    "Email",
+			Name:  "Email",
+			Label: "Email",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Email",
+				En_US: "Email",
+			},
 			Key:      "emails",
 			Kind:     header.AttributeDefinition_default.String(),
 			Type:     "text",
@@ -230,15 +234,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Kind:     header.AttributeDefinition_system.String(),
 			Type:     "text",
 			IsSystem: true,
-		},
-		&header.AttributeDefinition{
-			Name:       "Number of assigned Conversations",
-			Label:      "Number of assigned Conversations",
-			Key:        "total_assigned_conversations",
-			Kind:       header.AttributeDefinition_system.String(),
-			Type:       "number",
-			IsSystem:   true,
-			IsReadonly: true,
 		},
 		&header.AttributeDefinition{
 			Name:       "Has subscribe notify desktop",
