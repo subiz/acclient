@@ -63,7 +63,6 @@ func _init() {
 		getAccountDB(accid)
 		listAgentsDB(accid)
 		listGroupsDB(accid)
-		listAttrDefsDB(accid)
 		getShopSettingDb(accid)
 	}, 60000)
 
@@ -708,7 +707,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 }
 
 func GetAgent(accid, agid string) (*pb.Agent, error) {
-	agents, err := ListAgents(accid)
+	agents, err := ListAgents(accid, false)
 	if err != nil {
 		return nil, err
 	}
@@ -766,7 +765,7 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 	return nil, nil
 }
 
-func ListAgents(accid string) ([]*pb.Agent, error) {
+func ListAgents(accid string, includeBots bool) ([]*pb.Agent, error) {
 	waitUntilReady()
 
 	var agents []*pb.Agent
@@ -786,13 +785,15 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 		}
 	}
 
-	bots, err := ListBots(accid)
-	if err != nil {
-		return nil, err
-	}
+	if includeBots {
+		bots, err := ListBots(accid)
+		if err != nil {
+			return nil, err
+		}
 
-	for _, bot := range bots {
-		agents = append(agents, Bot2Agent(bot))
+		for _, bot := range bots {
+			agents = append(agents, Bot2Agent(bot))
+		}
 	}
 	return agents, nil
 }
