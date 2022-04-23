@@ -10,7 +10,6 @@ import (
 	"github.com/subiz/log"
 	"github.com/subiz/sgrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/balancer/roundrobin"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -240,7 +239,6 @@ func dialGrpc(service string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 	opts = append([]grpc.DialOption{}, opts...)
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	// Enabling WithBlock tells the client to not give up trying to find a server
-	opts = append(opts, grpc.WithBalancerName(roundrobin.Name))
 	// opts = append(opts, sgrpc.WithCache())
 
 	return grpc.Dial(service, opts...)

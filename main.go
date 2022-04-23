@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	tblAccounts     = "accounts"
 	tblLocale       = "lang"
 	tblAgents       = "agents"
 	tblGroups       = "groups"
