@@ -880,7 +880,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	iter := session.Query(`SELECT user_id, ip, pinged, ua, last_seen_convo_id FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
 	uid, ip, ua, last_convoid := "", "", "", ""
 	pinged := int64(0)
-	for iter.Scan(&uid, &ip, &pinged, &ua) {
+	for iter.Scan(&uid, &ip, &pinged, &ua, &last_convoid) {
 		presences = append(presences, &pb.Presence{
 			AccountId:       conv.S(accid),
 			UserId:          conv.S(uid),
