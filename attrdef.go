@@ -46,6 +46,32 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
+			Name:        "Đã theo dõi",
+			Label:       "Đã theo dõi",
+			Description: "Người dùng đã theo dõi Zalo OA hoặc Instagram",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Đã theo dõi",
+				En_US: "Is Followed",
+			},
+			Key:      "is_followed",
+			Kind:     header.AttributeDefinition_default.String(),
+			Type:     "boolean",
+			IsSystem: true,
+		},
+		&header.AttributeDefinition{
+			Name:        "Ẩn danh",
+			Label:       "Ẩn danh",
+			Description: "Người dùng ẩn danh trên Zalo",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Ẩn danh",
+				En_US: "Anonymous",
+			},
+			Key:      "is_anonymous",
+			Kind:     header.AttributeDefinition_default.String(),
+			Type:     "boolean",
+			IsSystem: true,
+		},
+		&header.AttributeDefinition{
 			Name:  "Email",
 			Label: "Email",
 			I18NLabel: &header.I18NString{
