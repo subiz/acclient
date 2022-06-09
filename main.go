@@ -41,6 +41,8 @@ var (
 	botthrott       *throttle.Throttler
 	n5settingthrott *throttle.Throttler
 	pipelinethrott  *throttle.Throttler
+
+	hash_cache *gocache.Cache
 )
 
 func init() {
@@ -96,6 +98,7 @@ func _init() {
 	}, 30000)
 
 	cache = gocache.New(2 * time.Minute)
+	hash_cache = gocache.New(10 * time.Minute)
 }
 
 func waitUntilReady() {
