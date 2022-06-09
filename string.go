@@ -39,7 +39,7 @@ func Lookup(accid, scope string, hash string) ([]byte, error) {
 	}
 
 	val := []byte{}
-	err := session.Query("SELECT value account.hash_string WHERE accid=? AND scope=? AND hash=?", accid, scope, hash).Scan(&val)
+	err := session.Query("SELECT value FROM account.hash_string WHERE accid=? AND scope=? AND hash=?", accid, scope, hash).Scan(&val)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		hash_cache.Set(accid+"|"+scope+"|"+hash, nil)
 		return nil, nil
