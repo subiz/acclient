@@ -77,6 +77,8 @@ github.com/subiz/header v1.7.22/go.mod h1:20MLdHISLHw931bedBbqZRRliIzlwOWav4acuh
 github.com/subiz/header v1.8.10/go.mod h1:fKJRR0JXv3tMw640yPTqaziCZLtqDU/ou1hLdmNx6XI=
 github.com/subiz/header v1.8.50 h1:KYq1k/CUfh2QpYxP48RYrbmWCyFDpX3iI9/7rrQsraU=
 github.com/subiz/header v1.8.50/go.mod h1:oDjNPbQlJ71xK+bE1AdA4VDgQkHwdrTF8rDcCMBw8K4=
+github.com/subiz/header v1.8.52 h1:625lbIyc+708YTK9CvV7V/Yyt/JhNC2K9wTnE0YVJ8s=
+github.com/subiz/header v1.8.52/go.mod h1:oDjNPbQlJ71xK+bE1AdA4VDgQkHwdrTF8rDcCMBw8K4=
 github.com/subiz/idgen v0.1.22 h1:sv0wDdOIwj37L4zUorbBdDtnaIcCYNnMd+Opt1CKl3o=
 github.com/subiz/idgen v0.1.22/go.mod h1:QZIlexCnmoUnZ0I46yn6oJF5cwYGS5g0t7sEh0HsgTg=
 github.com/subiz/log v0.0.9 h1:Unxdp5w2eCm8714KkXLhsboMGyvfJ79ENy2G+jx64N8=
