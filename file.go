@@ -16,11 +16,15 @@ const MAX_SIZE = 25 * 1024 * 1024 // 25MB
 const API = "http://api"
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
+	return UploadTypedFileUrl(accid, url, "")
+}
+
+func UploadTypedFileUrl(accid, url, filetype string) (*header.File, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {
 		return &header.File{}, nil
 	}
-	body, _ := json.Marshal(&header.FileUrlDownloadRequest{AccountId: accid, Url: url})
+	body, _ := json.Marshal(&header.FileUrlDownloadRequest{AccountId: accid, Url: url, TypeHint: filetype})
 
 	resp, err := http.Post(API+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
 	if err != nil {

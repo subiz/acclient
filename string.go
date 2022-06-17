@@ -45,6 +45,10 @@ func Lookup(accid, scope string, hash string) ([]byte, error) {
 		return nil, nil
 	}
 
+	if err != nil {
+		return nil, header.E500(err, header.E_database_error, accid)
+	}
+
 	hash_cache.Set(accid+"|"+scope+"|"+hash, val)
 	return val, nil
 }
