@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/gocql/gocql v1.2.0
 	github.com/subiz/goutils v0.1.15
-	github.com/subiz/header v1.8.88
+	github.com/subiz/header v1.8.89
 	github.com/subiz/idgen v0.1.23
 	github.com/subiz/log v0.0.9
 	github.com/subiz/sgrpc v1.0.15

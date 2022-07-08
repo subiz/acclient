@@ -838,14 +838,6 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error, accid)
 	}
-
-	// list few member in group
-	for _, g := range arr {
-		// backward compatible
-		for _, agid := range g.AgentIds {
-			g.Members = append(g.Members, &pb.Agent{Id: conv.S(agid)})
-		}
-	}
 	cache.SetWithExpire("GR_"+accid, arr, 30*time.Second)
 	return arr, nil
 }
