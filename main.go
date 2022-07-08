@@ -22,7 +22,7 @@ const (
 	tblLocale       = "lang"
 	tblAgents       = "agents"
 	tblGroups       = "groups"
-	tblGroupAgent   = "group_agent"
+	tblAgentGroup   = "agent_groups"
 	tblSubscription = "subs"
 	tblPresence     = "convo.presence"
 	tblBots         = "bizbot.bots"
@@ -757,9 +757,12 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 	for _, group := range groups {
 		if group.GetId() == groupid {
 			out := make([]*pb.Agent, 0)
-			for _, ag := range group.GetMembers() {
-				ag, _ = GetAgent(accid, ag.GetId())
-				out = append(out, ag)
+			for _, id := range group.GetAgentIds() {
+				if ag, err := GetAgent(accid, id); err != nil {
+					return nil, err
+				} else {
+					out = append(out, ag)
+				}
 			}
 			return out, nil
 		}
@@ -818,18 +821,18 @@ func ListGroups(accid string) ([]*header.AgentGroup, error) {
 func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	waitUntilReady()
 	var arr = make([]*header.AgentGroup, 0)
-
-	iter := session.Query("SELECT id, created, logo_url, modified, name FROM account.groups WHERE account_id=? LIMIT 500", accid).Iter()
-	var id, name, logourl string
-	var created, modified int64
-	for iter.Scan(&id, &created, &logourl, &modified, &name) {
-		group := &header.AgentGroup{
-			AccountId: accid,
-			Id:        id,
-			Created:   int64(created),
-			Modified:  int64(modified),
-			Name:      name,
+	iter := session.Query("SELECT id, data FROM account.agent_groups WHERE account_id=? LIMIT 500", accid).Iter()
+	var id string
+	data := make([]byte, 0)
+	for iter.Scan(&id, &data) {
+		group := &header.AgentGroup{}
+		if err := proto.Unmarshal(data, group); err != nil {
+			return nil, header.E500(err, header.E_invalid_proto, id)
 		}
+		group.AccountId = accid
+		group.Id = id
+		data = make([]byte, 0)
+
 		arr = append(arr, group)
 	}
 	if err := iter.Close(); err != nil {
@@ -838,27 +841,13 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 
 	// list few member in group
 	for _, g := range arr {
-		agids, _ := listAgentInGroupDB(accid, g.GetId())
-		for _, agid := range agids {
+		// backward compatible
+		for _, agid := range g.AgentIds {
 			g.Members = append(g.Members, &pb.Agent{Id: conv.S(agid)})
 		}
 	}
 	cache.SetWithExpire("GR_"+accid, arr, 30*time.Second)
 	return arr, nil
-}
-
-func listAgentInGroupDB(accid, groupid string) ([]string, error) {
-	waitUntilReady()
-	iter := session.Query(`SELECT agent_id FROM `+tblGroupAgent+` WHERE group_id=? AND account_id=? LIMIT 1000`, groupid, accid).Iter()
-	var ids = make([]string, 0)
-	var id string
-	for iter.Scan(&id) {
-		ids = append(ids, id)
-	}
-	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error, accid, groupid)
-	}
-	return ids, nil
 }
 
 func ListPresences(accid string) ([]*pb.Presence, error) {
