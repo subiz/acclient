@@ -58,9 +58,37 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile(accid, name, mimetype string, data []byte, cd string, ttl int64) (string, error) {
+func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, error) {
 	if len(data) > MAX_SIZE {
 		return "", header.E400(nil, header.E_invalid_payload_size, len(data))
+	}
+
+	presignres, err := presign(accid, &header.FileHeader{
+		Name:               name,
+		Size:               int64(len(data)),
+		Type:               mimetype,
+		AccountId:          accid,
+		ContentDisposition: cd,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if err := uploadFile(presignres.SignedUrl, data, mimetype, cd); err != nil {
+		return "", err
+	}
+
+	f, err := finishUploadFile(accid, presignres.Id)
+	if err != nil {
+		return "", err
+	}
+
+	return "https://vcdn.subiz-cdn.com/file/" + f.Url, nil
+}
+
+func UploadLiveFile(accid, name, mimetype string, data []byte, cd string, ttl int64) (*header.File, error) {
+	if len(data) > MAX_SIZE {
+		return nil, header.E400(nil, header.E_invalid_payload_size, len(data))
 	}
 
 	presignres, err := presign(accid, &header.FileHeader{
@@ -72,19 +100,20 @@ func UploadFile(accid, name, mimetype string, data []byte, cd string, ttl int64)
 		Ttl:                ttl,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if err := uploadFile(presignres.SignedUrl, data, mimetype, cd); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	outurl, err := finishUploadFile(accid, presignres.Id)
+	f, err := finishUploadFile(accid, presignres.Id)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	f.Url = "https://vcdn.subiz-cdn.com/file/" + f.Url
 
-	return outurl, nil
+	return f, nil
 }
 
 func uploadFile(url string, data []byte, mimetype, cd string) error {
@@ -110,24 +139,24 @@ func uploadFile(url string, data []byte, mimetype, cd string) error {
 	return nil
 }
 
-func finishUploadFile(accid, fileid string) (string, error) {
+func finishUploadFile(accid, fileid string) (*header.File, error) {
 	fullurl := fmt.Sprintf(API+"/4.0/accounts/%s/files/%s", accid, fileid)
 	resp, err := http.Post(fullurl, "application/json", nil)
 	if err != nil {
-		return "", header.E500(err, header.E_http_call_error)
+		return nil, header.E500(err, header.E_http_call_error)
 	}
 
 	if resp.StatusCode >= 400 {
-		return "", header.E500(nil, header.E_http_call_error)
+		return nil, header.E500(nil, header.E_http_call_error)
 	}
 
 	out, _ := ioutil.ReadAll(resp.Body)
 	f := &header.File{}
 	// config.FileUrl + body.url
 	if err := json.Unmarshal(out, f); err != nil {
-		return "", header.E500(nil, header.E_invalid_json, fullurl)
+		return nil, header.E500(nil, header.E_invalid_json, fullurl)
 	}
-	return "https://vcdn.subiz-cdn.com/file/" + f.Url, nil
+	return f, nil
 }
 
 func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) {
