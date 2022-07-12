@@ -58,7 +58,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, error) {
+func UploadFile(accid, name, mimetype string, data []byte, cd string, ttl int64) (string, error) {
 	if len(data) > MAX_SIZE {
 		return "", header.E400(nil, header.E_invalid_payload_size, len(data))
 	}
@@ -69,6 +69,7 @@ func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, e
 		Type:               mimetype,
 		AccountId:          accid,
 		ContentDisposition: cd,
+		Ttl:                ttl,
 	})
 	if err != nil {
 		return "", err
