@@ -391,6 +391,17 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
+			Label: "Nguồn lead",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Nguồn lead",
+				En_US: "Lead source",
+			},
+			Type:     "text",
+			Key:      "lead_source",
+			IsSystem: true,
+		},
+
+		&header.AttributeDefinition{
 			Name:  "Tổng số đơn",
 			Label: "Tổng số đơn",
 			I18NLabel: &header.I18NString{
