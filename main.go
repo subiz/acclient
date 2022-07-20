@@ -34,7 +34,7 @@ var (
 
 	session *gocql.Session
 
-	cache           *gocache.Cache
+	cache           = gocache.New(2 * time.Minute)
 	accthrott       *throttle.Throttler
 	langthrott      *throttle.Throttler
 	presencethrott  *throttle.Throttler
@@ -97,7 +97,6 @@ func _init() {
 		listPipelineDB(key)
 	}, 30000)
 
-	cache = gocache.New(2 * time.Minute)
 	hash_cache = gocache.New(10 * time.Minute)
 }
 
