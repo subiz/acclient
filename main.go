@@ -557,11 +557,12 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var scopes []string
 	var joined, lasttokenrequested, passwordchanged, seen int64
 	var dashboard_setting []byte
+	var extension int64
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, last_token_requested, modified, password_changed, phone, scopes, state, type, timezone, seen FROM account.agents where account_id=?", accid).Iter()
+	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, last_token_requested, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
 	for iter.Scan(&id, &avatar_url, &client_id, &country_code, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
-		&isowner, &issupervisor, &jobtitle, &joined, &lang, &lasttokenrequested, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen) {
+		&isowner, &issupervisor, &jobtitle, &joined, &lang, &lasttokenrequested, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
 		ag := &pb.Agent{
@@ -590,6 +591,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			Type:               conv.S(typ),
 			Timezone:           conv.S(tz),
 			Seen:               conv.PI64(int(seen)),
+			Extension:          conv.PI64(int(extension)),
 		}
 		scopes = make([]string, 0)
 		arr = append(arr, ag)
