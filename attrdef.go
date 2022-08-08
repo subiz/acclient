@@ -271,9 +271,26 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsReadonly: true,
 		},
 		&header.AttributeDefinition{
-			Name:       "Last message sent time",
-			Label:      "Last message sent time",
+			Name:  "Last message sent time",
+			Label: "Last message sent time",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Thời điểm nhắn tin gần nhất",
+				En_US: "Last message sent time",
+			},
 			Key:        "last_message_sent",
+			Kind:       header.AttributeDefinition_system.String(),
+			Type:       "datetime",
+			IsSystem:   true,
+			IsReadonly: true,
+		},
+		&header.AttributeDefinition{
+			Name:  "Last order created at",
+			Label: "Last Order Created At",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Thời điểm đơn tạo gần nhất",
+				En_US: "Last order created at",
+			},
+			Key:        "last_order_at",
 			Kind:       header.AttributeDefinition_system.String(),
 			Type:       "datetime",
 			IsSystem:   true,
@@ -391,6 +408,16 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
+			Label: "Loại nguồn lead",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Loại nguồn lead",
+				En_US: "Lead source type",
+			},
+			Type:     "text",
+			Key:      "lead_source",
+			IsSystem: true,
+		},
+		&header.AttributeDefinition{
 			Label: "Nguồn lead",
 			I18NLabel: &header.I18NString{
 				Vi_VN: "Nguồn lead",
@@ -400,7 +427,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Key:      "lead_source",
 			IsSystem: true,
 		},
-
 		&header.AttributeDefinition{
 			Name:  "Tổng số đơn",
 			Label: "Tổng số đơn",
