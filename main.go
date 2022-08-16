@@ -590,7 +590,6 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			State:              conv.S(state),
 			Type:               conv.S(typ),
 			Timezone:           conv.S(tz),
-			Seen:               conv.PI64(int(seen)),
 			Extension:          conv.PI64(int(extension)),
 		}
 		scopes = make([]string, 0)
