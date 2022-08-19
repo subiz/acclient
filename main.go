@@ -708,6 +708,15 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	return list, nil
 }
 
+func LookupAgent(agid string) (*pb.Agent, error) {
+	var accid string
+	err := session.Query("SELECT account_id FROM account.agent_account WHERE id=?", agid).Scan(&accid)
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		return nil, header.E400(nil, header.E_agent_not_found, agid)
+	}
+	return GetAgent(accid, agid)
+}
+
 func GetAgent(accid, agid string) (*pb.Agent, error) {
 	agents, err := ListAgents(accid, false)
 	if err != nil {
