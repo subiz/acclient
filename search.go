@@ -73,6 +73,22 @@ func Index(col, accid, doc, part, content string, owners ...string) error {
 	return nil
 }
 
+func IndexPhone(col, accid, doc, part, phone string, owners ...string) error {
+	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+		Collection: col,
+		AccountId:  accid,
+		DocumentId: doc,
+		Part:       part,
+		Content:    phone,
+		IsPhone:    true,
+		Owners:     owners,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func IndexFullname(col, accid, doc, part, fullname string, owners ...string) error {
 	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
 		Collection: col,
