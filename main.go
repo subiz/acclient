@@ -22,7 +22,6 @@ const (
 	tblLocale       = "lang"
 	tblAgents       = "agents"
 	tblGroups       = "groups"
-	tblAgentGroup   = "agent_groups"
 	tblSubscription = "subs"
 	tblPresence     = "convo.presence"
 	tblBots         = "bizbot.bots"
