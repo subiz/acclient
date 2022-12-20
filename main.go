@@ -641,6 +641,7 @@ func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
 	dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
 	var instant_mute_until, updated int64
 	err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
+	now := time.Now().UnixMilli()
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		// default setting
 		setting := &n5pb.Setting{
@@ -651,6 +652,7 @@ func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
 				UserReturned:          conv.B(true),
 				CampaignUserConverted: conv.B(true),
 				UserOpenedEmail:       conv.B(true),
+				TaskUpdated:           &now,
 			},
 			Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
 		}
