@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/gocql/gocql v1.3.1
 	github.com/subiz/goutils v0.1.15
-	github.com/subiz/header v1.10.41
+	github.com/subiz/header v1.10.51
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/log v0.0.9
 	github.com/subiz/sgrpc v1.0.15
@@ -22,6 +22,6 @@ require (
 	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
-	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37 // indirect
+	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

@@ -27,6 +27,8 @@ github.com/subiz/goutils v0.1.15 h1:RvC7jCqE1mBsdFcdWigWl/mPuQSYcVtyxVaBhQe2yN4=
 github.com/subiz/goutils v0.1.15/go.mod h1:LqvInw8rFEz+HxjPqWeBbjvdS9OqTY/BozqfVrWZEFM=
 github.com/subiz/header v1.10.41 h1:8jGE5935aBoDYgafIteoRindG3ueURei1msUDZy09zA=
 github.com/subiz/header v1.10.41/go.mod h1:/A/EUW4Wh22DSlBR4oY4c2CLU+PuhUY3Log8bcDGO6k=
+github.com/subiz/header v1.10.51 h1:Y0Bxp1zkwIZty4epR0GIL1S/kL20sxtRdNuY+Xbx8E0=
+github.com/subiz/header v1.10.51/go.mod h1:YB7TYylxiw5f0PMuUmvpfRU8cQ6YEVD+3g28WUhlw4E=
 github.com/subiz/idgen v0.1.25 h1:7d0/+NuGgJPlmzgqk3Pbfe/w2AHZfdyat3V/1T48P1k=
 github.com/subiz/idgen v0.1.25/go.mod h1:HnTJGlC/xr9l6Twb/HXy0gwG4TbaUAKNYBFGjviB1+8=
 github.com/subiz/log v0.0.9 h1:Unxdp5w2eCm8714KkXLhsboMGyvfJ79ENy2G+jx64N8=
@@ -47,6 +49,8 @@ golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 h1:go1bK/D/BFZV2I8cIQd1NKEZ+0owSTG1fDTci4IqFcE=
 google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37 h1:jmIfw8+gSvXcZSgaFAGyInDXeWzUhvYH57G/5GKMn70=
 google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
+google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef h1:uQ2vjV/sHTsWSqdKeLqmwitzgvjMl7o4IdtHwUDXSJY=
+google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef/go.mod h1:RGgjbofJ8xD9Sq1VVhDM1Vok1vRONV+rg+CjzG4SZKM=
 google.golang.org/grpc v1.51.0 h1:E1eGv1FTqoLIdnBCZufiSHgKjlqG6fKFf6pPWtMTh8U=
 google.golang.org/grpc v1.51.0/go.mod h1:wgNDFcnuBGmxLKI/qn4T+m5BtEBYXJPvibbUPsAIPww=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=
