@@ -322,6 +322,42 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
+			Label:      "Lifecycle stage duration",
+			I18NLabel:  &header.I18NString{Vi_VN: "Số giờ trong giai đoạn", En_US: "No. hours in stage"},
+			Type:       "number",
+			Key:        "lifecycle_stage_duration",
+			IsSystem:   true,
+			IsReadonly: true,
+		},
+		&header.AttributeDefinition{
+			Label:      "Lifecycle stage start at",
+			I18NLabel:  &header.I18NString{Vi_VN: "Thời điểm chuyển giai đoạn", En_US: "Lifecycle stage start at"},
+			Type:       "datetime",
+			Key:        "lifecycle_stage_start_at",
+			IsSystem:   true,
+			IsReadonly: true,
+		},
+
+		&header.AttributeDefinition{
+			// alway move forward
+			Label:     "Lifecycle stage",
+			I18NLabel: &header.I18NString{Vi_VN: "Giai đoạn vòng đời", En_US: "Lifecycle stage"},
+			Type:      "text",
+			Select:    "dropdown",
+			Items: []*header.AttributeDefinitionListItem{
+				{Value: "subscribe", I18NLabel: &header.I18NString{En_US: "Subscriber", Vi_VN: ""}, Label: "Người đăng ký"},
+				{Value: "trial", I18NLabel: &header.I18NString{En_US: "Trial", Vi_VN: "Dùng thử"}, Label: "Dùng thử"},
+				{Value: "lead", I18NLabel: &header.I18NString{En_US: "Lead", Vi_VN: "Quan tâm"}, Label: "Quan tâm"},
+				{Value: "marketing qualified lead", I18NLabel: &header.I18NString{En_US: "Marketing Qualified Lead", Vi_VN: "Tiềm năng chuẩn Marketing"}, Label: "Tiềm năng chuẩn Marketing"},
+				{Value: "sale qualified lead", I18NLabel: &header.I18NString{En_US: "Sale Qualified Lead", Vi_VN: "Tiềm năng chuẩn Sale"}, Label: "Tiềm năng chuẩn Sale"},
+				{Value: "opportunity", I18NLabel: &header.I18NString{En_US: "Opportunity", Vi_VN: "Rất tiềm năng"}, Label: "Rất tiềm năng"},
+				{Value: "customer", I18NLabel: &header.I18NString{En_US: "Customer", Vi_VN: "Khách hàng"}, Label: "Khách hàng"},
+			},
+			Key:      "lifecycle_stage",
+			IsSystem: true,
+		},
+
+		&header.AttributeDefinition{
 			Label:     "Lead status",
 			I18NLabel: &header.I18NString{Vi_VN: "Trạng thái lead", En_US: "Lead status"},
 			Type:      "text",
