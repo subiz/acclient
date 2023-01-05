@@ -114,6 +114,15 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem:  true,
 		},
 		&header.AttributeDefinition{
+			Name:       "Thời gian phân lead",
+			Label:      "Thời gian phân lead",
+			Key:        "lead_assigned_at",
+			I18NLabel:  &header.I18NString{Vi_VN: "Thời gian phân lead", En_US: "Lead assigned at"},
+			Type:       "datetime",
+			IsSystem:   true,
+			IsReadonly: true,
+		},
+		&header.AttributeDefinition{
 			Name:      "Status",
 			Label:     "Status",
 			I18NLabel: &header.I18NString{Vi_VN: "Trạng thái", En_US: "Status"},
