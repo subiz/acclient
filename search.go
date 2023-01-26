@@ -3,15 +3,15 @@ package acclient
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/subiz/header"
+	"github.com/subiz/kafka"
 	"github.com/subiz/sgrpc"
 )
-
-var searchc header.SearchClient
-var searchLock = &sync.Mutex{} // lock when connect to search client
 
 func Search(col, accid, query, owner string, limit int64, anchor string, filter_parts ...string) ([]*header.DocHit, string, error) {
 	var owners []string
@@ -57,8 +57,8 @@ func SearchPart(col, accid, query, owner string, limit int64, anchor string, fil
 	return res.Hits, res.Anchor, nil
 }
 
-func Index(col, accid, doc, part, content string, owners ...string) error {
-	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+func Index(col, accid, doc, part, content string, owners ...string) {
+	publishIndex(&header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
@@ -67,14 +67,10 @@ func Index(col, accid, doc, part, content string, owners ...string) error {
 		IsName:     false,
 		Owners:     owners,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func IndexPhone(col, accid, doc, part, phone string, owners ...string) error {
-	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+func IndexPhone(col, accid, doc, part, phone string, owners ...string) {
+	publishIndex(&header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
@@ -83,14 +79,10 @@ func IndexPhone(col, accid, doc, part, phone string, owners ...string) error {
 		IsPhone:    true,
 		Owners:     owners,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func IndexFullname(col, accid, doc, part, fullname string, owners ...string) error {
-	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+func IndexFullname(col, accid, doc, part, fullname string, owners ...string) {
+	publishIndex(&header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
@@ -99,14 +91,15 @@ func IndexFullname(col, accid, doc, part, fullname string, owners ...string) err
 		IsName:     true,
 		Owners:     owners,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func IndexID(col, accid, doc, part, value string, owners ...string) error {
-	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+func publishIndex(req *header.DocIndexRequest) {
+	topic := "search-index-" + strconv.Itoa(int(crc32.ChecksumIEEE([]byte(req.AccountId)))%4)
+	kafka.Publish(topic, req)
+}
+
+func IndexID(col, accid, doc, part, value string, owners ...string) {
+	publishIndex(&header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
@@ -115,14 +108,10 @@ func IndexID(col, accid, doc, part, value string, owners ...string) error {
 		IsId:       true,
 		Owners:     owners,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func IndexWithDay(col, accid, doc, part, content string, isName bool, isId bool, day int64, owners ...string) error {
-	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+func IndexWithDay(col, accid, doc, part, content string, isName bool, isId bool, day int64, owners ...string) {
+	publishIndex(&header.DocIndexRequest{
 		Collection: col,
 		AccountId:  accid,
 		DocumentId: doc,
@@ -133,28 +122,21 @@ func IndexWithDay(col, accid, doc, part, content string, isName bool, isId bool,
 		Day:        day,
 		Owners:     owners,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func AddOwners(accid, docid string, owners ...string) error {
+func AddOwners(accid, docid string, owners ...string) {
 	if len(owners) == 0 {
-		return nil
+		return
 	}
-	_, err := getSearchClient().Index(context.Background(), &header.DocIndexRequest{
+	publishIndex(&header.DocIndexRequest{
 		AccountId:  accid,
 		DocumentId: docid,
 		Owners:     owners,
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-// not thread-safe
+var searchc header.SearchClient
+var searchLock = &sync.Mutex{} // lock when connect to search client
 func getSearchClient() header.SearchClient {
 	if searchc != nil {
 		return searchc
