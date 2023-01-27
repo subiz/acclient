@@ -20,7 +20,7 @@ func init() {
 }
 
 func convertPathToRFSUrl(path string) string {
-	return RFSHOST + strings.TrimPrefix(path, "/") + "?secret=" + rfs_secret
+	return RFSHOST + strings.TrimPrefix(path, "/") + "?x-secret=" + rfs_secret
 }
 
 func RemoveFile(path string) error {
@@ -32,10 +32,8 @@ func RemoveFile(path string) error {
 		return header.E500(err, header.E_http_call_error, url)
 	}
 	defer resp.Body.Close()
-
-	out, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode, string(out))
+		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
 	}
 	return nil
 }
@@ -53,9 +51,8 @@ func WriteFile(path string, stream io.Reader) error {
 	}
 	defer resp.Body.Close()
 
-	out, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode, string(out))
+		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
 	}
 	return nil
 }
@@ -68,9 +65,8 @@ func WriteFileBytes(path string, data []byte) error {
 	}
 	defer resp.Body.Close()
 
-	out, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode, string(out))
+		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
 	}
 	return nil
 }
@@ -100,4 +96,36 @@ func ReadFileBytes(path string) ([]byte, error) {
 		return nil, os.ErrNotExist
 	}
 	return ioutil.ReadAll(resp.Body)
+}
+
+func WriteFilePipe(path string, predicate func(*os.File) error) error {
+	tmpFile, err := ioutil.TempFile("/tmp", "rfs")
+	if err != nil {
+		return header.E500(err, header.E_file_system_error)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if err := predicate(tmpFile); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	tmpFile.Close()
+
+	tmpFile, err = os.OpenFile(tmpFile.Name(), os.O_RDONLY, 0600)
+	if err != nil {
+		return header.E500(err, header.E_file_system_error)
+	}
+	defer tmpFile.Close()
+
+	url := convertPathToRFSUrl(path)
+	// resp, err := http.Post(url, "application/octet-stream", bytes.NewBuffer(data))
+	resp, err := http.Post(url, "application/octet-stream", tmpFile)
+	if err != nil {
+		return header.E500(err, header.E_http_call_error, url)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
+	}
+	return nil
 }
