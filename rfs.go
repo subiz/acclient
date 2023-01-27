@@ -20,7 +20,7 @@ func init() {
 }
 
 func convertPathToRFSUrl(path string) string {
-	return RFSHOST + strings.TrimPrefix(path, "/") + "?secret=" + rfs_secret
+	return RFSHOST + strings.TrimPrefix(path, "/") + "?x-secret=" + rfs_secret
 }
 
 func RemoveFile(path string) error {
