@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/subiz/header"
@@ -12,8 +13,14 @@ import (
 
 const RFSHOST = "http://db-0:2306/"
 
+var rfs_secret = ""
+
+func init() {
+	rfs_secret = os.Getenv("RFS_SECRET")
+}
+
 func convertPathToRFSUrl(path string) string {
-	return RFSHOST + strings.TrimPrefix(path, "/") + "?secret="
+	return RFSHOST + strings.TrimPrefix(path, "/") + "?secret=" + rfs_secret
 }
 
 func RemoveFile(path string) error {
@@ -68,12 +75,17 @@ func WriteFileBytes(path string, data []byte) error {
 	return nil
 }
 
-func ReadFile(path string) (io.Reader, error) {
+func ReadFile(path string) (io.ReadCloser, error) {
 	url := convertPathToRFSUrl(path)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, header.E500(err, header.E_http_call_error, url)
 	}
+	if resp.StatusCode == 404 {
+		resp.Body.Close()
+		return nil, os.ErrNotExist
+	}
+
 	return resp.Body, nil
 }
 
@@ -83,7 +95,9 @@ func ReadFileBytes(path string) ([]byte, error) {
 	if err != nil {
 		return nil, header.E500(err, header.E_http_call_error, url)
 	}
-
 	defer resp.Body.Close()
+	if resp.StatusCode == 404 {
+		return nil, os.ErrNotExist
+	}
 	return ioutil.ReadAll(resp.Body)
 }

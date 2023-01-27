@@ -1,14 +1,14 @@
 package acclient
 
 import (
-	"github.com/subiz/header"
-
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/subiz/header"
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
