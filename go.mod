@@ -7,7 +7,7 @@ require (
 	github.com/subiz/goutils v0.1.15
 	github.com/subiz/header v1.10.64
 	github.com/subiz/idgen v0.1.25
-	github.com/subiz/kafka v0.0.17
+	github.com/subiz/kafka v0.0.18
 	github.com/subiz/log v0.0.9
 	github.com/subiz/sgrpc v1.0.15
 	github.com/thanhpk/go-cache v1.0.1
@@ -37,6 +37,7 @@ require (
 	github.com/paulbellamy/ratecounter v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/thanhpk/randstr v1.0.4 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
