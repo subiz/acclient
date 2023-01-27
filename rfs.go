@@ -11,11 +11,16 @@ import (
 	"github.com/subiz/header"
 )
 
-const RFSHOST = "http://db-0:2306/"
+var RFSHOST = "http://db-0:2306/"
 
 var rfs_secret = ""
 
 func init() {
+	rfs_host := os.Getenv("RFS_SECRET")
+	if rfs_host != "" {
+		RFSHOST = rfs_host
+	}
+
 	rfs_secret = os.Getenv("RFS_SECRET")
 }
 
@@ -58,17 +63,7 @@ func WriteFile(path string, stream io.Reader) error {
 }
 
 func WriteFileBytes(path string, data []byte) error {
-	url := convertPathToRFSUrl(path)
-	resp, err := http.Post(url, "application/octet-stream", bytes.NewBuffer(data))
-	if err != nil {
-		return header.E500(err, header.E_http_call_error, url)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
-	}
-	return nil
+	return WriteFile(path, bytes.NewBuffer(data))
 }
 
 func ReadFile(path string) (io.ReadCloser, error) {
@@ -86,16 +81,12 @@ func ReadFile(path string) (io.ReadCloser, error) {
 }
 
 func ReadFileBytes(path string) ([]byte, error) {
-	url := convertPathToRFSUrl(path)
-	resp, err := http.Get(url)
+	stream, err := ReadFile(path)
 	if err != nil {
-		return nil, header.E500(err, header.E_http_call_error, url)
+		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == 404 {
-		return nil, os.ErrNotExist
-	}
-	return ioutil.ReadAll(resp.Body)
+	defer stream.Close()
+	return ioutil.ReadAll(stream)
 }
 
 func WriteFilePipe(path string, predicate func(*os.File) error) error {
