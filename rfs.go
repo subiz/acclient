@@ -16,7 +16,7 @@ var RFSHOST = "http://db-0:2306/"
 var rfs_secret = ""
 
 func init() {
-	rfs_host := os.Getenv("RFS_SECRET")
+	rfs_host := os.Getenv("RFS_HOST")
 	if rfs_host != "" {
 		RFSHOST = rfs_host
 	}
