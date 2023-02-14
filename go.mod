@@ -4,10 +4,10 @@ go 1.18
 
 require (
 	github.com/gocql/gocql v1.3.1
-	github.com/subiz/goutils v0.0.2
-	github.com/subiz/header v1.10.81
+	github.com/subiz/goutils v0.1.16
+	github.com/subiz/header v1.10.88
 	github.com/subiz/idgen v0.1.25
-	github.com/subiz/kafka v0.0.19
+	github.com/subiz/kafka v0.0.21
 	github.com/subiz/log v0.0.12
 	github.com/subiz/sgrpc v1.0.17
 	github.com/thanhpk/go-cache v1.0.1
@@ -38,6 +38,7 @@ require (
 	github.com/paulbellamy/ratecounter v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/thanhpk/randstr v1.0.4 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.6.0 // indirect

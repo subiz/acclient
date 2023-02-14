@@ -141,6 +141,15 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem:    true,
 		},
 		&header.AttributeDefinition{
+			Name:        "Display name",
+			Label:       "Tên hiển thị",
+			Description: "Tên hiển thị trên các nền tảng mạng xã hội",
+			I18NLabel:   &header.I18NString{Vi_VN: "Tên hiển thị", En_US: "Display name"},
+			Key:         "display_name",
+			Type:        "text",
+			IsSystem:    true,
+		},
+		&header.AttributeDefinition{
 			Name:      "Address",
 			Label:     "Address",
 			I18NLabel: &header.I18NString{Vi_VN: "Địa chỉ", En_US: "Address"},
