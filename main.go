@@ -1,7 +1,9 @@
 package acclient
 
 import (
+	"context"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +15,7 @@ import (
 	compb "github.com/subiz/header/common"
 	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
+	"github.com/subiz/sgrpc"
 	gocache "github.com/thanhpk/go-cache"
 	"github.com/thanhpk/throttle"
 	"google.golang.org/protobuf/proto"
@@ -32,6 +35,7 @@ var (
 	ready     bool
 
 	session *gocql.Session
+	accmgr  header.AccountMgrClient
 
 	cache           = gocache.New(2 * time.Minute)
 	accthrott       *throttle.Throttler
@@ -58,6 +62,12 @@ func _init() {
 	if err != nil {
 		panic(err)
 	}
+
+	conn, err := dialGrpc("account-0.account:10283", sgrpc.WithShardRedirect())
+	if err != nil {
+		panic(err)
+	}
+	accmgr = header.NewAccountMgrClient(conn)
 
 	accthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
 		getAccountDB(accid)
@@ -1081,3 +1091,13 @@ func randomID(sign string, randomfactor int) string {
 //    USD: 20,
 //    FPV: 20000000,
 // }
+
+func NewID(accid, scope string) int64 {
+	id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
+	if err != nil {
+		time.Sleep(1 * time.Second)
+		return NewID(accid, scope)
+	}
+	idint, _ := strconv.ParseInt(id.Id, 10, 0)
+	return idint
+}

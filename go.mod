@@ -1,13 +1,13 @@
 module github.com/subiz/acclient/v2
 
-go 1.18
+go 1.20
 
 require (
 	github.com/gocql/gocql v1.3.1
 	github.com/subiz/goutils v0.1.16
-	github.com/subiz/header v1.10.88
+	github.com/subiz/header v1.10.99
 	github.com/subiz/idgen v0.1.25
-	github.com/subiz/kafka v0.0.21
+	github.com/subiz/kafka v0.0.22
 	github.com/subiz/log v0.0.12
 	github.com/subiz/sgrpc v1.0.17
 	github.com/thanhpk/go-cache v1.0.1
@@ -41,9 +41,9 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/thanhpk/randstr v1.0.4 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/net v0.6.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	google.golang.org/genproto v0.0.0-20230209215440-0dfe4f8abfcc // indirect
+	google.golang.org/genproto v0.0.0-20230221151758-ace64dc21148 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
