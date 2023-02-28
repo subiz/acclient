@@ -14,14 +14,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
-			Name:       "First Paid Order",
-			Label:      "First Paid Order",
-			Key:        "first_paid_order_id",
-			Type:       "text",
-			IsSystem:   true,
-			IsReadonly: true,
-		},
-		&header.AttributeDefinition{
 			Name:       "Banned",
 			Label:      "Banned",
 			I18NLabel:  &header.I18NString{Vi_VN: "Bị chặn", En_US: "Banned"},
@@ -73,13 +65,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Label:    "Rank",
 			Key:      "rank",
 			Type:     "number",
-			IsSystem: true,
-		},
-		&header.AttributeDefinition{
-			Name:     "External ID",
-			Label:    "External ID",
-			Key:      "external_id",
-			Type:     "text",
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
@@ -337,6 +322,14 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Key:        "first_interact",
 			IsSystem:   true,
 			IsReadonly: true,
+		},
+		&header.AttributeDefinition{
+			Name:     "Record ID",
+			Label:    "Record ID",
+			I18NLabel:   &header.I18NString{Vi_VN: "Định danh bản ghi", En_US: "Record ID"},
+			Key:      "record_id",
+			Type:     "text",
+			IsSystem: true,
 		},
 	}
 }
