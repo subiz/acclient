@@ -90,6 +90,8 @@ github.com/subiz/header v1.10.99 h1:AwFY5VtP2Qq0emavdKcanyE52mk+CZN48lpTvvBBB/s=
 github.com/subiz/header v1.10.99/go.mod h1:+BMfsP15K2owpsaiT5zCjRnPJS0HHp5L/Llh05dcq+o=
 github.com/subiz/header v1.11.7 h1:g7RfMf/+okW8bvjIBdEyd6oQ+573pFfOvzh4FrdVG/0=
 github.com/subiz/header v1.11.7/go.mod h1:+BMfsP15K2owpsaiT5zCjRnPJS0HHp5L/Llh05dcq+o=
+github.com/subiz/header v1.11.8 h1:t3O2vj72FDgfKiV1wygJ3o7+or/YmLhBupefmaABHk4=
+github.com/subiz/header v1.11.8/go.mod h1:+BMfsP15K2owpsaiT5zCjRnPJS0HHp5L/Llh05dcq+o=
 github.com/subiz/idgen v0.1.25 h1:7d0/+NuGgJPlmzgqk3Pbfe/w2AHZfdyat3V/1T48P1k=
 github.com/subiz/idgen v0.1.25/go.mod h1:HnTJGlC/xr9l6Twb/HXy0gwG4TbaUAKNYBFGjviB1+8=
 github.com/subiz/kafka v0.0.22 h1:JZSbuId6VM71WtCjMxXU9SlAw5RXBxSOh5s2u1q+0LI=
@@ -104,6 +106,8 @@ github.com/thanhpk/randstr v1.0.4 h1:IN78qu/bR+My+gHCvMEXhR/i5oriVHcTB/BJJIRTsNo
 github.com/thanhpk/randstr v1.0.4/go.mod h1:M/H2P1eNLZzlDwAzpkkkUvoyNNMbzRGhESZuEQk3r0U=
 github.com/thanhpk/throttle v0.0.2 h1:F7gKFn9+NIruqAcyYO5epHCdLClS1Q9h7ihJ2xhsYfI=
 github.com/thanhpk/throttle v0.0.2/go.mod h1:oPqCJbhdSVwCg/zYYAivtt0ukK5wKNfB47a2/2xj1DA=
+github.com/thanhpk/throttle v0.0.3 h1:I3luW0pR5d5idFYdEmA+/xy9eXYkuxzTpn1YGzjYs2E=
+github.com/thanhpk/throttle v0.0.3/go.mod h1:H4w2a5iPhoy+2Y9UMv1g23KR6Xuu3BS4B2JvO9a0Zbw=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=

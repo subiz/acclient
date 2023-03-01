@@ -38,7 +38,7 @@ var (
 	accmgr  header.AccountMgrClient
 
 	cache           = gocache.New(2 * time.Minute)
-	accthrott       *throttle.Throttler
+	accthrott       *throttle.SingleThrottler
 	langthrott      *throttle.Throttler
 	presencethrott  *throttle.Throttler
 	botthrott       *throttle.Throttler
@@ -47,10 +47,6 @@ var (
 
 	hash_cache *gocache.Cache
 )
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 func _init() {
 	cluster := gocql.NewCluster("db-0")
@@ -69,11 +65,13 @@ func _init() {
 	}
 	accmgr = header.NewAccountMgrClient(conn)
 
-	accthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
-		getAccountDB(accid)
-		listAgentsDB(accid)
-		listGroupsDB(accid)
-		getShopSettingDb(accid)
+	accthrott = throttle.NewSingleThrottler(func(accids []string) {
+		for _, accid := range accids {
+			getAccountDB(accid)
+			listAgentsDB(accid)
+			listGroupsDB(accid)
+			getShopSettingDb(accid)
+		}
 	}, 60000)
 
 	langthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
@@ -506,15 +504,11 @@ func GetAccount(accid string) (*pb.Account, error) {
 		if value == nil {
 			return nil, nil
 		}
-		acc := value.(*pb.Account)
-		return proto.Clone(acc).(*pb.Account), nil
+		return value.(*pb.Account), nil
 	}
 
 	acc, _, err := getAccountDB(accid)
-	if err != nil {
-		return nil, err
-	}
-	return proto.Clone(acc).(*pb.Account), nil
+	return acc, err
 }
 
 func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
@@ -525,16 +519,14 @@ func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 		if value == nil {
 			return nil, nil
 		}
-		setting := value.(*n5pb.Setting)
-		return proto.Clone(setting).(*n5pb.Setting), nil
+		return value.(*n5pb.Setting), nil
 	}
 
 	setting, err := getNotificationSettingDB(accid, agid)
 	if err != nil {
 		return nil, err
 	}
-	return proto.Clone(setting).(*n5pb.Setting), nil
-
+	return setting, nil
 }
 
 func GetSubscription(accid string) (*pm.Subscription, error) {
@@ -545,15 +537,14 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 		if value == nil {
 			return nil, nil
 		}
-		sub := value.(*pm.Subscription)
-		return proto.Clone(sub).(*pm.Subscription), nil
+		return value.(*pm.Subscription), nil
 	}
 
 	_, sub, err := getAccountDB(accid)
 	if err != nil {
 		return nil, err
 	}
-	return proto.Clone(sub).(*pm.Subscription), nil
+	return sub, nil
 }
 
 func listAgentsDB(accid string) ([]*pb.Agent, error) {
@@ -1017,15 +1008,10 @@ func GetShopSetting(accid string) (*header.ShopSetting, error) {
 		if value == nil {
 			return nil, nil
 		}
-		setting := value.(*header.ShopSetting)
-		return proto.Clone(setting).(*header.ShopSetting), nil
+		return value.(*header.ShopSetting), nil
 	}
 
-	setting, err := getShopSettingDb(accid)
-	if err != nil {
-		return nil, err
-	}
-	return proto.Clone(setting).(*header.ShopSetting), nil
+	return getShopSettingDb(accid)
 }
 
 // account currency /order currency  (E.g: order currency: VND, acc currency: USD, => currency_rate = 1/20k = 0.00005)

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"io"
 	"strings"
 
 	"github.com/subiz/header"
@@ -37,7 +37,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	}
 
 	defer resp.Body.Close()
-	out, _ := ioutil.ReadAll(resp.Body)
+	out, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
 		// try to cast to error
@@ -132,7 +132,7 @@ func uploadFile(url string, data []byte, mimetype, cd string) error {
 	}
 	defer resp.Body.Close()
 
-	out, _ := ioutil.ReadAll(resp.Body)
+	out, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
 		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode, string(out))
 	}
@@ -150,7 +150,7 @@ func finishUploadFile(accid, fileid string) (*header.File, error) {
 		return nil, header.E500(nil, header.E_http_call_error)
 	}
 
-	out, _ := ioutil.ReadAll(resp.Body)
+	out, _ := io.ReadAll(resp.Body)
 	f := &header.File{}
 	// config.FileUrl + body.url
 	if err := json.Unmarshal(out, f); err != nil {
@@ -179,7 +179,7 @@ func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) 
 	}
 
 	fileres := &header.PresignResult{}
-	out, _ := ioutil.ReadAll(resp.Body)
+	out, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(out, fileres); err != nil {
 		return nil, header.E500(nil, header.E_invalid_json, fullurl)
 	}
@@ -196,7 +196,7 @@ func HTMLContent2PDF(html []byte) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	out, err := ioutil.ReadAll(resp.Body)
+	out, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, header.E500(err, header.E_undefined)
 	}
@@ -228,7 +228,7 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 		return nil, header.E500(err, header.E_undefined)
 	}
 	defer resp.Body.Close()
-	out, _ := ioutil.ReadAll(resp.Body)
+	out, _ := io.ReadAll(resp.Body)
 	file := &header.File{}
 	if err := json.Unmarshal(out, file); err != nil {
 		return nil, header.E500(nil, header.E_invalid_json)

@@ -3,7 +3,6 @@ package acclient
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -86,11 +85,11 @@ func ReadFileBytes(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer stream.Close()
-	return ioutil.ReadAll(stream)
+	return io.ReadAll(stream)
 }
 
 func WriteFilePipe(path string, predicate func(*os.File) error) error {
-	tmpFile, err := ioutil.TempFile("/tmp", "rfs")
+	tmpFile, err := os.CreateTemp("/tmp", "rfs")
 	if err != nil {
 		return header.E500(err, header.E_file_system_error)
 	}
