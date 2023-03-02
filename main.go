@@ -113,10 +113,10 @@ func _init() {
 			accids := []string{}
 
 			keyLock.Lock()
-			for accid := range keys30 {
+			for accid := range keysLang {
 				accids = append(accids, accid)
 			}
-			keys30 = map[string]bool{}
+			keysLang = map[string]bool{}
 			keyLock.Unlock()
 
 			for _, ks := range accids {
