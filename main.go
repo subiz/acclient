@@ -17,7 +17,6 @@ import (
 	pm "github.com/subiz/header/payment"
 	"github.com/subiz/sgrpc"
 	gocache "github.com/thanhpk/go-cache"
-	"github.com/thanhpk/throttle"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -32,19 +31,18 @@ const (
 
 var (
 	readyLock = &sync.Mutex{}
-	ready     bool
+	keyLock   = &sync.Mutex{}
+
+	keys30   = map[string]bool{}
+	keys60   = map[string]bool{}
+	keysLang = map[string]bool{}
+
+	ready bool
 
 	session *gocql.Session
 	accmgr  header.AccountMgrClient
 
-	cache           = gocache.New(2 * time.Minute)
-	accthrott       *throttle.SingleThrottler
-	langthrott      *throttle.Throttler
-	presencethrott  *throttle.Throttler
-	botthrott       *throttle.Throttler
-	n5settingthrott *throttle.Throttler
-	pipelinethrott  *throttle.Throttler
-
+	cache      = gocache.New(2 * time.Minute)
 	hash_cache *gocache.Cache
 )
 
@@ -65,44 +63,69 @@ func _init() {
 	}
 	accmgr = header.NewAccountMgrClient(conn)
 
-	accthrott = throttle.NewSingleThrottler(func(accids []string) {
-		for _, accid := range accids {
-			getAccountDB(accid)
-			listAgentsDB(accid)
-			listGroupsDB(accid)
-			getShopSettingDb(accid)
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			accids := []string{}
+
+			keyLock.Lock()
+			for accid := range keys60 {
+				accids = append(accids, accid)
+			}
+			keys60 = map[string]bool{}
+			keyLock.Unlock()
+
+			for _, accid := range accids {
+				getAccountDB(accid)
+				listAgentsDB(accid)
+				listGroupsDB(accid)
+				getShopSettingDb(accid)
+				listPipelineDB(accid)
+			}
+			time.Sleep(50 * time.Second)
 		}
-	}, 60000)
+	}()
 
-	langthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
-		ks := strings.Split(key, ";")
-		if len(ks) != 2 {
-			return
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			accids := []string{}
+
+			keyLock.Lock()
+			for accid := range keys30 {
+				accids = append(accids, accid)
+			}
+			keys30 = map[string]bool{}
+			keyLock.Unlock()
+
+			for _, accid := range accids {
+				getNotificationSettingDB(accid)
+				listBotsDB(accid)
+				listPresencesDB(accid)
+			}
+			time.Sleep(10 * time.Second)
 		}
-		listLocaleMessagesDB(ks[0], ks[1])
-	}, 30000)
+	}()
 
-	botthrott = throttle.NewThrottler(func(accid string, payloads []interface{}) {
-		listBotsDB(accid)
-	}, 20000)
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			accids := []string{}
 
-	n5settingthrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
-		ks := strings.Split(key, ";")
-		if len(ks) != 2 {
-			return
+			keyLock.Lock()
+			for accid := range keys30 {
+				accids = append(accids, accid)
+			}
+			keys30 = map[string]bool{}
+			keyLock.Unlock()
+
+			for _, ks := range accids {
+				ks := strings.Split(ks, ";")
+				listLocaleMessagesDB(ks[0], ks[1])
+			}
+			time.Sleep(10 * time.Second)
 		}
-
-		accid, agid := ks[0], ks[1]
-		getNotificationSettingDB(accid, agid)
-	}, 30000)
-
-	presencethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
-		listPresencesDB(key)
-	}, 10000)
-
-	pipelinethrott = throttle.NewThrottler(func(key string, payloads []interface{}) {
-		listPipelineDB(key)
-	}, 30000)
+	}()
 
 	hash_cache = gocache.New(10 * time.Minute)
 }
@@ -480,7 +503,9 @@ func GetLocale(accid, locale string) (*header.Lang, error) {
 		return &header.Lang{}, nil
 	}
 	if value, found := cache.Get("LANG_" + accid + "_" + locale); found {
-		langthrott.Push(accid+";"+locale, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keysLang[accid+";"+locale] = true // trigger reading from db for future read
+		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
@@ -499,7 +524,9 @@ func GetAccount(accid string) (*pb.Account, error) {
 	waitUntilReady()
 	// cache hit
 	if value, found := cache.Get("ACC_" + accid); found {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 
 		if value == nil {
 			return nil, nil
@@ -513,27 +540,49 @@ func GetAccount(accid string) (*pb.Account, error) {
 
 func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 	waitUntilReady()
+	keyLock.Lock()
+	keys30[accid] = true
+	keyLock.Unlock()
 
 	if value, found := cache.Get("N5Setting_" + accid + "_" + agid); found {
-		n5settingthrott.Push(accid+";"+agid, nil) // trigger reading from db for future read
 		if value == nil {
 			return nil, nil
 		}
 		return value.(*n5pb.Setting), nil
 	}
 
-	setting, err := getNotificationSettingDB(accid, agid)
+	settings, err := getNotificationSettingDB(accid)
 	if err != nil {
 		return nil, err
 	}
-	return setting, nil
+	for _, setting := range settings {
+		if setting.GetAgentId() == agid {
+			return setting, nil
+		}
+	}
+	now := time.Now().UnixMilli()
+	return &n5pb.Setting{
+		AccountId: &accid,
+		AgentId:   &agid,
+		Web: &n5pb.Subscription{
+			NewMessage:            conv.B(true),
+			UserCreated:           conv.B(true),
+			UserReturned:          conv.B(true),
+			CampaignUserConverted: conv.B(true),
+			UserOpenedEmail:       conv.B(true),
+			TaskUpdated:           &now,
+		},
+		Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
+	}, nil
 }
 
 func GetSubscription(accid string) (*pm.Subscription, error) {
 	waitUntilReady()
 	// cache hit
 	if value, found := cache.Get("SUB_" + accid); found {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
@@ -636,57 +685,64 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	return defs, nil
 }
 
-func getNotificationSettingDB(accid, agid string) (*n5pb.Setting, error) {
+func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 	waitUntilReady()
-
-	dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
-	var instant_mute_until, updated int64
-	err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
-	now := time.Now().UnixMilli()
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		// default setting
-		setting := &n5pb.Setting{
-			AccountId: &accid, AgentId: &agid,
-			Web: &n5pb.Subscription{
-				NewMessage:            conv.B(true),
-				UserCreated:           conv.B(true),
-				UserReturned:          conv.B(true),
-				CampaignUserConverted: conv.B(true),
-				UserOpenedEmail:       conv.B(true),
-				TaskUpdated:           &now,
-			},
-			Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
-		}
-		cache.SetWithExpire("N5Setting_"+accid+"_"+agid, setting, 30*time.Second)
-		return setting, nil
-	}
+	agents, err := ListAgents(accid, false)
 	if err != nil {
-		return nil, header.E500(err, header.E_database_error, "read noti setting", accid, agid)
+		return nil, err
 	}
+	settings := []*n5pb.Setting{}
+	for _, ag := range agents {
+		agid := ag.GetId()
+		dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
+		var instant_mute_until, updated int64
+		err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
+		now := time.Now().UnixMilli()
+		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+			// default setting
+			setting := &n5pb.Setting{
+				AccountId: &accid,
+				AgentId:   &agid,
+				Web: &n5pb.Subscription{
+					NewMessage:            conv.B(true),
+					UserCreated:           conv.B(true),
+					UserReturned:          conv.B(true),
+					CampaignUserConverted: conv.B(true),
+					UserOpenedEmail:       conv.B(true),
+					TaskUpdated:           &now,
+				},
+				Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
+			}
+			settings = append(settings, setting)
+		}
 
-	dnds := &n5pb.DoNotDisturb{}
-	proto.Unmarshal(dnd, dnds)
+		if err != nil {
+			return nil, header.E500(err, header.E_database_error, "read noti setting", accid, agid)
+		}
 
-	webs := &n5pb.Subscription{}
-	proto.Unmarshal(web, webs)
-	mobiles := &n5pb.Subscription{}
-	proto.Unmarshal(mobile, mobiles)
-	email := &n5pb.Subscription{}
-	proto.Unmarshal(em, email)
+		dnds := &n5pb.DoNotDisturb{}
+		proto.Unmarshal(dnd, dnds)
 
-	setting := &n5pb.Setting{
-		AccountId:        &accid,
-		AgentId:          &agid,
-		DoNotDisturb:     dnds,
-		InstantMuteUntil: &instant_mute_until,
-		Updated:          &updated,
-		Web:              webs,
-		Mobile:           mobiles,
-		Email:            email,
+		webs := &n5pb.Subscription{}
+		proto.Unmarshal(web, webs)
+		mobiles := &n5pb.Subscription{}
+		proto.Unmarshal(mobile, mobiles)
+		email := &n5pb.Subscription{}
+		proto.Unmarshal(em, email)
+
+		settings = append(settings, &n5pb.Setting{
+			AccountId:        &accid,
+			AgentId:          &agid,
+			DoNotDisturb:     dnds,
+			InstantMuteUntil: &instant_mute_until,
+			Updated:          &updated,
+			Web:              webs,
+			Mobile:           mobiles,
+			Email:            email,
+		})
 	}
-
-	cache.SetWithExpire("N5Setting_"+accid+"_"+agid, setting, 30*time.Second)
-	return setting, nil
+	cache.SetWithExpire("N5Setting_"+accid, settings, 30*time.Second)
+	return settings, nil
 }
 
 func listBotsDB(accid string) ([]*header.Bot, error) {
@@ -787,13 +843,17 @@ func ListAgents(accid string, includeBots bool) ([]*pb.Agent, error) {
 	var agents []*pb.Agent
 	// cache exists
 	if value, found := cache.Get("AG_" + accid); found {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
 		agents = value.([]*pb.Agent)
 	} else {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 		var err error
 		agents, err = listAgentsDB(accid)
 		if err != nil {
@@ -818,14 +878,18 @@ func ListGroups(accid string) ([]*header.AgentGroup, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("GR_" + accid); found {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
 		return value.([]*header.AgentGroup), nil
 	}
 
-	accthrott.Push(accid, nil) // trigger reading from db for future read
+	keyLock.Lock()
+	keys60[accid] = true
+	keyLock.Unlock()
 	return listGroupsDB(accid)
 }
 
@@ -855,16 +919,18 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 
 func ListPresences(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
+
+	keyLock.Lock()
+	keys30[accid] = true
+	keyLock.Unlock()
+
 	// cache exists
 	if value, found := cache.Get("PS_" + accid); found {
-		presencethrott.Push(accid, nil) // trigger reading from db for future read
 		if value == nil {
 			return nil, nil
 		}
 		return value.([]*pb.Presence), nil
 	}
-
-	presencethrott.Push(accid, nil) // trigger reading from db for future read
 	return listPresencesDB(accid)
 }
 
@@ -911,14 +977,18 @@ func ListBots(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("BOT_" + accid); found {
-		botthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys30[accid] = true
+		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
 		return value.([]*header.Bot), nil
 	}
 
-	botthrott.Push(accid, nil) // trigger reading from db for future read
+	keyLock.Lock()
+	keys30[accid] = true
+	keyLock.Unlock()
 	return listBotsDB(accid)
 }
 
@@ -944,17 +1014,18 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 }
 
 func ListPipelines(accid string) ([]*header.Pipeline, error) {
+	keyLock.Lock()
+	keys60[accid] = true
+	keyLock.Unlock()
+
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("PIPELINE_" + accid); found {
-		pipelinethrott.Push(accid, nil) // trigger reading from db for future read
 		if value == nil {
 			return nil, nil
 		}
 		return value.([]*header.Pipeline), nil
 	}
-
-	pipelinethrott.Push(accid, nil) // trigger reading from db for future read
 	return listPipelineDB(accid)
 }
 
@@ -988,14 +1059,18 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	waitUntilReady()
 	if value, found := cache.Get("ATTRDEF_" + accid); found {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
 		return value.(map[string]*header.AttributeDefinition), nil
 	}
 
-	accthrott.Push(accid, nil) // trigger reading from db for future read
+	keyLock.Lock()
+	keys60[accid] = true
+	keyLock.Unlock()
 	return listAttrDefsDB(accid)
 }
 
@@ -1003,7 +1078,9 @@ func GetShopSetting(accid string) (*header.ShopSetting, error) {
 	waitUntilReady()
 	// cache hit
 	if value, found := cache.Get("SHOPSETTING_" + accid); found {
-		accthrott.Push(accid, nil) // trigger reading from db for future read
+		keyLock.Lock()
+		keys60[accid] = true
+		keyLock.Unlock()
 
 		if value == nil {
 			return nil, nil
