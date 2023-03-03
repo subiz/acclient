@@ -697,12 +697,12 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 		dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
 		var instant_mute_until, updated int64
 		err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
-		now := time.Now().UnixMilli()
 		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+			now := time.Now().UnixMilli()
 			// default setting
 			setting := &n5pb.Setting{
 				AccountId: &accid,
-				AgentId:   &agid,
+				AgentId:   conv.S(agid),
 				Web: &n5pb.Subscription{
 					NewMessage:            conv.B(true),
 					UserCreated:           conv.B(true),
@@ -713,7 +713,9 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 				},
 				Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
 			}
+			cache.SetWithExpire("N5Setting_"+accid+"_"+agid, setting, 120*time.Second)
 			settings = append(settings, setting)
+			continue
 		}
 
 		if err != nil {
@@ -730,18 +732,19 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 		email := &n5pb.Subscription{}
 		proto.Unmarshal(em, email)
 
-		settings = append(settings, &n5pb.Setting{
+		setting := &n5pb.Setting{
 			AccountId:        &accid,
-			AgentId:          &agid,
+			AgentId:          conv.S(agid),
 			DoNotDisturb:     dnds,
 			InstantMuteUntil: &instant_mute_until,
 			Updated:          &updated,
 			Web:              webs,
 			Mobile:           mobiles,
 			Email:            email,
-		})
+		}
+		settings = append(settings, setting)
+		cache.SetWithExpire("N5Setting_"+accid+"_"+agid, setting, 120*time.Second)
 	}
-	cache.SetWithExpire("N5Setting_"+accid, settings, 30*time.Second)
 	return settings, nil
 }
 
