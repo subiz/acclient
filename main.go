@@ -2,6 +2,7 @@ package acclient
 
 import (
 	"context"
+	"encoding/json"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -1166,4 +1167,50 @@ func NewID(accid, scope string) int64 {
 	}
 	idint, _ := strconv.ParseInt(id.Id, 10, 0)
 	return idint
+}
+
+func GetAttrAsString(user *header.User, key string) string {
+	var foundAttr *header.Attribute
+	for _, attr := range user.Attributes {
+		if attr.GetKey() == key {
+			foundAttr = attr
+			break
+		}
+	}
+
+	if foundAttr == nil {
+		return ""
+	}
+
+	defM, _ := ListDefs(user.AccountId)
+	if defM == nil {
+		return ""
+	}
+
+	def := defM[key]
+	if def == nil {
+		return ""
+	}
+
+	if def.Type == "text" {
+		return foundAttr.Text
+	}
+
+	if def.Type == "number" {
+		b, _ := json.Marshal(foundAttr.GetNumber())
+		return string(b)
+	}
+
+	if def.Type == "boolean" {
+		if foundAttr.GetBoolean() {
+			return "true"
+		}
+		return "false"
+	}
+
+	if def.Type == "datetime" {
+		return foundAttr.GetDatetime()
+	}
+
+	return ""
 }
