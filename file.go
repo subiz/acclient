@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/subiz/header"
+	"github.com/subiz/log"
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
@@ -41,7 +42,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 
 	if resp.StatusCode >= 400 {
 		// try to cast to error
-		e := &header.Error{}
+		e := &log.AError{}
 		if jserr := json.Unmarshal(out, e); jserr == nil {
 			if e.Code != "" && e.Class != 0 {
 				return nil, e
