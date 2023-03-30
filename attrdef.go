@@ -53,6 +53,14 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsReadonly:  true,
 		},
 		&header.AttributeDefinition{
+			Name:      "Timezone",
+			Label:     "Timezone",
+			I18NLabel: &header.I18NString{Vi_VN: "Múi giờ", En_US: "Timezone"},
+			Key:       "timezone",
+			Type:      "text",
+			IsSystem:  true,
+		},
+		&header.AttributeDefinition{
 			Name:      "Email",
 			Label:     "Email",
 			I18NLabel: &header.I18NString{Vi_VN: "Email", En_US: "Email"},

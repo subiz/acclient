@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
+	"github.com/subiz/goutils/business_hours"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
@@ -1167,6 +1168,73 @@ func NewID(accid, scope string) int64 {
 	}
 	idint, _ := strconv.ParseInt(id.Id, 10, 0)
 	return idint
+}
+
+func GetAttrAsStringWithDateFormat(user *header.User, key, dateformat string) string {
+	accid := user.AccountId
+	if accid == "" {
+		return ""
+	}
+
+	var foundAttr *header.Attribute
+	for _, attr := range user.Attributes {
+		if attr.GetKey() == key {
+			foundAttr = attr
+			break
+		}
+	}
+
+	if foundAttr == nil {
+		return ""
+	}
+
+	defM, _ := ListDefs(accid)
+	if defM == nil {
+		return ""
+	}
+
+	def := defM[key]
+	if def == nil {
+		return ""
+	}
+
+	if def.Type == "text" {
+		return foundAttr.Text
+	}
+
+	if def.Type == "number" {
+		b, _ := json.Marshal(foundAttr.GetNumber())
+		return string(b)
+	}
+
+	if def.Type == "boolean" {
+		if foundAttr.GetBoolean() {
+			return "true"
+		}
+		return "false"
+	}
+
+	if def.Type == "datetime" {
+		// timezone
+		timezone := header.GetTextAttr(user, "timezone")
+		if timezone == "" {
+			// fallback to account timeonze
+			// to get timezone
+			acc, _ := GetAccount(accid)
+			timezone = acc.GetTimezone()
+		}
+
+		t, err := time.Parse(time.RFC3339, foundAttr.GetDatetime())
+		if err == nil {
+			t = time.Now()
+		}
+
+		tzhour, tzmin, _ := business_hours.SplitTzOffset(timezone)
+		tInTz := t.UTC().Add(time.Hour*time.Duration(tzhour) + time.Minute*time.Duration(tzmin))
+		return tInTz.Format(dateformat)
+	}
+
+	return ""
 }
 
 func GetAttrAsString(user *header.User, key string) string {
