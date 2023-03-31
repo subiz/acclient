@@ -8,8 +8,8 @@ require (
 	github.com/subiz/header v1.11.51
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.22
-	github.com/subiz/log v0.0.14
-	github.com/subiz/sgrpc v1.0.18
+	github.com/subiz/log v0.0.17
+	github.com/subiz/sgrpc v1.0.19
 	github.com/thanhpk/go-cache v1.0.1
 	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.30.0
@@ -42,6 +42,6 @@ require (
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
-	google.golang.org/genproto v0.0.0-20230327215041-6ac7f18bb9d5 // indirect
+	google.golang.org/genproto v0.0.0-20230330200707-38013875ee22 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

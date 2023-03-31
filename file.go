@@ -34,7 +34,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 
 	resp, err := http.Post(API+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		return nil, header.E500(err, header.E_subiz_call_failed)
+		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
 	}
 
 	defer resp.Body.Close()
@@ -48,12 +48,12 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 				return nil, e
 			}
 		}
-		return nil, header.E500(err, header.E_subiz_call_failed)
+		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
 	}
 
 	file := &header.File{}
 	if err = json.Unmarshal(out, file); err != nil {
-		return nil, header.E500(err, header.E_invalid_json)
+		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
 
 	return file, nil

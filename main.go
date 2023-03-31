@@ -17,6 +17,7 @@ import (
 	compb "github.com/subiz/header/common"
 	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
+	"github.com/subiz/log"
 	"github.com/subiz/sgrpc"
 	gocache "github.com/thanhpk/go-cache"
 	"google.golang.org/protobuf/proto"
@@ -163,7 +164,8 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	}
 
 	if err != nil {
-		return nil, nil, header.E500(err, header.E_database_error, id)
+		// return nil, nil, header.E500(err, header.E_database_error, id)
+		return nil, nil, log.EServer(err, log.M{"id": id})
 	}
 
 	ms := &pb.WebpageMonitorSetting{}

@@ -3,6 +3,7 @@ package acclient
 import (
 	"github.com/gocql/gocql"
 	"github.com/subiz/header"
+	"github.com/subiz/log"
 )
 
 // Get returns the value matched the provided key
@@ -12,7 +13,8 @@ import (
 // scope is a required paramenter, used as a namespace to prevent collision between
 // multiple services while using this lib concurrently.
 // E.g: kvclient.Set("user", "324234", "onetwothree")
-//      kvclient.Get("user", "324234") => "onetwothree"
+//
+//	kvclient.Get("user", "324234") => "onetwothree"
 func GetKV(scope, key string) (string, bool, error) {
 	waitUntilReady()
 	key = scope + "@" + key
@@ -23,7 +25,8 @@ func GetKV(scope, key string) (string, bool, error) {
 	}
 
 	if err != nil {
-		return "", false, header.E500(err, header.E_database_error, "unable to read key %s", key)
+		// 	return "", false, header.E500(err, header.E_database_error, "unable to read key %s", key)
+		return "", false, log.EServer(err, log.M{"key": key})
 	}
 
 	return val, true, nil
