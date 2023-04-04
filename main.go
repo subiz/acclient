@@ -387,6 +387,8 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 }
 
 func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.Lang, error) {
+	waitUntilReady()
+
 	lang := &header.Lang{}
 	var message, lastmsg, updatedby, public, category string
 	var updated int64

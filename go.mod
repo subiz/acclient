@@ -5,10 +5,10 @@ go 1.20
 require (
 	github.com/gocql/gocql v1.3.2
 	github.com/subiz/goutils v0.1.16
-	github.com/subiz/header v1.11.51
+	github.com/subiz/header v1.11.53
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.22
-	github.com/subiz/log v0.0.17
+	github.com/subiz/log v0.0.19
 	github.com/subiz/sgrpc v1.0.19
 	github.com/thanhpk/go-cache v1.0.1
 	google.golang.org/grpc v1.54.0
@@ -37,11 +37,11 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	github.com/thanhpk/randstr v1.0.4 // indirect
+	github.com/thanhpk/randstr v1.0.5 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
-	google.golang.org/genproto v0.0.0-20230330200707-38013875ee22 // indirect
+	google.golang.org/genproto v0.0.0-20230403163135-c38d8f061ccd // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
