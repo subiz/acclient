@@ -17,6 +17,7 @@ import (
 	compb "github.com/subiz/header/common"
 	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
+	"github.com/subiz/kafka"
 	"github.com/subiz/log"
 	"github.com/subiz/sgrpc"
 	gocache "github.com/thanhpk/go-cache"
@@ -1285,4 +1286,15 @@ func GetAttrAsString(user *header.User, key string) string {
 	}
 
 	return ""
+}
+
+func RecordCredit(accid, service, category string, quantity int64, data *header.CreditSendEntryData) {
+	kafka.Publish("credit-spend", &header.CreditSpendEntry{
+		AccountId: accid,
+		Service:   service,
+		Category:  category,
+		Created:   time.Now().UnixMilli(),
+		Quantity:  quantity,
+		Data:      data,
+	})
 }
