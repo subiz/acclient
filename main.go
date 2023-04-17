@@ -1166,13 +1166,17 @@ func randomID(sign string, randomfactor int) string {
 // }
 
 func NewID(accid, scope string) int64 {
-	id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
-	if err != nil {
-		time.Sleep(1 * time.Second)
-		return NewID(accid, scope)
+	waitUntilReady()
+	for attempt := 0; attempt < 100; attempt++ {
+		id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		idint, _ := strconv.ParseInt(id.Id, 10, 0)
+		return idint
 	}
-	idint, _ := strconv.ParseInt(id.Id, 10, 0)
-	return idint
+	return -1
 }
 
 func GetAttrAsStringWithDateFormat(user *header.User, key, dateformat string) string {
