@@ -273,8 +273,8 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type:      "text",
 			Select:    "dropdown",
 			Items: []*header.AttributeDefinitionListItem{
-				{Value: "lead", I18NLabel: &header.I18NString{En_US: "Lead", Vi_VN: "Tiềm năng"}, Label: "Tiềm năng"},
 				{Value: "subscriber", I18NLabel: &header.I18NString{En_US: "Subscriber", Vi_VN: "Đã theo dõi"}, Label: "Đã theo dõi"},
+				{Value: "lead", I18NLabel: &header.I18NString{En_US: "Lead", Vi_VN: "Tiềm năng"}, Label: "Tiềm năng"},
 				{Value: "trial", I18NLabel: &header.I18NString{En_US: "Trial", Vi_VN: "Dùng thử"}, Label: "Dùng thử"},
 				{Value: "qualified lead", I18NLabel: &header.I18NString{En_US: "Sale Qualified", Vi_VN: "Chất lượng"}, Label: "Chất lượng"},
 				{Value: "opportunity", I18NLabel: &header.I18NString{En_US: "Opportunity", Vi_VN: "Cơ hội"}, Label: "Cơ hội"},
