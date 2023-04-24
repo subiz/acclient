@@ -20,6 +20,46 @@ func UploadFileUrl(accid, url string) (*header.File, error) {
 	return UploadTypedFileUrl(accid, url, "", "")
 }
 
+func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, error) {
+	url = strings.TrimSpace(url)
+	if url == "" {
+		return &header.File{}, nil
+	}
+	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
+		AccountId:  accid,
+		Url:        url,
+		TypePrefix: "image/",
+		MaxWidth:   maxWidth,
+		MaxHeight:  maxHeight,
+	})
+
+	resp, err := http.Post(API+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
+	}
+
+	defer resp.Body.Close()
+	out, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		// try to cast to error
+		e := &log.AError{}
+		if jserr := json.Unmarshal(out, e); jserr == nil {
+			if e.Code != "" && e.Class != 0 {
+				return nil, e
+			}
+		}
+		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
+	}
+
+	file := &header.File{}
+	if err = json.Unmarshal(out, file); err != nil {
+		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
+	}
+
+	return file, nil
+}
+
 func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {
