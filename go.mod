@@ -3,9 +3,9 @@ module github.com/subiz/acclient/v2
 go 1.20
 
 require (
-	github.com/gocql/gocql v1.3.2
+	github.com/gocql/gocql v1.4.0
 	github.com/subiz/goutils v0.1.16
-	github.com/subiz/header v1.11.79
+	github.com/subiz/header v1.11.87
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.22
 	github.com/subiz/log v0.0.21
