@@ -99,17 +99,19 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, error) {
+func UploadFile(accid, name, category, mimetype string, data []byte, cd string, ttl int64) (string, error) {
 	if len(data) > MAX_SIZE {
 		return "", header.E400(nil, header.E_invalid_payload_size, len(data))
 	}
 
-	presignres, err := presign(accid, &header.FileHeader{
+	presignres, err := presign(accid, &header.File{
 		Name:               name,
 		Size:               int64(len(data)),
 		Type:               mimetype,
 		AccountId:          accid,
 		ContentDisposition: cd,
+		Ttl:                ttl,
+		Category:           category,
 	})
 	if err != nil {
 		return "", err
@@ -125,36 +127,6 @@ func UploadFile(accid, name, mimetype string, data []byte, cd string) (string, e
 	}
 
 	return "https://vcdn.subiz-cdn.com/file/" + f.Url, nil
-}
-
-func UploadLiveFile(accid, name, mimetype string, data []byte, cd string, ttl int64) (*header.File, error) {
-	if len(data) > MAX_SIZE {
-		return nil, header.E400(nil, header.E_invalid_payload_size, len(data))
-	}
-
-	presignres, err := presign(accid, &header.FileHeader{
-		Name:               name,
-		Size:               int64(len(data)),
-		Type:               mimetype,
-		AccountId:          accid,
-		ContentDisposition: cd,
-		Ttl:                ttl,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := uploadFile(presignres.SignedUrl, data, mimetype, cd); err != nil {
-		return nil, err
-	}
-
-	f, err := finishUploadFile(accid, presignres.Id)
-	if err != nil {
-		return nil, err
-	}
-	f.Url = "https://vcdn.subiz-cdn.com/file/" + f.Url
-
-	return f, nil
 }
 
 func uploadFile(url string, data []byte, mimetype, cd string) error {
@@ -200,7 +172,7 @@ func finishUploadFile(accid, fileid string) (*header.File, error) {
 	return f, nil
 }
 
-func presign(accid string, f *header.FileHeader) (*header.PresignResult, error) {
+func presign(accid string, f *header.File) (*header.PresignResult, error) {
 	fullurl := fmt.Sprintf(API+"/4.0/accounts/%s/files", accid)
 
 	body, _ := json.Marshal(f)
