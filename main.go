@@ -764,6 +764,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	for iter.Scan(&botb) {
 		bot := &header.Bot{}
 		proto.Unmarshal(botb, bot)
+		bot.Action = nil
 		if bot.GetState() != pb.Agent_deleted.String() {
 			list = append(list, bot)
 		}
