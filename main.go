@@ -105,7 +105,6 @@ func _init() {
 
 			for _, accid := range accids {
 				getNotificationSettingDB(accid)
-				listBotsDB(accid)
 				listPresencesDB(accid)
 			}
 			time.Sleep(10 * time.Second)
@@ -695,7 +694,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 
 func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 	waitUntilReady()
-	agents, err := ListAgents(accid, false)
+	agents, err := ListAgents(accid)
 	if err != nil {
 		return nil, err
 	}
@@ -769,12 +768,11 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 			list = append(list, bot)
 		}
 	}
-	err := iter.Close()
-	if err != nil {
+	if err := iter.Close(); err != nil {
 		return nil, header.E500(err, header.E_database_error, "read all bots", accid)
 	}
 
-	cache.SetWithExpire("BOT_"+accid, list, 10*time.Second)
+	cache.SetWithExpire("BOT_"+accid, list, 60*time.Second)
 	return list, nil
 }
 
@@ -788,7 +786,7 @@ func LookupAgent(agid string) (*pb.Agent, error) {
 }
 
 func GetAgent(accid, agid string) (*pb.Agent, error) {
-	agents, err := ListAgents(accid, false)
+	agents, err := ListAgents(accid)
 	if err != nil {
 		return nil, err
 	}
@@ -799,13 +797,13 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 		}
 	}
 
-	bots, err := ListBots(accid)
-	if err != nil {
-		return nil, err
-	}
+	if strings.HasPrefix(agid, "bb") {
+		bot, err := GetBot(accid, agid)
+		if err != nil {
+			return nil, err
+		}
 
-	for _, bot := range bots {
-		if bot.GetId() == agid {
+		if bot != nil {
 			return Bot2Agent(bot), nil
 		}
 	}
@@ -849,7 +847,7 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 	return nil, nil
 }
 
-func ListAgents(accid string, includeBots bool) ([]*pb.Agent, error) {
+func ListAgents(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 
 	var agents []*pb.Agent
@@ -870,17 +868,6 @@ func ListAgents(accid string, includeBots bool) ([]*pb.Agent, error) {
 		agents, err = listAgentsDB(accid)
 		if err != nil {
 			return nil, err
-		}
-	}
-
-	if includeBots {
-		bots, err := ListBots(accid)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, bot := range bots {
-			agents = append(agents, Bot2Agent(bot))
 		}
 	}
 	return agents, nil
@@ -989,18 +976,11 @@ func ListBots(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("BOT_" + accid); found {
-		keyLock.Lock()
-		keys30[accid] = true
-		keyLock.Unlock()
 		if value == nil {
 			return nil, nil
 		}
 		return value.([]*header.Bot), nil
 	}
-
-	keyLock.Lock()
-	keys30[accid] = true
-	keyLock.Unlock()
 	return listBotsDB(accid)
 }
 
