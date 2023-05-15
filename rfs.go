@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/subiz/header"
+	"github.com/subiz/log"
 )
 
 var RFSHOST = "http://db-0:2306/"
@@ -33,11 +33,11 @@ func RemoveFile(path string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return header.E500(err, header.E_http_call_error, url)
+		return log.EServer(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
+		return log.EServer(err, log.M{"url": url, "status_code": resp.StatusCode})
 	}
 	return nil
 }
@@ -51,12 +51,12 @@ func WriteFile(path string, stream io.Reader) error {
 	// resp, err := http.Post(url, "application/octet-stream", bytes.NewBuffer(data))
 	resp, err := http.Post(url, "application/octet-stream", stream)
 	if err != nil {
-		return header.E500(err, header.E_http_call_error, url)
+		return log.EServer(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
+		return log.EServer(err, log.M{"url": url, "status_code": resp.StatusCode})
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func ReadFile(path string) (io.ReadCloser, error) {
 	url := convertPathToRFSUrl(path)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, header.E500(err, header.E_http_call_error, url)
+		return nil, log.EServer(err, log.M{"url": url})
 	}
 	if resp.StatusCode == 404 {
 		resp.Body.Close()
@@ -91,19 +91,19 @@ func ReadFileBytes(path string) ([]byte, error) {
 func WriteFilePipe(path string, predicate func(*os.File) error) error {
 	tmpFile, err := os.CreateTemp("/tmp", "rfs")
 	if err != nil {
-		return header.E500(err, header.E_file_system_error)
+		return log.EFS(err, "/tmp/rfs", log.M{"path": path})
 	}
 	defer os.Remove(tmpFile.Name())
 
 	if err := predicate(tmpFile); err != nil {
 		tmpFile.Close()
-		return err
+		return log.EFS(err, tmpFile.Name(), log.M{"path": path})
 	}
 	tmpFile.Close()
 
 	tmpFile, err = os.OpenFile(tmpFile.Name(), os.O_RDONLY, 0600)
 	if err != nil {
-		return header.E500(err, header.E_file_system_error)
+		return log.EFS(err, tmpFile.Name(), log.M{"path": path})
 	}
 	defer tmpFile.Close()
 
@@ -111,11 +111,11 @@ func WriteFilePipe(path string, predicate func(*os.File) error) error {
 	// resp, err := http.Post(url, "application/octet-stream", bytes.NewBuffer(data))
 	resp, err := http.Post(url, "application/octet-stream", tmpFile)
 	if err != nil {
-		return header.E500(err, header.E_http_call_error, url)
+		return log.EServer(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return header.E500(nil, header.E_http_call_error, url, resp.StatusCode)
+		return log.EServer(err, log.M{"url": url, "status_code": resp.StatusCode})
 	}
 	return nil
 }
