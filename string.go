@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/subiz/header"
+	"github.com/subiz/log"
 )
 
 func Shorten(accid, scope string, val []byte) (string, error) {
@@ -21,7 +21,7 @@ func Shorten(accid, scope string, val []byte) (string, error) {
 
 	err := session.Query("INSERT INTO account.hash_string(accid,scope,hash,value,updated) VALUES(?,?,?,?,?)", accid, scope, hash, val, time.Now().UnixNano()/1e6).Exec()
 	if err != nil {
-		return hash, header.E500(err, header.E_database_error, accid)
+		return hash, log.EServer(err, log.M{"account_id": accid})
 	}
 	hash_cache.Set(accid+"|"+scope+"|"+hash, val)
 	return hash, nil
@@ -46,7 +46,7 @@ func Lookup(accid, scope string, hash string) ([]byte, error) {
 	}
 
 	if err != nil {
-		return nil, header.E500(err, header.E_database_error, accid)
+		return nil, log.EServer(err, log.M{"account_id": accid, "scope": scope, "hash": hash})
 	}
 
 	hash_cache.Set(accid+"|"+scope+"|"+hash, val)

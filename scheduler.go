@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/subiz/header"
 	"github.com/subiz/idgen"
 	"github.com/subiz/log"
 )
@@ -34,7 +33,7 @@ func BookTask(ks, accid string, sec int64, data []byte) error {
 		cb := _cbm[ks+accid]
 		if cb == nil {
 			tlock.Unlock()
-			return header.E500(nil, header.E_database_error, "cb not registered")
+			return log.EServer(nil, log.M{"ks": ks, "account_id": accid}) // cb not registered
 		}
 		tlock.Unlock()
 		go safeCall(cb, data)
@@ -60,7 +59,7 @@ func BookTask(ks, accid string, sec int64, data []byte) error {
 	err := session.Query("INSERT INTO account.task(ks,accid,hour,sec,id,data) VALUES(?,?,?,?,?,?)",
 		ks, accid, hour, sec, id, data).Exec()
 	if err != nil {
-		return header.E500(err, header.E_database_error)
+		return log.EServer(err, log.M{"ks": ks, "accid": accid})
 	}
 	return nil
 }
@@ -147,7 +146,7 @@ func WaitTask(ks, accid string, f func(data []byte)) {
 				for {
 					err := session.Query(`DELETE FROM account.task WHERE ks=? AND accid=? AND hour=? AND id=?`, ks, accid, t.sec/3600, t.id).Exec()
 					if err != nil {
-						log.Err(accid, err, header.E_database_error, ks, t.sec, t.id)
+						fmt.Println(log.EServer(err, log.M{"ks": ks, "hour": hour, "id": t.id, "accid": accid}))
 						time.Sleep(2 * time.Second)
 						continue
 					}
@@ -180,7 +179,7 @@ func listTasks(ks, accid string, hour int64) ([]task, error) {
 		tasks = append(tasks, task{id: id, data: d, sec: sec})
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"ks": ks, "accid": accid, "hour": hour})
 	}
 	return tasks, nil
 }

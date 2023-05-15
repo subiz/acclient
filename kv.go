@@ -2,7 +2,6 @@ package acclient
 
 import (
 	"github.com/gocql/gocql"
-	"github.com/subiz/header"
 	"github.com/subiz/log"
 )
 
@@ -25,8 +24,7 @@ func GetKV(scope, key string) (string, bool, error) {
 	}
 
 	if err != nil {
-		// 	return "", false, header.E500(err, header.E_database_error, "unable to read key %s", key)
-		return "", false, log.EServer(err, log.M{"key": key})
+		return "", false, log.EServer(err, log.M{"scope": scope, "key": key})
 	}
 
 	return val, true, nil
@@ -43,7 +41,7 @@ func SetKV(scope, key, value string) error {
 	// ttl 60 days
 	err := session.Query(`INSERT INTO kv.kv(k,v) VALUES(?,?) USING TTL 5184000`, key, value).Exec()
 	if err != nil {
-		return header.E500(err, header.E_database_error, "unable to read key %s", key)
+		return log.EServer(err, log.M{"scope": scope, "key": key, "value": value})
 	}
 
 	return nil
@@ -58,7 +56,7 @@ func DelKV(scope, key string) error {
 	key = scope + "@" + key
 	err := session.Query(`DELETE FROM kv.kv WHERE k=?`, key).Exec()
 	if err != nil {
-		return header.E500(err, header.E_database_error, "unable to read key %s", key)
+		return log.EServer(err, log.M{"scope": scope, "key": key})
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package acclient
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -165,7 +166,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	}
 
 	if err != nil {
-		// return nil, nil, header.E500(err, header.E_database_error, id)
 		return nil, nil, log.EServer(err, log.M{"id": id})
 	}
 
@@ -232,7 +232,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return acc, nil, nil
 	}
 	if err != nil {
-		return nil, nil, header.E500(err, header.E_database_error, id)
+		return nil, nil, log.EServer(err, log.M{"account_id": id})
 	}
 
 	limit := &pm.Limit{}
@@ -276,7 +276,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	setting := &header.ShopSetting{}
 
 	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		return nil, header.E500(err, header.E_database_error, id)
+		return nil, log.EServer(err, log.M{"id": id})
 	}
 	if len(data) > 0 {
 		proto.Unmarshal(data, setting)
@@ -292,7 +292,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		shopAddresses = append(shopAddresses, &shopAddress)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"id": id})
 	}
 
 	taxes := []*header.Tax{}
@@ -305,7 +305,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		taxes = append(taxes, &tax)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"id": id})
 	}
 
 	paymentmethods := []*header.PaymentMethod{}
@@ -318,7 +318,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		paymentmethods = append(paymentmethods, &pm)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"id": id})
 	}
 
 	shops := make([]*header.ShopeeShop, 0)
@@ -326,14 +326,13 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	b := make([]byte, 0)
 	for iter.Scan(&b) {
 		shop := &header.ShopeeShop{}
-		err := proto.Unmarshal(b, shop)
-		if err != nil {
-			return nil, header.E500(err, header.E_invalid_proto, id)
+		if err := proto.Unmarshal(b, shop); err != nil {
+			return nil, log.EData(err, b, log.M{"account_id": id})
 		}
 		shops = append(shops, shop)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error, id)
+		return nil, log.EServer(err, log.M{"id": id})
 	}
 
 	iter = session.Query(`SELECT id, data FROM account.integrated_shipping WHERE account_id=? LIMIT ?`, id, 1000).Iter()
@@ -348,7 +347,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		ishippings = append(ishippings, ishipping)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error, "list-integrated-shippings", id)
+		return nil, log.EServer(err, log.M{"account_id": id})
 	}
 
 	sps := []*header.ShippingPolicy{}
@@ -360,7 +359,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		sps = append(sps, &sp)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"account_id": id})
 	}
 
 	ccs := []*header.CancellationCode{}
@@ -371,7 +370,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		ccs = append(ccs, &cc)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"account_id": id})
 	}
 
 	setting.CancellationCodes = ccs
@@ -419,7 +418,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 
 	old.Messages = append(old.Messages, lang.Messages...)
@@ -653,7 +652,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	}
 
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error, accid)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 
 	list := make([]*pb.Agent, 0)
@@ -675,12 +674,12 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	for iter.Scan(&data) {
 		def := &header.AttributeDefinition{}
 		if err := proto.Unmarshal(data, def); err != nil {
-			return nil, header.E500(err, header.E_database_error, accid)
+			return nil, log.EServer(err, log.M{"account_id": accid})
 		}
 		defs[def.Key] = def
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 
 	defaults := ListDefaultDefs()
@@ -726,7 +725,7 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 		}
 
 		if err != nil {
-			return nil, header.E500(err, header.E_database_error, "read noti setting", accid, agid)
+			return nil, log.EServer(err, log.M{"account_id": accid, "agent_id": agid})
 		}
 
 		dnds := &n5pb.DoNotDisturb{}
@@ -769,7 +768,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error, "read all bots", accid)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 
 	cache.SetWithExpire("BOT_"+accid, list, 60*time.Second)
@@ -780,7 +779,7 @@ func LookupAgent(agid string) (*pb.Agent, error) {
 	var accid string
 	err := session.Query("SELECT account_id FROM account.agent_account WHERE id=?", agid).Scan(&accid)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return nil, header.E400(nil, header.E_agent_not_found, agid)
+		return nil, log.EMissing(agid, "agent")
 	}
 	return GetAgent(accid, agid)
 }
@@ -901,7 +900,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	for iter.Scan(&id, &data) {
 		group := &header.AgentGroup{}
 		if err := proto.Unmarshal(data, group); err != nil {
-			return nil, header.E500(err, header.E_invalid_proto, id)
+			return nil, log.EData(err, data, log.M{"account_id": accid, "group_id": id})
 		}
 		group.AccountId = accid
 		group.Id = id
@@ -910,7 +909,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 		arr = append(arr, group)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error, accid)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 	cache.SetWithExpire("GR_"+accid, arr, 30*time.Second)
 	return arr, nil
@@ -951,7 +950,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 		})
 	}
 	if err := iter.Close(); err != nil {
-		return nil, header.E500(err, header.E_database_error)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 
 	cache.SetWithExpire("PS_"+accid, presences, 10*time.Second)
@@ -999,7 +998,7 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 	}
 	err := iter.Close()
 	if err != nil {
-		return nil, header.E500(err, header.E_database_error, accid)
+		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 	cache.SetWithExpire("PIPELINE_"+accid, pipelines, 30*time.Second)
 	return pipelines, nil
@@ -1026,7 +1025,7 @@ func SignKey(accid, issuer, typ, keytype string, objects []string) (string, erro
 	key := randomID("SK", 28)
 	err := session.Query(`INSERT INTO account.signed_key(account_id, issuer, type, objects, key_type, key, created) VALUES(?,?,?,?,?,?,?)`, accid, issuer, typ, objects, keytype, key, time.Now().UnixNano()/1e6).Exec()
 	if err != nil {
-		return "", header.E500(err, header.E_database_error, accid, issuer, typ)
+		return "", log.EServer(err, log.M{"account_id": accid, "issuer": issuer, "type": typ, "keytype": keytype})
 	}
 
 	return key, nil
@@ -1038,7 +1037,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 	objects := make([]string, 0)
 	err := session.Query(`SELECT account_id, issuer, type, key_type, objects FROM account.signed_key WHERE key=?`, key).Scan(&accid, &issuer, &typ, &keytype, &objects)
 	if err != nil {
-		return "", "", "", "", nil, header.E500(err, header.E_database_error, accid, issuer, typ)
+		return "", "", "", "", nil, log.EServer(err, log.M{"key": key})
 	}
 
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
@@ -1096,7 +1095,13 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 
 	defcur := strings.TrimSpace(acc.GetCurrency())
 	if defcur == "" && order_cur != "" {
-		return 0, 0, header.E400(nil, header.E_invalid_base_currency, "empty")
+		return 0, 0, log.Error(nil, log.M{
+			"_message": map[string]string{
+				"En_US": "Invalid base currency. You must specify base currency setting for your account",
+				"Vi_VN": "Tiền tệ cơ sở không hợp lệ. Bạn cần thiết lập tiền tệ cơ sở cho tài khoản trước",
+			},
+			"account_id": accid,
+		}, log.E_internal)
 	}
 
 	if order_cur == "" {
@@ -1115,11 +1120,25 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 		}
 
 		if cur.GetRate() <= 0 {
-			return 0, 0, header.E400(nil, header.E_invalid_currency, "invalid rate", cur.GetRate())
+			return 0, 0, log.Error(nil, log.M{
+				"_message": map[string]string{
+					"En_US": fmt.Sprintf("Wrong currency rate (%f). Please contact Support for support", cur.GetRate()),
+					"Vi_VN": fmt.Sprintf("Tỉ giá tiền không hợp lệ (%f). Vui lòng liên hệ Subiz để được hỗ trợ", cur.GetRate()),
+				},
+				"account_id": accid,
+				"rate":       cur.GetRate(),
+			}, log.E_internal)
 		}
 		return int64(price * cur.GetRate() * 1000000), cur.GetRate(), nil
 	}
-	return 0, 0, header.E400(nil, header.E_invalid_currency, "not supported currency")
+	return 0, 0, log.Error(nil, log.M{
+		"_message": map[string]string{
+			"En_US": fmt.Sprintf("Unsupported currency (%s)", order_cur),
+			"Vi_VN": fmt.Sprintf("Tiền tệ (%s) không được hỗ trợ", order_cur),
+		},
+		"account_id": accid,
+		"currency":   order_cur,
+	}, log.E_internal)
 }
 
 // letterRunes (read-only) contains all runes which can be used in an ID
