@@ -21,7 +21,6 @@ import (
 	"github.com/subiz/idgen"
 	"github.com/subiz/kafka"
 	"github.com/subiz/log"
-	"github.com/subiz/sgrpc"
 	gocache "github.com/thanhpk/go-cache"
 	"google.golang.org/protobuf/proto"
 )
@@ -63,10 +62,7 @@ func _init() {
 		panic(err)
 	}
 
-	conn, err := dialGrpc("account-0.account:10283", sgrpc.WithShardRedirect())
-	if err != nil {
-		panic(err)
-	}
+	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
 
 	go func() {

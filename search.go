@@ -2,15 +2,12 @@ package acclient
 
 import (
 	"context"
-	"fmt"
 	"hash/crc32"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/subiz/header"
 	"github.com/subiz/kafka"
-	"github.com/subiz/sgrpc"
 )
 
 func Search(col, accid, query, owner string, limit int64, anchor string, filter_parts ...string) ([]*header.DocHit, string, error) {
@@ -148,17 +145,8 @@ func getSearchClient() header.SearchClient {
 		return searchc
 	}
 
-	for {
-		conn, err := dialGrpc("search-0.search:12844", sgrpc.WithShardRedirect())
-		if err != nil {
-			fmt.Println("CANNOT CONNECT TO SEARCH SERVICE AT search-0.search:12844")
-			fmt.Println("RETRY IN 5s")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		searchc = header.NewSearchClient(conn)
-		break
-	}
+	conn := header.DialGrpc("search-0.search:12844", header.WithShardRedirect())
+	searchc = header.NewSearchClient(conn)
 
 	searchLock.Unlock()
 	return searchc

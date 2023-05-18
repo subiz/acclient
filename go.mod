@@ -5,13 +5,11 @@ go 1.20
 require (
 	github.com/gocql/gocql v1.4.0
 	github.com/subiz/goutils v0.1.16
-	github.com/subiz/header v1.11.98
+	github.com/subiz/header v1.12.11
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.23
-	github.com/subiz/log v0.0.24
-	github.com/subiz/sgrpc v1.0.19
+	github.com/subiz/log v0.0.28
 	github.com/thanhpk/go-cache v1.0.1
-	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 )
 
@@ -43,5 +41,6 @@ require (
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/grpc v1.55.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

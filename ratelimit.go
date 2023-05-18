@@ -7,9 +7,6 @@ import (
 
 	"github.com/subiz/header"
 	"github.com/subiz/log"
-	"github.com/subiz/sgrpc"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var ratelimitc_lock = &sync.Mutex{}
@@ -234,15 +231,6 @@ func LimitRate(configkey, key string) error {
 	return nil
 }
 
-func dialGrpc(service string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts = append([]grpc.DialOption{}, opts...)
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	// Enabling WithBlock tells the client to not give up trying to find a server
-	// opts = append(opts, sgrpc.WithCache())
-
-	return grpc.Dial(service, opts...)
-}
-
 // not thread-safe
 func getRateLimitClient() (header.RateLimitClient, error) {
 	if ratelimitc != nil {
@@ -254,10 +242,7 @@ func getRateLimitClient() (header.RateLimitClient, error) {
 	}
 	if ratelimitc == nil {
 		// address: [pod name] + "." + [service name] + ":" + [pod port]
-		conn, err := dialGrpc("ratelimit-0.ratelimit:12842", sgrpc.WithShardRedirect())
-		if err != nil {
-			return nil, err
-		}
+		conn := header.DialGrpc("ratelimit-0.ratelimit:12842", header.WithShardRedirect())
 		ratelimitc = header.NewRateLimitClient(conn)
 	}
 	return ratelimitc, nil
