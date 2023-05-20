@@ -340,5 +340,13 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type:      "text",
 			IsSystem:  true,
 		},
+		&header.AttributeDefinition{
+			Name:      "Unsubscribed marketing",
+			Label:     "Unsubscribed marketing",
+			I18NLabel: &header.I18NString{Vi_VN: "Không nhận tin marketing", En_US: "Unsubscribed"},
+			Key:       "is_unsubscribed",
+			Type:      "boolean",
+			IsSystem:  true,
+		},
 	}
 }
