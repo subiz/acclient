@@ -16,6 +16,8 @@ const MAX_SIZE = 25 * 1024 * 1024 // 25MB
 // const API = "https://api.subiz.com.vn"
 const API = "http://api"
 
+var httpCache = NewHttpCache()
+
 func UploadFileUrl(accid, url string) (*header.File, error) {
 	return UploadTypedFileUrl(accid, url, "", "")
 }
@@ -25,6 +27,15 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 	if url == "" {
 		return &header.File{}, nil
 	}
+
+	cached, _, _, has := httpCache.Get(fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url))
+	if has {
+		file := &header.File{}
+		if err := json.Unmarshal(cached, file); err == nil {
+			return file, nil
+		}
+	}
+
 	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
 		AccountId:  accid,
 		Url:        url,
@@ -57,6 +68,7 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
 
+	httpCache.Store(fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url), out, "", "", 300)
 	return file, nil
 }
 
@@ -65,6 +77,15 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	if url == "" {
 		return &header.File{}, nil
 	}
+
+	cached, _, _, has := httpCache.Get(accid + "." + filetype + "." + url)
+	if has {
+		file := &header.File{}
+		if err := json.Unmarshal(cached, file); err == nil {
+			return file, nil
+		}
+	}
+
 	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
 		AccountId: accid,
 		Url:       url,
@@ -95,7 +116,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	if err = json.Unmarshal(out, file); err != nil {
 		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
-
+	httpCache.Store(accid+"."+filetype+"."+url, out, "", "", 300)
 	return file, nil
 }
 
