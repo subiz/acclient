@@ -68,7 +68,7 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
 
-	httpCache.Store(fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url), out, "", "", 300)
+	httpCache.Store(fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url), out, "", "", 21600) // 6 hour
 	return file, nil
 }
 
@@ -116,7 +116,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	if err = json.Unmarshal(out, file); err != nil {
 		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
-	httpCache.Store(accid+"."+filetype+"."+url, out, "", "", 300)
+	httpCache.Store(accid+"."+filetype+"."+url, out, "", "", 21600) // 6 hour
 	return file, nil
 }
 
