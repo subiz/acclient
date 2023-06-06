@@ -5,8 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/subiz/idgen"
+	"github.com/subiz/header"
+	"github.com/subiz/kafka"
 	"github.com/subiz/log"
+	"google.golang.org/protobuf/proto"
 )
 
 type task struct {
@@ -19,50 +21,6 @@ type task struct {
 var tlock = &sync.Mutex{} // guard taskCache
 var _cbm = map[string]func(data []byte){}
 var taskCache = make(map[string]map[int64]map[string]task)
-
-// BookTask registers a new task that will be execute in the future
-// if the task is too old, it will be executed rightaway without
-// storing in the database
-// this function must be call after WaitTask since we are aiming for
-// not losing a single task
-func BookTask(ks, accid string, sec int64, data []byte) error {
-	nowsec := time.Now().Unix()
-	// execute the job rightaway if sec is near now to expired
-	if sec < nowsec+5 {
-		tlock.Lock()
-		cb := _cbm[ks+accid]
-		if cb == nil {
-			tlock.Unlock()
-			return log.EServer(nil, log.M{"ks": ks, "account_id": accid}) // cb not registered
-		}
-		tlock.Unlock()
-		go safeCall(cb, data)
-		return nil
-	}
-
-	id := idgen.NewScheduleItemID()
-	hour := sec / 3600
-	// write to cache if the task going to be execute within 2 hours
-	if hour < nowsec/3600+2 {
-		tlock.Lock()
-		if taskCache[ks+accid] == nil {
-			taskCache[ks+accid] = make(map[int64]map[string]task)
-		}
-		if taskCache[ks+accid][hour] == nil {
-			taskCache[ks+accid][hour] = make(map[string]task)
-		}
-		taskCache[ks+accid][hour][id] = task{data: data, id: id, sec: sec}
-		tlock.Unlock()
-	}
-
-	waitUntilReady()
-	err := session.Query("INSERT INTO account.task(ks,accid,hour,sec,id,data) VALUES(?,?,?,?,?,?)",
-		ks, accid, hour, sec, id, data).Exec()
-	if err != nil {
-		return log.EServer(err, log.M{"ks": ks, "accid": accid})
-	}
-	return nil
-}
 
 func loadTaskInHour(ks, accid string, hour int64) {
 	var tasks []task
@@ -191,4 +149,28 @@ func safeCall(cb func([]byte), data []byte) {
 		}
 	}()
 	cb(data)
+}
+
+func BookTask(topic, key, accid string, sec int64, data []byte) {
+	kafka.Publish("scheduler", &header.SchedulerTask{
+		AccountId: accid,
+		Sec:       sec,
+		Payload:   data,
+		Topic:     topic,
+		Partition: -1,
+		Key:       key,
+	})
+}
+
+func OnSchedule(csm, topic string, predicate func(accid string, data []byte)) error {
+	return kafka.Listen(csm, topic, func(topic string, partition int32, offset int64, data []byte) {
+		task := &header.SchedulerTask{}
+		proto.Unmarshal(data, task)
+		if task.GetAccountId() == "" {
+			kafka.MarkOffset(csm, topic, partition, offset+1)
+			return
+		}
+		predicate(task.GetAccountId(), task.GetPayload())
+		kafka.MarkOffset(csm, topic, partition, offset+1)
+	})
 }
