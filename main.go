@@ -44,8 +44,9 @@ var (
 
 	ready bool
 
-	session *gocql.Session
-	accmgr  header.AccountMgrClient
+	session   *gocql.Session
+	accmgr    header.AccountMgrClient
+	creditmgr header.CreditMgrClient
 
 	cache      = gocache.New(2 * time.Minute)
 	hash_cache *gocache.Cache
@@ -64,6 +65,7 @@ func _init() {
 
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
+	creditmgr = header.NewCreditMgrClient(conn)
 
 	go func() {
 		for {
@@ -1289,14 +1291,73 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func RecordCredit(accid, service, category string, quantity int64, data *header.CreditSendEntryData) {
-	kafka.Publish("credit-spend", &header.CreditSpendEntry{
-		AccountId: accid,
-		Id:        idgen.NewPaymentLogID(),
-		Service:   service,
-		Category:  category,
-		Created:   time.Now().UnixMilli(),
-		Quantity:  quantity,
-		Data:      data,
+func CheckRecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float32) (bool, error) {
+	res, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
+		AccountId:    accid,
+		CreditId:     creditId,
+		Id:           idgen.NewPaymentLogID(),
+		Service:      service,
+		ServiceId:    serviceId,
+		Item:         itemType,
+		ItemId:       itemId,
+		Created:      time.Now().UnixMilli(),
+		Quantity:     quantity,
+		FpvUnitPrice: int64(price * 1_000_000),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return res.GetAllow(), nil
+}
+
+func TryRecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) (bool, error) {
+	res, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
+		AccountId:    accid,
+		CreditId:     creditId,
+		Id:           idgen.NewPaymentLogID(),
+		Service:      service,
+		ServiceId:    serviceId,
+		Item:         itemType,
+		ItemId:       itemId,
+		Created:      time.Now().UnixMilli(),
+		Quantity:     quantity,
+		FpvUnitPrice: int64(price * 1_000_000),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	if res.GetAllow() {
+		kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
+			AccountId:    accid,
+			CreditId:     creditId,
+			Id:           idgen.NewPaymentLogID(),
+			Service:      service,
+			ServiceId:    serviceId,
+			Item:         itemType,
+			ItemId:       itemId,
+			Created:      time.Now().UnixMilli(),
+			Quantity:     quantity,
+			FpvUnitPrice: int64(price * 1_000_000),
+			Data:         data,
+		})
+	}
+	return res.GetAllow(), nil
+}
+
+func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) {
+	kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
+		AccountId:    accid,
+		CreditId:     creditId,
+		Id:           idgen.NewPaymentLogID(),
+		Service:      service,
+		ServiceId:    serviceId,
+		Item:         itemType,
+		ItemId:       itemId,
+		Created:      time.Now().UnixMilli(),
+		Quantity:     quantity,
+		FpvUnitPrice: int64(price * 1_000_000),
+		Data:         data,
 	})
 }

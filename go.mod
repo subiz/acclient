@@ -3,12 +3,12 @@ module github.com/subiz/acclient/v2
 go 1.20
 
 require (
-	github.com/gocql/gocql v1.4.0
+	github.com/gocql/gocql v1.5.2
 	github.com/subiz/goutils v0.1.17
-	github.com/subiz/header v1.12.37
+	github.com/subiz/header v1.12.46
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.23
-	github.com/subiz/log v0.0.31
+	github.com/subiz/log v0.0.32
 	github.com/thanhpk/go-cache v1.0.1
 	golang.org/x/oauth2 v0.8.0
 	google.golang.org/api v0.124.0
@@ -48,8 +48,8 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230525234025-438c736192d0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect

@@ -85,14 +85,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem:  true,
 		},
 		&header.AttributeDefinition{
-			Name:      "Zalo",
-			Label:     "Zalo",
-			Key:       "zalo",
-			I18NLabel: &header.I18NString{Vi_VN: "Zalo cá nhân", En_US: "Personal zalo page"},
-			Type:      "text",
-			IsSystem:  true,
-		},
-		&header.AttributeDefinition{
 			Name:      "Job title",
 			Label:     "Job title",
 			Key:       "job_title",
