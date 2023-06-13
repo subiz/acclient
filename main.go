@@ -1311,8 +1311,8 @@ func CheckRecordCredit(accid, creditId, service, serviceId, itemType, itemId str
 	return res.GetAllow(), nil
 }
 
-func TryRecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) (bool, error) {
-	res, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
+func TryRecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) error {
+	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
 		Id:           idgen.NewPaymentLogID(),
@@ -1325,25 +1325,23 @@ func TryRecordCredit(accid, creditId, service, serviceId, itemType, itemId strin
 		FpvUnitPrice: int64(price * 1_000_000),
 	})
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	if res.GetAllow() {
-		kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
-			AccountId:    accid,
-			CreditId:     creditId,
-			Id:           idgen.NewPaymentLogID(),
-			Service:      service,
-			ServiceId:    serviceId,
-			Item:         itemType,
-			ItemId:       itemId,
-			Created:      time.Now().UnixMilli(),
-			Quantity:     quantity,
-			FpvUnitPrice: int64(price * 1_000_000),
-			Data:         data,
-		})
-	}
-	return res.GetAllow(), nil
+	kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
+		AccountId:    accid,
+		CreditId:     creditId,
+		Id:           idgen.NewPaymentLogID(),
+		Service:      service,
+		ServiceId:    serviceId,
+		Item:         itemType,
+		ItemId:       itemId,
+		Created:      time.Now().UnixMilli(),
+		Quantity:     quantity,
+		FpvUnitPrice: int64(price * 1_000_000),
+		Data:         data,
+	})
+	return nil
 }
 
 func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) {

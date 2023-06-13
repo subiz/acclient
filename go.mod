@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/gocql/gocql v1.5.2
 	github.com/subiz/goutils v0.1.17
-	github.com/subiz/header v1.12.46
+	github.com/subiz/header v1.12.47
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.23
 	github.com/subiz/log v0.0.32
