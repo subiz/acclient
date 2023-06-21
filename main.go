@@ -1327,20 +1327,6 @@ func TryRecordCredit(accid, creditId, service, serviceId, itemType, itemId strin
 	if err != nil {
 		return err
 	}
-
-	kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
-		AccountId:    accid,
-		CreditId:     creditId,
-		Id:           idgen.NewPaymentLogID(),
-		Service:      service,
-		ServiceId:    serviceId,
-		Item:         itemType,
-		ItemId:       itemId,
-		Created:      time.Now().UnixMilli(),
-		Quantity:     quantity,
-		FpvUnitPrice: int64(price * 1_000_000),
-		Data:         data,
-	})
 	return nil
 }
 

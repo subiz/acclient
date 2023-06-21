@@ -326,7 +326,7 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 		},
 		&header.AttributeDefinition{
 			Name:      "Record ID",
-			Label:     "Record ID",
+			Label:     "Mã khách hàng",
 			I18NLabel: &header.I18NString{Vi_VN: "Mã khách hàng", En_US: "Customer ID"},
 			Key:       "record_id",
 			Type:      "text",
