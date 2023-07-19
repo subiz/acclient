@@ -40,7 +40,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Key:         "is_followed",
 			Type:        "boolean",
 			IsSystem:    true,
-			IsReadonly:  true,
 		},
 		&header.AttributeDefinition{
 			Name:        "Ẩn danh",
@@ -50,7 +49,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Key:         "is_anonymous",
 			Type:        "boolean",
 			IsSystem:    true,
-			IsReadonly:  true,
 		},
 		&header.AttributeDefinition{
 			Name:      "Timezone",
