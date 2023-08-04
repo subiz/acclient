@@ -773,15 +773,6 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	return list, nil
 }
 
-func LookupAgent(agid string) (*pb.Agent, error) {
-	var accid string
-	err := session.Query("SELECT account_id FROM account.agent_account WHERE id=?", agid).Scan(&accid)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return nil, log.EMissing(agid, "agent")
-	}
-	return GetAgent(accid, agid)
-}
-
 func GetAgent(accid, agid string) (*pb.Agent, error) {
 	agents, err := ListAgents(accid)
 	if err != nil {
