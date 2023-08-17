@@ -258,9 +258,12 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	fmt.Println("luccc resp", req)
+	fmt.Println("luccc resp err", err)
 	if err != nil {
 		return nil, log.EServer(err, log.M{"path": path})
 	}
+
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
 	file := &header.File{}
