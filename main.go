@@ -48,6 +48,13 @@ var (
 	accmgr    header.AccountMgrClient
 	creditmgr header.CreditMgrClient
 
+	compactM      = map[string]int{}
+	compactLock   = &sync.Mutex{}
+	uncompactM    = map[int]string{}
+	uncompactLock = &sync.Mutex{}
+	maxLock       = &sync.Mutex{}
+	maxCnt        int
+
 	cache      = gocache.New(2 * time.Minute)
 	hash_cache *gocache.Cache
 )
@@ -133,6 +140,13 @@ func _init() {
 	hash_cache = gocache.New(10 * time.Minute)
 }
 
+func _initRegistry() {
+	err := session.Query(`SELECT COUNT(*) FROM account.compact_str`).Scan(&maxCnt)
+	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
+		log.EServer(err, log.M{})
+	}
+}
+
 func waitUntilReady() {
 	if ready {
 		return
@@ -143,6 +157,8 @@ func waitUntilReady() {
 		return
 	}
 	_init()
+	_initRegistry()
+
 	ready = true
 	readyLock.Unlock()
 }
@@ -1335,4 +1351,116 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 		FpvUnitPrice: int64(price * 1_000_000),
 		Data:         data,
 	})
+}
+
+func getCompactStr(str string) (int, error) {
+	waitUntilReady()
+	compactLock.Lock()
+	number, exist := compactM[str]
+	compactLock.Unlock()
+	if exist {
+		fmt.Println("Compact: get from cache")
+		return number, nil
+	}
+	number, err := getCompactStrDB(str)
+	if err != nil {
+		return 0, err
+	}
+	return number, nil
+}
+
+func getCompactStrDB(str string) (int, error) {
+	waitUntilReady()
+	var num int
+	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&num)
+
+	if err != nil {
+		return 0, err
+	}
+	fmt.Println("Compact: get from db")
+	uncompactLock.Lock()
+	uncompactM[num] = str
+	compactM[str] = num
+	uncompactLock.Unlock()
+
+	return num, nil
+}
+
+func upsertCompactStr(str string) (int, error) {
+	waitUntilReady()
+	maxLock.Lock()
+	maxCnt++
+	maxCnt := maxCnt
+	maxLock.Unlock()
+	err := session.Query(`INSERT INTO account.compact_str (str, num) VALUES (?, ?)`, str, maxCnt).Exec()
+
+	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
+		panic(err)
+	}
+	err = session.Query(`INSERT INTO account.uncompact_num (num,str) VALUES (?, ?)`, maxCnt, str).Exec()
+
+	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
+		panic(err)
+	}
+	compactLock.Lock()
+
+	compactM[str] = maxCnt
+	uncompactM[maxCnt] = str
+
+	compactLock.Unlock()
+
+	return maxCnt, nil
+}
+
+func Compact(ctx context.Context, str string) (int, error) {
+	waitUntilReady()
+	number, err := getCompactStr(str)
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		number, err = upsertCompactStr(str)
+		if err != nil {
+			return 0, log.EServer(err, log.M{"str": str})
+		}
+		return number, nil
+	}
+
+	if err != nil {
+		return 0, log.EServer(err, log.M{"str": str})
+	}
+
+	return number, nil
+}
+
+func getUncompactNumDB(num int) (string, error) {
+	waitUntilReady()
+	var str string
+
+	err := session.Query(`SELECT str FROM account.uncompact_num WHERE num=?`, num).Scan(&str)
+
+	if err != nil {
+		return "", err
+	}
+	uncompactLock.Lock()
+	uncompactM[num] = str
+	compactM[str] = num
+	uncompactLock.Unlock()
+
+	fmt.Println("Uncompact: get from db")
+	return str, nil
+}
+
+func getUncompactNum(num int) (string, error) {
+	waitUntilReady()
+	uncompactLock.Lock()
+	str, exist := uncompactM[num]
+	uncompactLock.Unlock()
+	if exist {
+		fmt.Println("Uncompact: get from cache")
+		return str, nil
+	}
+	str, err := getUncompactNumDB(num)
+
+	if err != nil {
+		return "", err
+	}
+	return str, nil
 }
