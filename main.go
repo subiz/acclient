@@ -1431,7 +1431,7 @@ func UncompactNum(num int) (string, error) {
 	str, err := getUncompactNumDB(num)
 
 	if err != nil {
-		return "", err
+		return "", log.EServer(err, log.M{"num": num})
 	}
 	return str, nil
 }
