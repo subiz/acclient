@@ -3,9 +3,9 @@ module github.com/subiz/acclient/v2
 go 1.20
 
 require (
-	github.com/gocql/gocql v1.5.2
-	github.com/subiz/goutils v0.1.17
-	github.com/subiz/header v1.13.9
+	github.com/gocql/gocql v1.6.0
+	github.com/subiz/goutils v0.1.18
+	github.com/subiz/header v1.13.33
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.24
 	github.com/subiz/log v0.0.34
@@ -16,12 +16,12 @@ require (
 )
 
 require (
-	cloud.google.com/go/compute v1.20.1 // indirect
+	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	github.com/IBM/sarama v1.40.1 // indirect
+	github.com/IBM/sarama v1.41.0 // indirect
 	github.com/Shopify/sarama v1.38.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/eapache/go-resiliency v1.3.0 // indirect
+	github.com/eapache/go-resiliency v1.4.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -47,13 +47,13 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/thanhpk/randstr v1.0.6 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/net v0.13.0 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230726155614-23370e0ffb3e // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230803162519-f966b187b2e5 // indirect
+	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/grpc v1.57.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

@@ -44,16 +44,15 @@ var (
 
 	ready bool
 
-	session   *gocql.Session
-	accmgr    header.AccountMgrClient
-	creditmgr header.CreditMgrClient
+	session        *gocql.Session
+	accmgr         header.AccountMgrClient
+	creditmgr      header.CreditMgrClient
+	registryClient header.NumberRegistryClient
 
 	compactM      = map[string]int{}
 	compactLock   = &sync.Mutex{}
 	uncompactM    = map[int]string{}
 	uncompactLock = &sync.Mutex{}
-	maxLock       = &sync.Mutex{}
-	maxCnt        int
 
 	cache      = gocache.New(2 * time.Minute)
 	hash_cache *gocache.Cache
@@ -73,6 +72,9 @@ func _init() {
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
 	creditmgr = header.NewCreditMgrClient(conn)
+
+	connRegistry := header.DialGrpc("registry-0.registry:8665", header.WithShardRedirect())
+	registryClient = header.NewNumberRegistryClient(connRegistry)
 
 	go func() {
 		for {
@@ -140,13 +142,6 @@ func _init() {
 	hash_cache = gocache.New(10 * time.Minute)
 }
 
-func _initRegistry() {
-	err := session.Query(`SELECT COUNT(*) FROM account.compact_str`).Scan(&maxCnt)
-	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		log.EServer(err, log.M{})
-	}
-}
-
 func waitUntilReady() {
 	if ready {
 		return
@@ -157,8 +152,6 @@ func waitUntilReady() {
 		return
 	}
 	_init()
-	_initRegistry()
-
 	ready = true
 	readyLock.Unlock()
 }
@@ -1386,40 +1379,18 @@ func getCompactStrDB(str string) (int, error) {
 	return num, nil
 }
 
-func upsertCompactStr(str string) (int, error) {
-	waitUntilReady()
-	maxLock.Lock()
-	maxCnt++
-	maxCnt := maxCnt
-	maxLock.Unlock()
-	err := session.Query(`INSERT INTO account.compact_str (str, num) VALUES (?, ?)`, str, maxCnt).Exec()
-
-	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		panic(err)
-	}
-	err = session.Query(`INSERT INTO account.uncompact_num (num,str) VALUES (?, ?)`, maxCnt, str).Exec()
-
-	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		panic(err)
-	}
-	compactLock.Lock()
-
-	compactM[str] = maxCnt
-	uncompactM[maxCnt] = str
-
-	compactLock.Unlock()
-
-	return maxCnt, nil
-}
-
-func Compact(ctx context.Context, str string) (int, error) {
+func CompactStr(ctx context.Context, str string) (int, error) {
 	waitUntilReady()
 	number, err := getCompactStr(str)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		number, err = upsertCompactStr(str)
+
+		numberOut, err := registryClient.Compact(ctx, &header.String{
+			Str: str,
+		})
 		if err != nil {
 			return 0, log.EServer(err, log.M{"str": str})
 		}
+		number = int(numberOut.GetNumber())
 		return number, nil
 	}
 
@@ -1448,7 +1419,7 @@ func getUncompactNumDB(num int) (string, error) {
 	return str, nil
 }
 
-func getUncompactNum(num int) (string, error) {
+func UncompactNum(num int) (string, error) {
 	waitUntilReady()
 	uncompactLock.Lock()
 	str, exist := uncompactM[num]
