@@ -1346,7 +1346,7 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 	})
 }
 
-func CompactString(ctx context.Context, str string) (int, error) {
+func CompactString(str string) (int, error) {
 	waitUntilReady()
 	number, exist := compactCache.Get(str)
 
@@ -1354,9 +1354,6 @@ func CompactString(ctx context.Context, str string) (int, error) {
 		return number, nil
 	}
 	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&number)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return 0, nil
-	}
 
 	if err == nil {
 		uncompactCache.Add(number, str)
@@ -1364,7 +1361,7 @@ func CompactString(ctx context.Context, str string) (int, error) {
 		return number, nil
 	}
 
-	numOut, err := registryClient.Compact(ctx, &header.String{Str: str})
+	numOut, err := registryClient.Compact(context.Background(), &header.String{Str: str})
 	if err != nil {
 		return 0, err
 	}
@@ -1385,13 +1382,17 @@ func UncompactNumber(num int) (string, error) {
 	}
 
 	err := session.Query(`SELECT str FROM account.uncompact_num WHERE num=?`, num).Scan(&str)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return "", nil
+	if err == nil {
+		uncompactCache.Add(num, str)
+		compactCache.Add(str, num)
+		return str, nil
 	}
 
+	strOut, err := registryClient.Uncompact(context.Background(), &header.Number{Number: int64(num)})
 	if err != nil {
-		return "", log.EServer(err, log.M{"num": num})
+		return "", err
 	}
+	str = strOut.GetStr()
 	uncompactCache.Add(num, str)
 	compactCache.Add(str, num)
 	return str, nil
