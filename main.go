@@ -50,8 +50,7 @@ var (
 	creditmgr      header.CreditMgrClient
 	registryClient header.NumberRegistryClient
 
-	compactCache, _ = lru.New[string, int](10_000)
-
+	compactCache, _   = lru.New[string, int](10_000)
 	uncompactCache, _ = lru.New[int, string](10_000)
 
 	cache      = gocache.New(2 * time.Minute)
@@ -1349,12 +1348,11 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 func CompactString(str string) (int, error) {
 	waitUntilReady()
 	number, exist := compactCache.Get(str)
-
 	if exist {
 		return number, nil
 	}
-	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&number)
 
+	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&number)
 	if err == nil {
 		uncompactCache.Add(number, str)
 		compactCache.Add(str, number)
@@ -1366,10 +1364,8 @@ func CompactString(str string) (int, error) {
 		return 0, err
 	}
 	number = int(numOut.GetNumber())
-
 	uncompactCache.Add(number, str)
 	compactCache.Add(str, number)
-
 	return number, nil
 }
 
