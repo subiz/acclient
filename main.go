@@ -1346,44 +1346,25 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 	})
 }
 
-func getCompactString(str string) (int, bool, error) {
+func CompactString(ctx context.Context, str string) (int, error) {
 	waitUntilReady()
-
 	number, exist := compactCache.Get(str)
 
 	if exist {
-		fmt.Println("Compact: get from cache")
-		return number, true, nil
+		return number, nil
 	}
 	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&number)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return 0, false, nil
+		return 0, nil
 	}
 
-	if err != nil {
-		return 0, false, log.EServer(err, log.M{"str": str})
-	}
-
-	uncompactCache.Add(number, str)
-	compactCache.Add(str, number)
-
-	return number, true, nil
-}
-
-func CompactString(ctx context.Context, str string) (int, error) {
-	waitUntilReady()
-
-	number, exist, err := getCompactString(str)
-	if err != nil {
-		return 0, err
-	}
-	if exist {
+	if err == nil {
+		uncompactCache.Add(number, str)
+		compactCache.Add(str, number)
 		return number, nil
 	}
 
-	numOut, err := registryClient.Compact(ctx, &header.String{
-		Str: str,
-	})
+	numOut, err := registryClient.Compact(ctx, &header.String{Str: str})
 	if err != nil {
 		return 0, err
 	}
@@ -1395,28 +1376,23 @@ func CompactString(ctx context.Context, str string) (int, error) {
 	return number, nil
 }
 
-func UncompactNumber(num int) (string, bool, error) {
+func UncompactNumber(num int) (string, error) {
 	waitUntilReady()
 
 	str, exist := uncompactCache.Get(num)
-
 	if exist {
-		fmt.Println("Uncompact: get from cache")
-		return str, true, nil
+		return str, nil
 	}
 
 	err := session.Query(`SELECT str FROM account.uncompact_num WHERE num=?`, num).Scan(&str)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		return "", false, nil
+		return "", nil
 	}
 
 	if err != nil {
-		return "", false, log.EServer(err, log.M{"num": num})
+		return "", log.EServer(err, log.M{"num": num})
 	}
-	fmt.Println("Uncompact: get from db")
-
 	uncompactCache.Add(num, str)
 	compactCache.Add(str, num)
-
-	return str, true, nil
+	return str, nil
 }
