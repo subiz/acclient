@@ -4,8 +4,9 @@ go 1.20
 
 require (
 	github.com/gocql/gocql v1.6.0
+	github.com/hashicorp/golang-lru/v2 v2.0.6
 	github.com/subiz/goutils v0.1.18
-	github.com/subiz/header v1.13.33
+	github.com/subiz/header v1.13.35
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.24
 	github.com/subiz/log v0.0.34
@@ -18,7 +19,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	github.com/IBM/sarama v1.41.0 // indirect
+	github.com/IBM/sarama v1.41.1 // indirect
 	github.com/Shopify/sarama v1.38.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.4.0 // indirect

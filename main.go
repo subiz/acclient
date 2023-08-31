@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/subiz/goutils/business_hours"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
@@ -35,9 +36,8 @@ const (
 )
 
 var (
-	readyLock    = &sync.Mutex{}
-	keyLock      = &sync.Mutex{}
-	registryLock = &sync.Mutex{}
+	readyLock = &sync.Mutex{}
+	keyLock   = &sync.Mutex{}
 
 	keys30   = map[string]bool{}
 	keys60   = map[string]bool{}
@@ -50,8 +50,9 @@ var (
 	creditmgr      header.CreditMgrClient
 	registryClient header.NumberRegistryClient
 
-	compactM   = map[string]int{}
-	uncompactM = map[int]string{}
+	compactCache, _ = lru.New[string, int](10_000)
+
+	uncompactCache, _ = lru.New[int, string](10_000)
 
 	cache      = gocache.New(2 * time.Minute)
 	hash_cache *gocache.Cache
@@ -1347,9 +1348,9 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 
 func getCompactString(str string) (int, bool, error) {
 	waitUntilReady()
-	registryLock.Lock()
-	number, exist := compactM[str]
-	registryLock.Unlock()
+
+	number, exist := compactCache.Get(str)
+
 	if exist {
 		fmt.Println("Compact: get from cache")
 		return number, true, nil
@@ -1363,10 +1364,8 @@ func getCompactString(str string) (int, bool, error) {
 		return 0, false, log.EServer(err, log.M{"str": str})
 	}
 
-	registryLock.Lock()
-	uncompactM[number] = str
-	compactM[str] = number
-	registryLock.Unlock()
+	uncompactCache.Add(number, str)
+	compactCache.Add(str, number)
 
 	return number, true, nil
 }
@@ -1390,19 +1389,17 @@ func CompactString(ctx context.Context, str string) (int, error) {
 	}
 	number = int(numOut.GetNumber())
 
-	registryLock.Lock()
-	uncompactM[number] = str
-	compactM[str] = number
-	registryLock.Unlock()
+	uncompactCache.Add(number, str)
+	compactCache.Add(str, number)
 
 	return number, nil
 }
 
 func UncompactNumber(num int) (string, bool, error) {
 	waitUntilReady()
-	registryLock.Lock()
-	str, exist := uncompactM[num]
-	registryLock.Unlock()
+
+	str, exist := uncompactCache.Get(num)
+
 	if exist {
 		fmt.Println("Uncompact: get from cache")
 		return str, true, nil
@@ -1417,10 +1414,9 @@ func UncompactNumber(num int) (string, bool, error) {
 		return "", false, log.EServer(err, log.M{"num": num})
 	}
 	fmt.Println("Uncompact: get from db")
-	
-	registryLock.Lock()
-	uncompactM[num] = str
-	compactM[str] = num
-	registryLock.Unlock()
+
+	uncompactCache.Add(num, str)
+	compactCache.Add(str, num)
+
 	return str, true, nil
 }
