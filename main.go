@@ -35,8 +35,9 @@ const (
 )
 
 var (
-	readyLock = &sync.Mutex{}
-	keyLock   = &sync.Mutex{}
+	readyLock    = &sync.Mutex{}
+	keyLock      = &sync.Mutex{}
+	registryLock = &sync.Mutex{}
 
 	keys30   = map[string]bool{}
 	keys60   = map[string]bool{}
@@ -49,10 +50,8 @@ var (
 	creditmgr      header.CreditMgrClient
 	registryClient header.NumberRegistryClient
 
-	compactM      = map[string]int{}
-	compactLock   = &sync.Mutex{}
-	uncompactM    = map[int]string{}
-	uncompactLock = &sync.Mutex{}
+	compactM   = map[string]int{}
+	uncompactM = map[int]string{}
 
 	cache      = gocache.New(2 * time.Minute)
 	hash_cache *gocache.Cache
@@ -1346,92 +1345,82 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 	})
 }
 
-func getCompactStr(str string) (int, error) {
+func getCompactString(str string) (int, bool, error) {
 	waitUntilReady()
-	compactLock.Lock()
+	registryLock.Lock()
 	number, exist := compactM[str]
-	compactLock.Unlock()
+	registryLock.Unlock()
 	if exist {
 		fmt.Println("Compact: get from cache")
-		return number, nil
+		return number, true, nil
 	}
-	number, err := getCompactStrDB(str)
-	if err != nil {
-		return 0, err
-	}
-	return number, nil
-}
-
-func getCompactStrDB(str string) (int, error) {
-	waitUntilReady()
-	var num int
-	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&num)
-
-	if err != nil {
-		return 0, err
-	}
-	fmt.Println("Compact: get from db")
-	uncompactLock.Lock()
-	uncompactM[num] = str
-	compactM[str] = num
-	uncompactLock.Unlock()
-
-	return num, nil
-}
-
-func CompactStr(ctx context.Context, str string) (int, error) {
-	waitUntilReady()
-	number, err := getCompactStr(str)
+	err := session.Query(`SELECT num FROM account.compact_str WHERE str=?`, str).Scan(&number)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-
-		numberOut, err := registryClient.Compact(ctx, &header.String{
-			Str: str,
-		})
-		if err != nil {
-			return 0, log.EServer(err, log.M{"str": str})
-		}
-		number = int(numberOut.GetNumber())
-		return number, nil
+		return 0, false, nil
 	}
 
 	if err != nil {
-		return 0, log.EServer(err, log.M{"str": str})
+		return 0, false, log.EServer(err, log.M{"str": str})
 	}
+
+	registryLock.Lock()
+	uncompactM[number] = str
+	compactM[str] = number
+	registryLock.Unlock()
+
+	return number, true, nil
+}
+
+func CompactString(ctx context.Context, str string) (int, error) {
+	waitUntilReady()
+
+	number, exist, err := getCompactString(str)
+	if err != nil {
+		return 0, err
+	}
+	if exist {
+		return number, nil
+	}
+
+	numOut, err := registryClient.Compact(ctx, &header.String{
+		Str: str,
+	})
+	if err != nil {
+		return 0, err
+	}
+	number = int(numOut.GetNumber())
+
+	registryLock.Lock()
+	uncompactM[number] = str
+	compactM[str] = number
+	registryLock.Unlock()
 
 	return number, nil
 }
 
-func getUncompactNumDB(num int) (string, error) {
+func UncompactNumber(num int) (string, bool, error) {
 	waitUntilReady()
-	var str string
-
-	err := session.Query(`SELECT str FROM account.uncompact_num WHERE num=?`, num).Scan(&str)
-
-	if err != nil {
-		return "", err
-	}
-	uncompactLock.Lock()
-	uncompactM[num] = str
-	compactM[str] = num
-	uncompactLock.Unlock()
-
-	fmt.Println("Uncompact: get from db")
-	return str, nil
-}
-
-func UncompactNum(num int) (string, error) {
-	waitUntilReady()
-	uncompactLock.Lock()
+	registryLock.Lock()
 	str, exist := uncompactM[num]
-	uncompactLock.Unlock()
+	registryLock.Unlock()
 	if exist {
 		fmt.Println("Uncompact: get from cache")
-		return str, nil
+		return str, true, nil
 	}
-	str, err := getUncompactNumDB(num)
+
+	err := session.Query(`SELECT str FROM account.uncompact_num WHERE num=?`, num).Scan(&str)
+	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+		return "", false, nil
+	}
 
 	if err != nil {
-		return "", log.EServer(err, log.M{"num": num})
+		return "", false, log.EServer(err, log.M{"num": num})
 	}
-	return str, nil
+	fmt.Println("Uncompact: get from db")
+	
+	registryLock.Lock()
+	uncompactM[num] = str
+	compactM[str] = num
+	registryLock.Unlock()
+	return str, true, nil
 }
