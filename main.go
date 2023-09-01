@@ -38,7 +38,6 @@ var (
 	readyLock = &sync.Mutex{}
 	keyLock   = &sync.Mutex{}
 
-	keys30   = map[string]bool{}
 	keys60   = map[string]bool{}
 	keysLang = map[string]bool{}
 
@@ -88,31 +87,12 @@ func _init() {
 				listGroupsDB(accid)
 				getShopSettingDb(accid)
 				listPipelineDB(accid)
-			}
-			time.Sleep(50 * time.Second)
-		}
-	}()
-
-	go func() {
-		for {
-			time.Sleep(10 * time.Second)
-			accids := []string{}
-
-			keyLock.Lock()
-			for accid := range keys30 {
-				accids = append(accids, accid)
-			}
-			keys30 = map[string]bool{}
-			keyLock.Unlock()
-
-			for _, accid := range accids {
 				getNotificationSettingDB(accid)
 				listPresencesDB(accid)
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(90 * time.Second)
 		}
 	}()
-
 	go func() {
 		for {
 			time.Sleep(10 * time.Second)
@@ -548,7 +528,7 @@ func GetAccount(accid string) (*pb.Account, error) {
 func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 	waitUntilReady()
 	keyLock.Lock()
-	keys30[accid] = true
+	keys60[accid] = true
 	keyLock.Unlock()
 
 	if value, found := cache.Get("N5Setting_" + accid + "_" + agid); found {
@@ -703,6 +683,7 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 		agid := ag.GetId()
 		dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
 		var instant_mute_until, updated int64
+		fmt.Println("READNOTI", accid, agid)
 		err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
 		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 			now := time.Now().UnixMilli()
@@ -911,7 +892,7 @@ func ListPresences(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 
 	keyLock.Lock()
-	keys30[accid] = true
+	keys60[accid] = true
 	keyLock.Unlock()
 
 	// cache exists
