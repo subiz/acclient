@@ -15,6 +15,9 @@ var (
 )
 
 func CompactString(str string) (int, error) {
+	if str == "" {
+		return 0, nil
+	}
 	waitUntilReady()
 	number, exist := compactCache.Get(str)
 	if exist {
@@ -39,6 +42,9 @@ func CompactString(str string) (int, error) {
 }
 
 func UncompactString(num int) (string, error) {
+	if num == 0 {
+		return "", nil
+	}
 	waitUntilReady()
 
 	str, exist := uncompactCache.Get(num)
