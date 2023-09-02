@@ -31,7 +31,6 @@ const (
 	tblAgents       = "agents"
 	tblGroups       = "groups"
 	tblSubscription = "subs"
-	tblPresence     = "convo.presence"
 )
 
 var (
@@ -830,7 +829,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	presences := make([]*pb.Presence, 0)
 
-	iter := session.Query(`SELECT user_id, ip, pinged, ua, last_seen_convo_id FROM `+tblPresence+` WHERE account_id=? LIMIT 1000`, accid).Iter()
+	iter := session.Query(`SELECT user_id, ip, pinged, ua, last_seen_convo_id FROM convo.presence WHERE account_id=? LIMIT 1000`, accid).Iter()
 	uid, ip, ua, last_convoid := "", "", "", ""
 	pinged := int64(0)
 	for iter.Scan(&uid, &ip, &pinged, &ua, &last_convoid) {
@@ -847,7 +846,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 		return nil, log.EServer(err, log.M{"account_id": accid})
 	}
 
-	cache.Set("PS_"+accid, presences)
+	cache.SetWithExpire("PS_"+accid, presences, 30*time.Second)
 	return presences, nil
 }
 
@@ -1235,7 +1234,7 @@ func pollLoop() {
 	conn := header.DialGrpc("numreg-0.numreg:8665")
 	client := header.NewPubsubClient(conn)
 
-	topics := []string{"account_updated", "lang_updated", "shop_setting_updated", "presence_updated", "agent_updated", "agent_group_updated", "bot_updated", "attribute_definition_updated", "notisetting_updated", "pipeline_updated"}
+	topics := []string{"account_updated", "lang_updated", "shop_setting_updated",  "agent_updated", "agent_group_updated", "bot_updated", "attribute_definition_updated", "notisetting_updated", "pipeline_updated"}
 	connId := idgen.NewPollingConnId("0", "", randstr.Hex(8))
 	for {
 		time.Sleep(2 * time.Second)
@@ -1264,10 +1263,6 @@ func pollLoop() {
 						cache.Delete(k)
 					}
 				}
-			}
-
-			if event.GetType() == "presence_updated" {
-				cache.Delete("PS_" + accid)
 			}
 			if event.GetType() == "agent_updated" {
 				cache.Delete("AG_" + accid)
