@@ -1227,6 +1227,7 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 }
 
 func Notify(accid, id string, topic string) {
+	waitUntilReady()
 	numpubsub.Fire(context.Background(), &header.PsMessage{AccountId: accid, Event: &header.Event{AccountId: accid, Id: id, Created: time.Now().UnixMilli(), Type: topic}, Topics: []string{topic}})
 }
 
@@ -1234,7 +1235,7 @@ func pollLoop() {
 	conn := header.DialGrpc("numreg-0.numreg:8665")
 	client := header.NewPubsubClient(conn)
 
-	topics := []string{"account_updated", "lang_updated", "shop_setting_updated",  "agent_updated", "agent_group_updated", "bot_updated", "attribute_definition_updated", "notisetting_updated", "pipeline_updated"}
+	topics := []string{"account_updated", "lang_updated", "shop_setting_updated", "agent_updated", "agent_group_updated", "bot_updated", "attribute_definition_updated", "notisetting_updated", "pipeline_updated"}
 	connId := idgen.NewPollingConnId("0", "", randstr.Hex(8))
 	for {
 		time.Sleep(2 * time.Second)
