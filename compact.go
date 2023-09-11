@@ -17,7 +17,7 @@ var (
 	uncompactCache2, _ = lru.New[int, string](10_000)
 )
 
-func CompactString(str string, version string) (int, error) {
+func CompactString(str string) (int, error) {
 	if str == "" {
 		return 0, nil
 	}
@@ -72,7 +72,7 @@ func CompactString2(str string) (int, error) {
 	return number, nil
 }
 
-func UncompactString(num int, version string) (string, error) {
+func UncompactString(num int) (string, error) {
 	if num == 0 {
 		return "", nil
 	}
