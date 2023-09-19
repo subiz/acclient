@@ -95,9 +95,8 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var zipcode int32
 	var currency string
 	var currency_locked bool
-	var expired int64
 
-	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked, expired FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked, &expired)
+	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -152,7 +151,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		ZipCode:               &zipcode,
 		Currency:              &currency,
 		CurrencyLocked:        &currency_locked,
-		Expired:               &expired,
 	}
 	cache.Set("ACC_"+id, acc)
 
