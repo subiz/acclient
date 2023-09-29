@@ -6,7 +6,7 @@ require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.6
 	github.com/subiz/goutils v0.1.18
-	github.com/subiz/header v1.13.52
+	github.com/subiz/header v1.13.65
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.24
 	github.com/subiz/log v0.0.34
@@ -32,7 +32,7 @@ require (
 	github.com/jcmturner/gofork v1.7.6 // indirect
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
+	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/paulbellamy/ratecounter v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
@@ -41,7 +41,7 @@ require (
 	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb // indirect
-	google.golang.org/grpc v1.58.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
+	google.golang.org/grpc v1.58.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

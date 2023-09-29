@@ -27,10 +27,9 @@ import (
 )
 
 const (
-	tblLocale       = "lang"
-	tblAgents       = "agents"
-	tblGroups       = "groups"
-	tblSubscription = "subs"
+	tblLocale = "lang"
+	tblAgents = "agents"
+	tblGroups = "groups"
 )
 
 var (
@@ -159,11 +158,11 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var subcreated, ended, started int64
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
-	var customerb, limitb []byte
+	var customerb []byte
 	notebs := make([][]byte, 0)
 
-	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, \"limit\", name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
-		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &limitb, &subname, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
+	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
+		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &subname, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil
@@ -171,9 +170,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	if err != nil {
 		return nil, nil, log.EServer(err, log.M{"account_id": id})
 	}
-
-	limit := &pm.Limit{}
-	proto.Unmarshal(limitb, limit)
 
 	notes := []*pm.Note{}
 	for _, noteb := range notebs {
@@ -192,7 +188,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Credit:                &credit,
 		Customer:              customer,
 		Ended:                 &ended,
-		Limit:                 limit,
 		Name:                  &subname,
 		Notes:                 notes,
 		Plan:                  &plan,
