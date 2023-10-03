@@ -2,6 +2,7 @@ package acclient
 
 import (
 	"context"
+	"strings"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/subiz/header"
@@ -21,6 +22,7 @@ func CompactString(str string) (int, error) {
 	if str == "" {
 		return 0, nil
 	}
+	str = strings.ToValidUTF8(str, "")
 	waitUntilReady()
 
 	number, exist := compactCache.Get(str)
@@ -49,6 +51,8 @@ func CompactString2(str string) (int, error) {
 	if str == "" {
 		return 0, nil
 	}
+
+	str = strings.ToValidUTF8(str, "")
 	waitUntilReady()
 	number, exist := compactCache2.Get(str)
 	if exist {
