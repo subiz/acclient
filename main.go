@@ -87,7 +87,7 @@ func waitUntilReady() {
 
 func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	waitUntilReady()
-	var businesshourb, feature, force_feature, leadsetting, monitorsetting []byte
+	var businesshourb, feature, force_feature, leadsetting, userattributesetting, monitorsetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, facebook, lang, locale, logo_url, name, ownerid, phone, referrer_from, region, state, tax_id, timezone, twitter, url string
 	var confirmed, created, lasttokenrequested, modified int64
@@ -95,7 +95,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var currency string
 	var currency_locked bool
 
-	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
+	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, user_attribute_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &userattributesetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -107,6 +107,9 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 
 	ms := &pb.WebpageMonitorSetting{}
 	proto.Unmarshal(monitorsetting, ms)
+
+	uas := &pb.UserAttributeSetting{}
+	proto.Unmarshal(userattributesetting, uas)
 
 	ls := &pb.LeadSetting{}
 	proto.Unmarshal(leadsetting, ls)
@@ -150,6 +153,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		ZipCode:               &zipcode,
 		Currency:              &currency,
 		CurrencyLocked:        &currency_locked,
+		UserAttributeSetting:  uas,
 	}
 	cache.Set("ACC_"+id, acc)
 
