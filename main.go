@@ -90,12 +90,12 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var businesshourb, feature, force_feature, leadsetting, userattributesetting, monitorsetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, facebook, lang, locale, logo_url, name, ownerid, phone, referrer_from, region, state, tax_id, timezone, twitter, url string
-	var confirmed, created, lasttokenrequested, modified int64
+	var confirmed, created, modified int64
 	var zipcode int32
 	var currency string
 	var currency_locked bool
 
-	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, last_token_requested, lead_setting, user_attribute_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &lasttokenrequested, &leadsetting, &userattributesetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
+	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, lead_setting, user_attribute_setting, locale, logo_url, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -134,7 +134,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Feature:               f,
 		ForceFeature:          ff,
 		Lang:                  &lang,
-		LastTokenRequested:    &lasttokenrequested,
 		LeadSetting:           ls,
 		Locale:                &locale,
 		LogoUrl:               &logo_url,
@@ -537,42 +536,41 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
 	var isowner, issupervisor bool
 	var scopes []string
-	var joined, lasttokenrequested, passwordchanged, seen int64
+	var joined, passwordchanged, seen int64
 	var dashboard_setting []byte
 	var extension int64
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, last_token_requested, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
+	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
 	for iter.Scan(&id, &avatar_url, &client_id, &country_code, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
-		&isowner, &issupervisor, &jobtitle, &joined, &lang, &lasttokenrequested, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
+		&isowner, &issupervisor, &jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
 		ag := &pb.Agent{
-			AccountId:          conv.S(accid),
-			Id:                 conv.S(id),
-			AvatarUrl:          conv.S(avatar_url),
-			ClientId:           conv.S(client_id),
-			CountryCode:        conv.S(country_code),
-			DashboardSetting:   ds,
-			Email:              conv.S(email),
-			EncryptedPassword:  conv.S(encrypted_password),
-			Fullname:           conv.S(fullname),
-			Gender:             conv.S(gender),
-			InvitedBy:          conv.S(invited_by),
-			IsOwner:            conv.B(isowner),
-			IsSupervisor:       conv.B(issupervisor),
-			JobTitle:           conv.S(jobtitle),
-			Joined:             conv.PI64(int(joined)),
-			Lang:               conv.S(lang),
-			LastTokenRequested: conv.PI64(int(lasttokenrequested)),
-			Modified:           conv.PI64(int(modified)),
-			PasswordChanged:    conv.PI64(int(passwordchanged)),
-			Phone:              conv.S(phone),
-			Scopes:             scopes,
-			State:              conv.S(state),
-			Type:               conv.S(typ),
-			Timezone:           conv.S(tz),
-			Extension:          conv.PI64(int(extension)),
+			AccountId:         conv.S(accid),
+			Id:                conv.S(id),
+			AvatarUrl:         conv.S(avatar_url),
+			ClientId:          conv.S(client_id),
+			CountryCode:       conv.S(country_code),
+			DashboardSetting:  ds,
+			Email:             conv.S(email),
+			EncryptedPassword: conv.S(encrypted_password),
+			Fullname:          conv.S(fullname),
+			Gender:            conv.S(gender),
+			InvitedBy:         conv.S(invited_by),
+			IsOwner:           conv.B(isowner),
+			IsSupervisor:      conv.B(issupervisor),
+			JobTitle:          conv.S(jobtitle),
+			Joined:            conv.PI64(int(joined)),
+			Lang:              conv.S(lang),
+			Modified:          conv.PI64(int(modified)),
+			PasswordChanged:   conv.PI64(int(passwordchanged)),
+			Phone:             conv.S(phone),
+			Scopes:            scopes,
+			State:             conv.S(state),
+			Type:              conv.S(typ),
+			Timezone:          conv.S(tz),
+			Extension:         conv.PI64(int(extension)),
 		}
 		scopes = make([]string, 0)
 		arr = append(arr, ag)
