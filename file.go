@@ -120,9 +120,9 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile(accid, name, category, mimetype string, data []byte, cd string, ttl int64) (string, error) {
+func UploadFile(accid, name, category, mimetype string, data []byte, cd string, ttl int64) (*header.File, error) {
 	if len(data) > MAX_SIZE {
-		return "", log.EPayloadTooLarge(int64(len(data)), int64(MAX_SIZE), log.M{"account_id": accid, "name": name})
+		return nil, log.EPayloadTooLarge(int64(len(data)), int64(MAX_SIZE), log.M{"account_id": accid, "name": name})
 	}
 
 	presignres, err := presign(accid, &header.File{
@@ -135,19 +135,14 @@ func UploadFile(accid, name, category, mimetype string, data []byte, cd string, 
 		Category:           category,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if err := uploadFile(presignres.SignedUrl, data, mimetype, cd); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	f, err := finishUploadFile(accid, presignres.Id)
-	if err != nil {
-		return "", err
-	}
-
-	return f.Url, nil
+	return finishUploadFile(accid, presignres.Id)
 }
 
 func uploadFile(url string, data []byte, mimetype, cd string) error {
