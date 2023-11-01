@@ -147,7 +147,7 @@ func UploadFile(accid, name, category, mimetype string, data []byte, cd string, 
 		return "", err
 	}
 
-	return "https://vcdn.subiz-cdn.com/file/" + f.Url, nil
+	return f.Url, nil
 }
 
 func uploadFile(url string, data []byte, mimetype, cd string) error {
