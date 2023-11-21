@@ -8,7 +8,7 @@ require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.18
-	github.com/subiz/header v1.14.15
+	github.com/subiz/header v1.14.18
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.24
 	github.com/subiz/log v0.0.43
@@ -43,7 +43,7 @@ require (
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
 	google.golang.org/grpc v1.59.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

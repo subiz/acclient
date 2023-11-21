@@ -84,6 +84,8 @@ github.com/subiz/goutils v0.1.18 h1:4/1LaOkgUCp0/mKjaQeQTeb5PUYh2XJ+mTlCJ/LMeJA=
 github.com/subiz/goutils v0.1.18/go.mod h1:SM3Rz9RYZs2vHc6yqfpHwIxwWPCpSNVfJ9K/orEvDr8=
 github.com/subiz/header v1.14.15 h1:qcspC7sSPGfq7GCWwOhxzW6MzSe4Ig/uowTIW2hxW+I=
 github.com/subiz/header v1.14.15/go.mod h1:XM4ydqLVd2n3fX3jvQvi1XNijkmfuAKZG51rtk6NEmQ=
+github.com/subiz/header v1.14.18 h1:iv3Xwy2qlpwmXmHqCMAK+Wpff3+CpUDv4RtPfXoUPmY=
+github.com/subiz/header v1.14.18/go.mod h1:XM4ydqLVd2n3fX3jvQvi1XNijkmfuAKZG51rtk6NEmQ=
 github.com/subiz/idgen v0.1.25 h1:7d0/+NuGgJPlmzgqk3Pbfe/w2AHZfdyat3V/1T48P1k=
 github.com/subiz/idgen v0.1.25/go.mod h1:HnTJGlC/xr9l6Twb/HXy0gwG4TbaUAKNYBFGjviB1+8=
 github.com/subiz/kafka v0.0.24 h1:y2ATZiBDoLZaY9CHMUgZFy1HqTDOQCSuND31SQAhuiY=
@@ -137,6 +139,8 @@ golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 h1:Jyp0Hsi0bmHXG6k9eATXoYtjd6e2UzZ1SCn/wIupY14=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17/go.mod h1:oQ5rr10WTTMvP4A36n8JpR1OrO1BEiV4f78CneXZxkA=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f h1:ultW7fxlIvee4HYrtnaRPon9HpEgFk5zYpmfMgtKB5I=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f/go.mod h1:L9KNLi232K1/xB6f7AlSX692koaRnKaWSR0stBki0Yc=
 google.golang.org/grpc v1.59.0 h1:Z5Iec2pjwb+LEOqzpB2MR12/eKFhDPhuqW91O+4bwUk=
 google.golang.org/grpc v1.59.0/go.mod h1:aUPDwccQo6OTjy7Hct4AfBPD1GptF4fyUjIkQ9YtF98=
 google.golang.org/protobuf v1.26.0-rc.1/go.mod h1:jlhhOSvTdKEhbULTjvd4ARK9grFBp09yW+WbY/TyQbw=

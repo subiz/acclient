@@ -824,26 +824,13 @@ func ListPresences(accid string) ([]*pb.Presence, error) {
 
 func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
-	presences := make([]*pb.Presence, 0)
 
-	iter := session.Query(`SELECT user_id, ip, pinged, ua, last_seen_convo_id FROM convo.presence WHERE account_id=? LIMIT 1000`, accid).Iter()
-	uid, ip, ua, last_convoid := "", "", "", ""
-	pinged := int64(0)
-	for iter.Scan(&uid, &ip, &pinged, &ua, &last_convoid) {
-		presences = append(presences, &pb.Presence{
-			AccountId:       conv.S(accid),
-			UserId:          conv.S(uid),
-			Ip:              conv.S(ip),
-			Pinged:          conv.PI64(int(pinged)),
-			Ua:              conv.S(ua),
-			LastSeenConvoId: conv.S(last_convoid),
-		})
+	pres, err := accmgr.ListAgentPresences(context.Background(), &header.Id{Id: accid})
+	if err != nil {
+		return nil, err
 	}
-	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
-	}
-
-	cache.SetWithExpire("PS_"+accid, presences, 30*time.Second)
+	presences := pres.GetPresences()
+	cache.SetWithExpire("PS_"+accid, presences, 10*time.Second)
 	return presences, nil
 }
 
