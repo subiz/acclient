@@ -130,7 +130,7 @@ func UncompactString2(num int) (string, error) {
 	return str, nil
 }
 
-func compactStringM(strsM map[string]int) (map[string]int, error) {
+func CompactStringM(strsM map[string]int) (map[string]int, error) {
 	waitUntilReady()
 	strsCompactM := map[string]int{}
 	strsNotInCacheM := map[string]int64{}
@@ -160,7 +160,7 @@ func compactStringM(strsM map[string]int) (map[string]int, error) {
 	return strsCompactM, nil
 }
 
-func UncompactM(numsM map[int]string) (map[int]string, error) {
+func UncompactStringM(numsM map[int]string) (map[int]string, error) {
 	waitUntilReady()
 	numsCompactedM := map[int]string{}
 	for num, _ := range numsM {
