@@ -129,3 +129,46 @@ func UncompactString2(num int) (string, error) {
 	compactCache2.Add(str, num)
 	return str, nil
 }
+
+func compactStringM(strsM map[string]int) (map[string]int, error) {
+	waitUntilReady()
+	strsCompactM := map[string]int{}
+	strsNotInCacheM := map[string]int64{}
+	for str, _ := range strsM {
+		if str == "" {
+			strsCompactM[str] = 0
+		}
+		str = strings.ToValidUTF8(str, "")
+		numCompacted, exist := compactCache2.Get(str)
+		if exist {
+			strsCompactM[str] = numCompacted
+		}
+		strsNotInCacheM[str] = 0
+	}
+	if len(strsNotInCacheM) == 0 {
+		return strsCompactM, nil
+	}
+	strsOutM, err := registryClient.CompactM(context.Background(), &header.StrNumM{StrsM: strsNotInCacheM})
+	if err != nil {
+		return map[string]int{}, err
+	}
+	for str, num := range strsOutM.GetStrsM() {
+		uncompactCache2.Add(int(num), str)
+		compactCache2.Add(str, int(num))
+		strsCompactM[str] = int(num)
+	}
+	return strsCompactM, nil
+}
+
+func UncompactM(numsM map[int]string) (map[int]string, error) {
+	waitUntilReady()
+	numsCompactedM := map[int]string{}
+	for num, _ := range numsM {
+		str, err := UncompactString2(num)
+		if err != nil {
+			return map[int]string{}, err
+		}
+		numsCompactedM[num] = str
+	}
+	return numsCompactedM, nil
+}
