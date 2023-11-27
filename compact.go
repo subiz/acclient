@@ -137,11 +137,13 @@ func CompactStringM(strsM map[string]int) (map[string]int, error) {
 	for str, _ := range strsM {
 		if str == "" {
 			strsCompactM[str] = 0
+			continue
 		}
 		str = strings.ToValidUTF8(str, "")
 		numCompacted, exist := compactCache2.Get(str)
 		if exist {
 			strsCompactM[str] = numCompacted
+			continue
 		}
 		strsNotInCacheM[str] = 0
 	}
