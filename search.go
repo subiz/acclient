@@ -51,13 +51,3 @@ func IndexWithDay(col, accid, doc, part, content string, isName bool, isId bool,
 	})
 }
 
-func AddOwners(accid, docid string, owners ...string) {
-	if len(owners) == 0 {
-		return
-	}
-	publishIndex(&header.DocIndexRequest{
-		AccountId:  accid,
-		DocumentId: docid,
-		Owners:     owners,
-	})
-}
