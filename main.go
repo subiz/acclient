@@ -533,7 +533,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 	var arr = make([]*pb.Agent, 0)
 
-	var id, avatar_url, client_id, country_code, email, encrypted_password, fullname, gender string
+	var id, avatar_url, avatar_url_128, client_id, country_code, email, encrypted_password, fullname, gender string
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
 	var isowner, issupervisor bool
 	var scopes []string
@@ -542,8 +542,8 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var extension int64
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
-	for iter.Scan(&id, &avatar_url, &client_id, &country_code, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
+	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
+	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &country_code, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
 		&isowner, &issupervisor, &jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
@@ -551,6 +551,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			AccountId:         conv.S(accid),
 			Id:                conv.S(id),
 			AvatarUrl:         conv.S(avatar_url),
+			AvatarUrl_128:     conv.S(avatar_url_128),
 			ClientId:          conv.S(client_id),
 			CountryCode:       conv.S(country_code),
 			DashboardSetting:  ds,
@@ -729,15 +730,16 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 
 func Bot2Agent(bot *header.Bot) *pb.Agent {
 	return &pb.Agent{
-		AccountId: &bot.AccountId,
-		Id:        &bot.Id,
-		State:     &bot.State,
-		AvatarUrl: &bot.AvatarUrl,
-		Fullname:  &bot.Fullname,
-		Type:      conv.S(compb.Type_bot),
-		Modified:  &bot.Updated,
-		Joined:    &bot.Created,
-		InvitedBy: &bot.CreatedBy,
+		AccountId:     &bot.AccountId,
+		Id:            &bot.Id,
+		State:         &bot.State,
+		AvatarUrl:     &bot.AvatarUrl,
+		AvatarUrl_128: &bot.AvatarUrl_128,
+		Fullname:      &bot.Fullname,
+		Type:          conv.S(compb.Type_bot),
+		Modified:      &bot.Updated,
+		Joined:        &bot.Created,
+		InvitedBy:     &bot.CreatedBy,
 	}
 }
 
