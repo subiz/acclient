@@ -19,16 +19,24 @@ type BackgroundJob struct {
 type RunID string
 
 func StartBackgroundJob(id, name string, intervalSec int) RunID {
-	runid := id + "." + randomID("BJ", 28)
+	runid := randomID("BJ", 28)
+	fullrunid := id + "." + runid
 	b, _ := json.Marshal(&BackgroundJob{Id: id, Name: name, IntervalSec: intervalSec, LastRunId: runid})
 	log.Info("2304920394BACKGROUND", "START", string(b))
-	return RunID(runid)
+	return RunID(fullrunid)
 }
 
 // status: ok|error|warning|running|outdated
-func ReportBackgroundJob(rid RunID, status string) { //
-	runId := string(rid)
-	jobid := strings.Split(runId, ".")[0]
+// fullrunid: asdfasdf.asdfadsf.BJasdlfkjasdf
+func ReportBackgroundJob(fullrunid RunID, status string) { //
+	ids := strings.Split(string(fullrunid), ".")
+	if len(ids) <= 2 {
+		//not our id
+		return
+	}
+
+	runId := ids[len(ids)-1]
+	jobid := strings.Join(ids[0:len(ids)-1], ".")
 	b, _ := json.Marshal(&BackgroundJob{Id: jobid, LastRunId: runId, Status: status})
 	log.Info("2304920394BACKGROUND", "STATUS", string(b))
 }
