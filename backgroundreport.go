@@ -2,6 +2,8 @@ package acclient
 
 import (
 	"encoding/json"
+	"strings"
+
 	"github.com/subiz/log"
 )
 
@@ -14,20 +16,19 @@ type BackgroundJob struct {
 	Status      string `json:"status,omitempty"`
 }
 
-func RegistryBackgroundJob(id, name, description string, intervalSec int) {
-	b, _ := json.Marshal(&BackgroundJob{Id: id, Name: name, Desc: description, IntervalSec: intervalSec})
-	log.Info("2304920394BACKGROUND", "REGISTER", string(b))
-}
+type RunID string
 
-func StartBackgroundJob(jobid string) string {
-	runid := randomID("BJ", 28)
-	b, _ := json.Marshal(&BackgroundJob{Id: jobid, LastRunId: runid})
+func StartBackgroundJob(id, name string, intervalSec int) RunID {
+	runid := id + "." + randomID("BJ", 28)
+	b, _ := json.Marshal(&BackgroundJob{Id: id, Name: name, IntervalSec: intervalSec, LastRunId: runid})
 	log.Info("2304920394BACKGROUND", "START", string(b))
-	return runid
+	return RunID(runid)
 }
 
 // status: ok|error|warning|running|outdated
-func ReportBackgroundJob(jobid string, runId, status string) { //
+func ReportBackgroundJob(rid RunID, status string) { //
+	runId := string(rid)
+	jobid := strings.Split(runId, ".")[0]
 	b, _ := json.Marshal(&BackgroundJob{Id: jobid, LastRunId: runId, Status: status})
 	log.Info("2304920394BACKGROUND", "STATUS", string(b))
 }
