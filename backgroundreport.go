@@ -11,7 +11,6 @@ type BackgroundJob struct {
 	Id          string `json:"id,omitempty"`
 	LastRunId   string `json:"last_run_id,omitempty"`
 	IntervalSec int    `json:"interval_sec,omitempty"`
-	Desc        string `json:"desc,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Status      string `json:"status,omitempty"`
 }
@@ -27,11 +26,11 @@ func StartBackgroundJob(id, name string, intervalSec int) RunID {
 }
 
 // status: ok|error|warning|running|outdated
-// fullrunid: asdfasdf.asdfadsf.BJasdlfkjasdf
+// fullrunid: asdfasdf[.asdfadsf].BJasdlfkjasdf
 func ReportBackgroundJob(fullrunid RunID, status string) { //
 	ids := strings.Split(string(fullrunid), ".")
-	if len(ids) <= 2 {
-		//not our id
+	if len(ids) < 2 {
+		// not our id
 		return
 	}
 
