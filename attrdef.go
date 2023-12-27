@@ -20,7 +20,6 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Key:        "is_ban",
 			Type:       "boolean",
 			IsSystem:   true,
-			IsReadonly: true,
 		},
 		&header.AttributeDefinition{
 			Name:        "Avatar",

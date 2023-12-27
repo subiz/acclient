@@ -6,13 +6,13 @@ require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.18
-	github.com/subiz/header v1.14.71
+	github.com/subiz/header v1.14.82
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.24
-	github.com/subiz/log v0.0.43
+	github.com/subiz/log v0.0.46
 	github.com/thanhpk/go-cache v1.0.1
 	github.com/thanhpk/randstr v1.0.6
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 )
 
 require (

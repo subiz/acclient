@@ -87,7 +87,7 @@ func waitUntilReady() {
 
 func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	waitUntilReady()
-	var businesshourb, feature, force_feature, leadsetting, userattributesetting, monitorsetting []byte
+	var businesshourb, invoice_infob, feature, force_feature, leadsetting, userattributesetting, monitorsetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, facebook, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, region, state, tax_id, timezone, twitter, url string
 	var confirmed, created, modified int64
@@ -95,7 +95,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var currency string
 	var currency_locked bool
 
-	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked)
+	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, tax_id, timezone, twitter, url, webpage_monitor_setting, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &tax_id, &timezone, &twitter, &url, &monitorsetting, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -104,6 +104,9 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	if err != nil {
 		return nil, nil, log.EServer(err, log.M{"id": id})
 	}
+
+	ii := &pb.InvoiceInfo{}
+	proto.Unmarshal(invoice_infob, ii)
 
 	ms := &pb.WebpageMonitorSetting{}
 	proto.Unmarshal(monitorsetting, ms)
@@ -154,6 +157,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Currency:              &currency,
 		CurrencyLocked:        &currency_locked,
 		UserAttributeSetting:  uas,
+		InvoiceInfo:           ii,
 	}
 	cache.Set("ACC_"+id, acc)
 
@@ -533,7 +537,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 	var arr = make([]*pb.Agent, 0)
 
-	var id, avatar_url, avatar_url_128, client_id, country_code, email, encrypted_password, fullname, gender string
+	var id, avatar_url, avatar_url_128, client_id, email, encrypted_password, fullname, gender string
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
 	var isowner, issupervisor bool
 	var scopes []string
@@ -542,8 +546,8 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var extension int64
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, country_code, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
-	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &country_code, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
+	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_owner, is_supervisor, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
+	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
 		&isowner, &issupervisor, &jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
@@ -553,7 +557,6 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			AvatarUrl:         conv.S(avatar_url),
 			AvatarUrl_128:     conv.S(avatar_url_128),
 			ClientId:          conv.S(client_id),
-			CountryCode:       conv.S(country_code),
 			DashboardSetting:  ds,
 			Email:             conv.S(email),
 			EncryptedPassword: conv.S(encrypted_password),
