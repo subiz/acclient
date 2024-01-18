@@ -1161,15 +1161,18 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func CanSpendCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float32) (bool, error) {
+func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float32) error {
 	waitUntilReady()
+	if creditId == "" {
+		return nil // alway allow
+	}
 	var credit *header.Credit
 	if val, has := creditCache.Get(accid + "." + creditId); has {
 		credit = val.(*header.Credit)
 	} else {
 		credits, err := creditmgr.ListCredits(context.Background(), &header.Id{AccountId: accid, Id: credit.Id})
 		if err != nil {
-			return false, err
+			return err
 		}
 		for _, freshCredit := range credits.GetCredits() {
 			if freshCredit.GetId() == creditId {
@@ -1180,16 +1183,16 @@ func CanSpendCredit(accid, creditId, service, serviceId, itemType, itemId string
 	}
 
 	if credit == nil {
-		return false, nil
+		return log.EMissing(creditId, "credit", log.M{"accid": accid})
 	}
 
-	// estimated
+	// quick estimated
 	if credit.GetFpvBalance()+credit.GetFpvCreditLimit() > quantity*int64(price*1_000_000)*2 {
-		return true, nil
+		return nil
 	}
 
 	// must ask
-	res, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
+	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
 		Id:           idgen.NewPaymentLogID(),
@@ -1201,10 +1204,7 @@ func CanSpendCredit(accid, creditId, service, serviceId, itemType, itemId string
 		Quantity:     quantity,
 		FpvUnitPrice: int64(price * 1_000_000),
 	})
-	if err != nil {
-		return false, err
-	}
-	return res.GetAllow(), nil
+	return err
 }
 
 func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) {
