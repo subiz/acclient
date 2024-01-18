@@ -6,10 +6,10 @@ require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.18
-	github.com/subiz/header v1.14.87
+	github.com/subiz/header v1.15.29
 	github.com/subiz/idgen v0.1.25
 	github.com/subiz/kafka v0.0.24
-	github.com/subiz/log v0.0.50
+	github.com/subiz/log v0.0.55
 	github.com/thanhpk/go-cache v1.0.1
 	github.com/thanhpk/randstr v1.0.6
 	google.golang.org/protobuf v1.32.0
@@ -34,14 +34,14 @@ require (
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/paulbellamy/ratecounter v0.2.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.19 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231212172506-995d672761c0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240116215550-a9fa1716bcac // indirect
 	google.golang.org/grpc v1.60.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
