@@ -1161,16 +1161,16 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float32) error {
+func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64) error {
 	waitUntilReady()
-	if creditId == "" {
+	if accid == "" || creditId == "" {
 		return nil // alway allow
 	}
 	var credit *header.Credit
 	if val, has := creditCache.Get(accid + "." + creditId); has {
 		credit = val.(*header.Credit)
 	} else {
-		credits, err := creditmgr.ListCredits(context.Background(), &header.Id{AccountId: accid, Id: credit.Id})
+		credits, err := creditmgr.ListCredits(context.Background(), &header.Id{AccountId: accid, Id: creditId})
 		if err != nil {
 			return err
 		}
@@ -1208,6 +1208,9 @@ func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string
 }
 
 func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) {
+	if accid == "" || creditId == "" {
+		return // alway allow
+	}
 	kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
