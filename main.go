@@ -45,6 +45,8 @@ var (
 
 	cache      = gocache.New(5 * time.Minute)
 	hash_cache *gocache.Cache
+
+	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
 )
 
 func _init() {
@@ -161,15 +163,15 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	cache.Set("ACC_"+id, acc)
 
 	var autocharge, autorenew bool
-	var subname, plan, pmmethod, promo, referralby string
+	var plan, pmmethod, promo, referralby string
 	var subcreated, ended, started int64
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
 	var customerb []byte
 	notebs := make([][]byte, 0)
 
-	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended, name, next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
-		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &subname, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
+	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended,  next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
+		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil
@@ -195,7 +197,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Credit:                &credit,
 		Customer:              customer,
 		Ended:                 &ended,
-		Name:                  &subname,
 		Notes:                 notes,
 		Plan:                  &plan,
 		NextBillingCycleMonth: &next_billing_cycle_month,
@@ -1160,7 +1161,34 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func CheckRecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float32) (bool, error) {
+func CanSpendCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float32) (bool, error) {
+	waitUntilReady()
+	var credit *header.Credit
+	if val, has := creditCache.Get(accid + "." + creditId); has {
+		credit = val.(*header.Credit)
+	} else {
+		credits, err := creditmgr.ListCredits(context.Background(), &header.Id{AccountId: accid, Id: credit.Id})
+		if err != nil {
+			return false, err
+		}
+		for _, freshCredit := range credits.GetCredits() {
+			if freshCredit.GetId() == creditId {
+				credit = freshCredit
+			}
+			creditCache.Set(accid+"."+creditId, freshCredit)
+		}
+	}
+
+	if credit == nil {
+		return false, nil
+	}
+
+	// estimated
+	if credit.GetFpvBalance()+credit.GetFpvCreditLimit() > quantity*int64(price*1_000_000)*2 {
+		return true, nil
+	}
+
+	// must ask
 	res, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
@@ -1176,27 +1204,7 @@ func CheckRecordCredit(accid, creditId, service, serviceId, itemType, itemId str
 	if err != nil {
 		return false, err
 	}
-
 	return res.GetAllow(), nil
-}
-
-func TryRecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) error {
-	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
-		AccountId:    accid,
-		CreditId:     creditId,
-		Id:           idgen.NewPaymentLogID(),
-		Service:      service,
-		ServiceId:    serviceId,
-		Item:         itemType,
-		ItemId:       itemId,
-		Created:      time.Now().UnixMilli(),
-		Quantity:     quantity,
-		FpvUnitPrice: int64(price * 1_000_000),
-	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) {
