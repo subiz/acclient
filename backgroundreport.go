@@ -7,6 +7,13 @@ import (
 	"github.com/subiz/log"
 )
 
+type HealthCheckSample struct {
+	CheckId string `json:"check_id,omitempty"`
+	Status  string `json:"status,omitempty"` // ok, failed
+	Created int64  `json:"status,omitempty"` // ms
+	Meta    string `json:"meta,omitempty"`   // json encoded
+}
+
 type BackgroundJob struct {
 	Id          string `json:"id,omitempty"`
 	LastRunId   string `json:"last_run_id,omitempty"`
@@ -16,6 +23,12 @@ type BackgroundJob struct {
 }
 
 type RunID string
+
+// status: ok|error|warning|running|outdated
+// ReportHealthCheck("db-0.cpu", "ok", "cpu=64%")
+func ReportHealthCheck(checkid, status, meta string) {
+	log.Info("43485304HEALTH", checkid, status, meta)
+}
 
 func StartBackgroundJob(id, name string, intervalSec int) RunID {
 	runid := randomID("BJ", 28)

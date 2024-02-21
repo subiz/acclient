@@ -14,12 +14,12 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			IsSystem: true,
 		},
 		&header.AttributeDefinition{
-			Name:       "Banned",
-			Label:      "Banned",
-			I18NLabel:  &header.I18NString{Vi_VN: "Bị chặn", En_US: "Banned"},
-			Key:        "is_ban",
-			Type:       "boolean",
-			IsSystem:   true,
+			Name:      "Banned",
+			Label:     "Banned",
+			I18NLabel: &header.I18NString{Vi_VN: "Bị chặn", En_US: "Banned"},
+			Key:       "is_ban",
+			Type:      "boolean",
+			IsSystem:  true,
 		},
 		&header.AttributeDefinition{
 			Name:        "Avatar",
@@ -344,6 +344,15 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Key:       "is_unsubscribed",
 			Type:      "boolean",
 			IsSystem:  true,
+		},
+		&header.AttributeDefinition{
+			Name:       "First visit domain",
+			Label:      "First visit domain",
+			I18NLabel:  &header.I18NString{Vi_VN: "Domain truy cập lần đầu", En_US: "First time domain visited"},
+			Key:        "first_time_domain_visited",
+			Type:       "string",
+			IsSystem:   true,
+			IsReadonly: true,
 		},
 	}
 }
