@@ -1033,7 +1033,21 @@ func randomID(sign string, randomfactor int) string {
 func NewID(accid, scope string) int64 {
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
-		id, err := registryClient.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
+		id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		idint, _ := strconv.ParseInt(id.Id, 10, 0)
+		return idint
+	}
+	return -1
+}
+
+func NewID2(accid, scope string) int64 {
+	waitUntilReady()
+	for attempt := 0; attempt < 100; attempt++ {
+		id, err := registryClient.NewID2(context.Background(), &header.Id{AccountId: accid, Id: scope})
 		if err != nil {
 			time.Sleep(1 * time.Second)
 			continue
