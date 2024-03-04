@@ -9,8 +9,6 @@ import (
 )
 
 var (
-	registryClient header.NumberRegistryClient
-
 	compactCache, _   = lru.New[string, int](10_000)
 	uncompactCache, _ = lru.New[int, string](10_000)
 

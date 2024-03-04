@@ -50,4 +50,3 @@ func IndexWithDay(col, accid, doc, part, content string, isName bool, isId bool,
 		Owners:     owners,
 	})
 }
-

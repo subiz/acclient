@@ -37,9 +37,10 @@ var (
 
 	ready bool
 
-	session   *gocql.Session
-	accmgr    header.AccountMgrClient
-	creditmgr header.CreditMgrClient
+	session        *gocql.Session
+	accmgr         header.AccountMgrClient
+	creditmgr      header.CreditMgrClient
+	registryClient header.NumberRegistryClient
 
 	numpubsub header.PubsubClient
 
@@ -96,7 +97,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var currency string
 	var currency_locked bool
 
-	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, timezone, twitter, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &timezone, &twitter, &url,  &zipcode, &currency, &currency_locked, &invoice_infob)
+	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, timezone, twitter, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &timezone, &twitter, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -123,37 +124,37 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	bh := &pb.BusinessHours{}
 	proto.Unmarshal(businesshourb, bh)
 	acc := &pb.Account{
-		Id:                    &id,
-		Address:               &address,
-		BusinessHours:         bh,
-		City:                  &city,
-		Confirmed:             &confirmed,
-		Country:               &country,
-		Created:               &created,
-		DateFormat:            &dateformat,
-		Facebook:              &facebook,
-		Feature:               f,
-		ForceFeature:          ff,
-		Lang:                  &lang,
-		LeadSetting:           ls,
-		Locale:                &locale,
-		LogoUrl:               &logo_url,
-		LogoUrl_128:           &logo_url_128,
-		Modified:              &modified,
-		Name:                  &name,
-		OwnerId:               &ownerid,
-		Phone:                 &phone,
-		ReferrerFrom:          &referrer_from,
-		State:                 &state,
-		SupportedLocales:      supportedlocales,
-		Timezone:              &timezone,
-		Twitter:               &twitter,
-		Url:                   &url,
-		ZipCode:               &zipcode,
-		Currency:              &currency,
-		CurrencyLocked:        &currency_locked,
-		UserAttributeSetting:  uas,
-		InvoiceInfo:           ii,
+		Id:                   &id,
+		Address:              &address,
+		BusinessHours:        bh,
+		City:                 &city,
+		Confirmed:            &confirmed,
+		Country:              &country,
+		Created:              &created,
+		DateFormat:           &dateformat,
+		Facebook:             &facebook,
+		Feature:              f,
+		ForceFeature:         ff,
+		Lang:                 &lang,
+		LeadSetting:          ls,
+		Locale:               &locale,
+		LogoUrl:              &logo_url,
+		LogoUrl_128:          &logo_url_128,
+		Modified:             &modified,
+		Name:                 &name,
+		OwnerId:              &ownerid,
+		Phone:                &phone,
+		ReferrerFrom:         &referrer_from,
+		State:                &state,
+		SupportedLocales:     supportedlocales,
+		Timezone:             &timezone,
+		Twitter:              &twitter,
+		Url:                  &url,
+		ZipCode:              &zipcode,
+		Currency:             &currency,
+		CurrencyLocked:       &currency_locked,
+		UserAttributeSetting: uas,
+		InvoiceInfo:          ii,
 	}
 	cache.Set("ACC_"+id, acc)
 
@@ -1032,7 +1033,7 @@ func randomID(sign string, randomfactor int) string {
 func NewID(accid, scope string) int64 {
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
-		id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
+		id, err := registryClient.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
 		if err != nil {
 			time.Sleep(1 * time.Second)
 			continue
