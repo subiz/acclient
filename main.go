@@ -160,14 +160,14 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 
 	var autocharge, autorenew bool
 	var plan, pmmethod, promo, referralby string
-	var subcreated, ended, started int64
+	var subcreated, ended, started, fpv_unlimited_agent_price int64
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
 	var customerb []byte
 	notebs := make([][]byte, 0)
 
-	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended,  next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started FROM account.subs WHERE account_id=?", id).Scan(
-		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started)
+	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended,  next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
+		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil
@@ -186,20 +186,21 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	customer := &pm.Customer{}
 	proto.Unmarshal(customerb, customer)
 	sub := &pm.Subscription{
-		AccountId:             &id,
-		AutoRenew:             &autorenew,
-		BillingCycleMonth:     &billingcyclemonth,
-		Created:               &subcreated,
-		Credit:                &credit,
-		Customer:              customer,
-		Ended:                 &ended,
-		Notes:                 notes,
-		Plan:                  &plan,
-		NextBillingCycleMonth: &next_billing_cycle_month,
-		PrimaryPaymentMethod:  &pmmethod,
-		PromotionCode:         &promo,
-		ReferralBy:            &referralby,
-		Started:               &started,
+		AccountId:              &id,
+		AutoRenew:              &autorenew,
+		BillingCycleMonth:      &billingcyclemonth,
+		Created:                &subcreated,
+		Credit:                 &credit,
+		Customer:               customer,
+		Ended:                  &ended,
+		Notes:                  notes,
+		Plan:                   &plan,
+		NextBillingCycleMonth:  &next_billing_cycle_month,
+		PrimaryPaymentMethod:   &pmmethod,
+		PromotionCode:          &promo,
+		ReferralBy:             &referralby,
+		Started:                &started,
+		FpvUnlimitedAgentPrice: &fpv_unlimited_agent_price,
 	}
 	cache.Set("SUB_"+id, sub)
 	return acc, sub, nil

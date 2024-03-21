@@ -345,14 +345,5 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type:      "boolean",
 			IsSystem:  true,
 		},
-		&header.AttributeDefinition{
-			Name:       "First visit domain",
-			Label:      "First visit domain",
-			I18NLabel:  &header.I18NString{Vi_VN: "Domain truy cập lần đầu", En_US: "First time domain visited"},
-			Key:        "first_time_domain_visited",
-			Type:       "string",
-			IsSystem:   true,
-			IsReadonly: true,
-		},
 	}
 }
