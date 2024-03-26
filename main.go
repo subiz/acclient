@@ -89,15 +89,15 @@ func waitUntilReady() {
 
 func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	waitUntilReady()
-	var businesshourb, invoice_infob, feature, force_feature, leadsetting, userattributesetting []byte
+	var businesshourb, invoice_infob, leadsetting, userattributesetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, facebook, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, region, state, timezone, twitter, url string
-	var confirmed, created, modified int64
+	var created, modified int64
 	var zipcode int32
 	var currency string
 	var currency_locked bool
 
-	err := session.Query("SELECT address, business_hours,city,confirmed, country, created,date_format, facebook, feature, force_feature, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, timezone, twitter, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &confirmed, &country, &created, &dateformat, &facebook, &feature, &force_feature, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &timezone, &twitter, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
+	err := session.Query("SELECT address, business_hours,city, country, created,date_format, facebook, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, timezone, twitter, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &facebook, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &timezone, &twitter, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -116,11 +116,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	ls := &pb.LeadSetting{}
 	proto.Unmarshal(leadsetting, ls)
 
-	f := &pb.Feature{}
-	ff := &pb.Feature{}
-	proto.Unmarshal(feature, f)
-	proto.Unmarshal(force_feature, ff)
-
 	bh := &pb.BusinessHours{}
 	proto.Unmarshal(businesshourb, bh)
 	acc := &pb.Account{
@@ -128,13 +123,10 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Address:              &address,
 		BusinessHours:        bh,
 		City:                 &city,
-		Confirmed:            &confirmed,
 		Country:              &country,
 		Created:              &created,
 		DateFormat:           &dateformat,
 		Facebook:             &facebook,
-		Feature:              f,
-		ForceFeature:         ff,
 		Lang:                 &lang,
 		LeadSetting:          ls,
 		Locale:               &locale,
@@ -158,16 +150,16 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	}
 	cache.Set("ACC_"+id, acc)
 
-	var autocharge, autorenew bool
+	var limitb []byte
+	var autocharge bool
 	var plan, pmmethod, promo, referralby string
-	var subcreated, ended, started, fpv_unlimited_agent_price int64
+	var subcreated, churned, ended, started, fpv_unlimited_agent_price int64
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
 	var customerb []byte
-	notebs := make([][]byte, 0)
 
-	err = session.Query("SELECT auto_charge, auto_renew, billing_cycle_month, created, credit, customer, ended,  next_billing_cycle_month, notes, plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
-		&autocharge, &autorenew, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &next_billing_cycle_month, &notebs, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price)
+	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, customer, ended, churned, next_billing_cycle_month,  plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
+		&limitb, &autocharge,  &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &churned, &next_billing_cycle_month, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil
@@ -176,24 +168,20 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return nil, nil, log.EServer(err, log.M{"account_id": id})
 	}
 
-	notes := []*pm.Note{}
-	for _, noteb := range notebs {
-		note := &pm.Note{}
-		proto.Unmarshal(noteb, note)
-		notes = append(notes, note)
-	}
+	limit := &compb.Limit{}
+	proto.Unmarshal(limitb, limit)
 
 	customer := &pm.Customer{}
 	proto.Unmarshal(customerb, customer)
 	sub := &pm.Subscription{
 		AccountId:              &id,
-		AutoRenew:              &autorenew,
 		BillingCycleMonth:      &billingcyclemonth,
 		Created:                &subcreated,
 		Credit:                 &credit,
+		Limit:                  limit,
 		Customer:               customer,
 		Ended:                  &ended,
-		Notes:                  notes,
+		Churned:                &churned,
 		Plan:                   &plan,
 		NextBillingCycleMonth:  &next_billing_cycle_month,
 		PrimaryPaymentMethod:   &pmmethod,
