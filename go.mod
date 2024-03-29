@@ -1,12 +1,12 @@
 module github.com/subiz/acclient/v2
 
-go 1.21.2
+go 1.22.1
 
 require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.19
-	github.com/subiz/header v1.16.16
+	github.com/subiz/header v1.16.24
 	github.com/subiz/idgen v0.1.27
 	github.com/subiz/kafka v0.0.24
 	github.com/subiz/log v0.0.55
@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/IBM/sarama v1.43.0 // indirect
+	github.com/IBM/sarama v1.43.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

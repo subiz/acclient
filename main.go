@@ -51,15 +51,7 @@ var (
 )
 
 func _init() {
-	cluster := gocql.NewCluster("db-0")
-	cluster.Timeout = 60 * time.Second
-	cluster.ConnectTimeout = 60 * time.Second
-	cluster.Keyspace = "account"
-	var err error
-	session, err = cluster.CreateSession()
-	if err != nil {
-		panic(err)
-	}
+	session = header.ConnectDB()
 
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
@@ -158,8 +150,8 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var credit float32
 	var customerb []byte
 
-	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, customer, ended, churned, next_billing_cycle_month,  plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
-		&limitb, &autocharge,  &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &churned, &next_billing_cycle_month, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price)
+	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, customer, ended, churned, next_billing_cycle_month, plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
+		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &churned, &next_billing_cycle_month, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil

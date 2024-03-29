@@ -1,5 +1,7 @@
 github.com/IBM/sarama v1.43.0 h1:YFFDn8mMI2QL0wOrG0J2sFoVIAFl7hS9JQi2YZsXtJc=
 github.com/IBM/sarama v1.43.0/go.mod h1:zlE6HEbC/SMQ9mhEYaF7nNLYOUyrs0obySKCckWP9BM=
+github.com/IBM/sarama v1.43.1 h1:Z5uz65Px7f4DhI/jQqEm/tV9t8aU+JUdTyW/K/fCXpA=
+github.com/IBM/sarama v1.43.1/go.mod h1:GG5q1RURtDNPz8xxJs3mgX6Ytak8Z9eLhAkJPObe2xE=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932 h1:mXoPYz/Ul5HYEDvkta6I8/rnYM5gSdSV2tJ6XbZuEtY=
@@ -102,6 +104,8 @@ github.com/subiz/header v1.16.12 h1:ApygOGXKZv3AnUo7IZJq47nHP64tbIaLgKFjuyBYDu0=
 github.com/subiz/header v1.16.12/go.mod h1:ZXh7xYJ8q2uuA/IhXKEv6PFvvXXoTQ3Em4eDlV9LmRc=
 github.com/subiz/header v1.16.16 h1:vsoXHOB0cMAxv5neWRE1RsTufRsOWzxPT6stlXQtOKY=
 github.com/subiz/header v1.16.16/go.mod h1:ZXh7xYJ8q2uuA/IhXKEv6PFvvXXoTQ3Em4eDlV9LmRc=
+github.com/subiz/header v1.16.24 h1:Icll+mDJZL34ZbpKSEwl4c6U/V0969NY82p1m2GOue8=
+github.com/subiz/header v1.16.24/go.mod h1:Sjnc0knM2YWZWgc7TRZas4Ib664baqKR8xKnsy3p+yU=
 github.com/subiz/idgen v0.1.27 h1:yBgywmp8RAxYNuYtu3K6dmyds1lRncsoygnwKzj4uRs=
 github.com/subiz/idgen v0.1.27/go.mod h1:HnTJGlC/xr9l6Twb/HXy0gwG4TbaUAKNYBFGjviB1+8=
 github.com/subiz/kafka v0.0.24 h1:y2ATZiBDoLZaY9CHMUgZFy1HqTDOQCSuND31SQAhuiY=
