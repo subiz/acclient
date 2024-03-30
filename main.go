@@ -51,7 +51,7 @@ var (
 )
 
 func _init() {
-	session = header.ConnectDB()
+	session = header.ConnectDB([]string{"db-0"}, "account")
 
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
