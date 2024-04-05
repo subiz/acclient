@@ -1094,7 +1094,7 @@ func GetAttrAsStringWithDateFormat(user *header.User, key, dateformat string) st
 		}
 
 		t, err := time.Parse(time.RFC3339, foundAttr.GetDatetime())
-		if err == nil {
+		if err != nil {
 			t = time.Now()
 		}
 
@@ -1102,7 +1102,6 @@ func GetAttrAsStringWithDateFormat(user *header.User, key, dateformat string) st
 		tInTz := t.UTC().Add(time.Hour*time.Duration(tzhour) + time.Minute*time.Duration(tzmin))
 		return tInTz.Format(dateformat)
 	}
-
 	return ""
 }
 
@@ -1148,7 +1147,6 @@ func GetAttrAsString(user *header.User, key string) string {
 	if def.Type == "datetime" {
 		return foundAttr.GetDatetime()
 	}
-
 	return ""
 }
 
