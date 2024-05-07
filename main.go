@@ -1282,33 +1282,33 @@ func pollLoop() {
 	}
 }
 
-func CanAccess(accid, issuer, issuertype string, action int64, resourceGroup header.IResourceGroup, isMine bool) error {
+func GetRoles(accid, issuer, issuertype string, resourceGroup header.IResourceGroup) (string, error) {
 	if issuertype == "subiz" || issuertype == "system" {
-		return nil
+		return "manager,admin", nil
 	}
 
 	if issuertype != "agent" {
-		return log.EDeny(issuer, "agent", log.M{"account_id": accid, "issuer_id": issuer, "issuer_type": issuertype})
+		return "", nil
 	}
 
 	agent, err := GetAgent(accid, issuer)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if agent == nil || agent.GetState() != "active" {
-		return log.EAgentLocked(accid, issuer, log.M{"action": action})
+		return "", nil
 	}
 
 	if header.ContainString(agent.GetScopes(), "owner") ||
 		header.ContainString(agent.GetScopes(), "account_manage") ||
 		header.ContainString(agent.GetScopes(), "account_setting") {
-		return nil
+		return "manager", nil
 	}
 
 	groups, err := ListGroups(accid)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var myGroup map[string]bool
@@ -1318,46 +1318,25 @@ func CanAccess(accid, issuer, issuertype string, action int64, resourceGroup hea
 		}
 	}
 
-	var ok bool
 	if resourceGroup == nil {
-		return log.EMissing(accid, "resource_group", log.M{"account_id": accid})
+		return "", nil
 	}
 
+	var role string
 	for _, mem := range resourceGroup.GetPermissions() {
 		if mem.GetMemberId() == issuer {
-			if !isMine && (mem.GetPermission()&header.OTHER == 0) {
-				return log.EDeny(issuer, "other", log.M{"account_id": accid, "issuer_id": issuer, "issuer_type": issuertype})
-			} else {
-				return nil
-			}
-			// direct
-			if isMine && mem.GetPermission()&action > 0 {
-				// direct allowed
-				return nil
-			}
-			// directly un-allowed
-			return log.EDeny(issuer, "agent", log.M{"account_id": accid, "issuer_id": issuer, "issuer_type": issuertype})
+			return mem.Role, nil
+		}
+
+		if mem.GetMemberId() == "*" {
+			role += mem.Role
 		}
 
 		if strings.HasPrefix(mem.GetMemberId(), "gr") {
 			if myGroup[mem.GetMemberId()] {
-				if !isMine && (mem.Permission&header.OTHER == 0) {
-					return log.EDeny(issuer, "other", log.M{"account_id": accid, "issuer_id": issuer, "issuer_type": issuertype})
-				} else {
-					ok = true
-					break
-				}
-
-				if isMine && mem.Permission&action > 0 {
-					ok = true
-					break
-				}
+				role += mem.Role
 			}
 		}
 	}
-
-	if !ok {
-		return log.EDeny(issuer, "agent", log.M{"account_id": accid, "issuer_id": issuer, "issuer_type": issuertype})
-	}
-	return nil
+	return role, nil
 }
