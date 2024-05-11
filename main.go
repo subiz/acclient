@@ -569,14 +569,17 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	}
 
 	list := make([]*pb.Agent, 0)
-	for _, a := range arr {
-		if a.GetState() != pb.Agent_deleted.String() {
-			a.EncryptedPassword = nil
-			list = append(list, a)
+	listM := map[string]*pb.Agent{}
+	for _, ag := range arr {
+		if ag.GetState() != pb.Agent_deleted.String() {
+			ag.EncryptedPassword = nil
+			list = append(list, ag)
+			listM[ag.GetId()] = ag
 		}
 	}
 
 	cache.Set("AG_"+accid, list)
+	cache.Set("AGM_"+accid, listM)
 	return list, nil
 }
 
@@ -689,15 +692,14 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 }
 
 func GetAgent(accid, agid string) (*pb.Agent, error) {
-	agents, err := ListAgents(accid)
+	agM, err := ListAgentM(accid)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, ag := range agents {
-		if ag.GetId() == agid {
-			return ag, nil
-		}
+	ag, has := agM[agid]
+	if has {
+		return ag, nil
 	}
 
 	if strings.HasPrefix(agid, "bb") {
@@ -762,6 +764,28 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 		return value.([]*pb.Agent), nil
 	}
 	return listAgentsDB(accid)
+}
+
+func ListAgentM(accid string) (map[string]*pb.Agent, error) {
+	waitUntilReady()
+
+	// cache exists
+	if value, found := cache.Get("AGM_" + accid); found {
+		if value == nil {
+			return nil, nil
+		}
+		return value.(map[string]*pb.Agent), nil
+	}
+
+	agents, err := ListAgents(accid)
+	if err != nil {
+		return nil, err
+	}
+	var agentM = map[string]*pb.Agent{}
+	for _, ag := range agents {
+		agentM[ag.GetId()] = ag
+	}
+	return agentM, nil
 }
 
 func ListGroups(accid string) ([]*header.AgentGroup, error) {
@@ -1262,6 +1286,7 @@ func pollLoop() {
 			}
 			if event.GetType() == "agent_updated" {
 				cache.Delete("AG_" + accid)
+				cache.Delete("AGM_" + accid)
 			}
 			if event.GetType() == "agent_group_updated" {
 				cache.Delete("GR_" + accid)
@@ -1282,61 +1307,85 @@ func pollLoop() {
 	}
 }
 
-func GetRoles(accid, issuer, issuertype string, resourceGroup header.IResourceGroup) (string, error) {
-	if issuertype == "subiz" || issuertype == "system" {
-		return "manager,admin", nil
+var emptyM = map[string]bool{}
+var agentScopeCache = gocache.New(30 * time.Second)
+
+func joinMap(a, b map[string]bool) {
+	for k, v := range b {
+		if v {
+			a[k] = v
+		}
+	}
+}
+
+func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
+	if value, found := agentScopeCache.Get(accid + "_" + agid + "_" + resourceGroup.GetId()); found {
+		return value.(map[string]bool), nil
 	}
 
-	if issuertype != "agent" {
-		return "", nil
-	}
-
-	agent, err := GetAgent(accid, issuer)
+	agent, err := GetAgent(accid, agid)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if agent == nil || agent.GetState() != "active" {
-		return "", nil
-	}
-
-	if header.ContainString(agent.GetScopes(), "owner") ||
-		header.ContainString(agent.GetScopes(), "account_manage") ||
-		header.ContainString(agent.GetScopes(), "account_setting") {
-		return "manager", nil
+		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), emptyM)
+		return emptyM, nil
 	}
 
 	groups, err := ListGroups(accid)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+
+	agentScopes := agent.GetScopes() // agent's account-wide scope
+	if resourceGroup == nil {
+		permM := map[string]bool{}
+		for _, scope := range agentScopes {
+			joinMap(permM, header.ScopeM[scope])
+		}
+		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), permM)
+		return permM, nil
 	}
 
 	var myGroup map[string]bool
 	for _, group := range groups {
-		if header.ContainString(group.GetAgentIds(), issuer) {
+		if header.ContainString(group.GetAgentIds(), agid) {
 			myGroup[group.GetId()] = true
 		}
 	}
 
-	if resourceGroup == nil {
-		return "", nil
-	}
-
-	var role string
+	permM := map[string]bool{} // output
 	for _, mem := range resourceGroup.GetPermissions() {
-		if mem.GetMemberId() == issuer {
-			return mem.Role, nil
+		if mem.GetMemberId() == agid {
+			// agent is directly set role in this group ->
+			// we dont want to use this setting instead of merging role
+			// so we must reset the perm and break right after
+			permM = map[string]bool{} //
+			for _, scope := range mem.Permissions {
+				joinMap(permM, header.ScopeM[scope])
+			}
+			break
 		}
 
 		if mem.GetMemberId() == "*" {
-			role += mem.Role
+			for _, scope := range mem.Permissions {
+				joinMap(permM, header.ScopeM[scope])
+			}
 		}
 
 		if strings.HasPrefix(mem.GetMemberId(), "gr") {
-			if myGroup[mem.GetMemberId()] {
-				role += mem.Role
+			if !myGroup[mem.GetMemberId()] {
+				continue
+			}
+			for _, scope := range mem.Permissions {
+				joinMap(permM, header.ScopeM[scope])
 			}
 		}
 	}
-	return role, nil
+	for _, scope := range agentScopes {
+		joinMap(permM, header.ScopeM[scope])
+	}
+	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), permM)
+	return permM, nil
 }
