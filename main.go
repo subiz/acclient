@@ -1318,6 +1318,41 @@ func joinMap(a, b map[string]bool) {
 	}
 }
 
+func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroup header.IResourceGroup) error {
+	if issuertype == "system" || issuertype == "subiz" {
+		return nil
+	}
+
+	if action == "" {
+		return nil
+	}
+
+	permM, err := GetAgentPerm(accid, issuer, resourceGroup)
+	if err != nil {
+		return err
+	}
+
+	// ticket:read ticket:write
+	if permM[string(objectType)+":"+string(action)] {
+		return nil
+	}
+
+	if isOwned {
+		// ticket:read:own ticket:write:own
+		if permM[string(objectType)+":"+string(action)+":own"] {
+			return nil
+		}
+	}
+
+	if !isAssigned {
+		// ticket:read:own ticket:write:own
+		if permM[string(objectType)+":"+string(action)+":unassigned"] {
+			return nil
+		}
+	}
+	return log.EDeny(issuer, string(objectType), log.M{"account_id": accid, "cred_type": issuertype, "action": string(action), "resource_group_id": resourceGroup.GetId()})
+}
+
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
 	if value, found := agentScopeCache.Get(accid + "_" + agid + "_" + resourceGroup.GetId()); found {
 		return value.(map[string]bool), nil
@@ -1333,11 +1368,6 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 		return emptyM, nil
 	}
 
-	groups, err := ListGroups(accid)
-	if err != nil {
-		return nil, err
-	}
-
 	agentScopes := agent.GetScopes() // agent's account-wide scope
 	if resourceGroup == nil {
 		permM := map[string]bool{}
@@ -1346,6 +1376,11 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 		}
 		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), permM)
 		return permM, nil
+	}
+
+	groups, err := ListGroups(accid)
+	if err != nil {
+		return nil, err
 	}
 
 	var myGroup map[string]bool
@@ -1362,14 +1397,14 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 			// we dont want to use this setting instead of merging role
 			// so we must reset the perm and break right after
 			permM = map[string]bool{} //
-			for _, scope := range mem.Permissions {
+			for _, scope := range mem.Scopes {
 				joinMap(permM, header.ScopeM[scope])
 			}
 			break
 		}
 
 		if mem.GetMemberId() == "*" {
-			for _, scope := range mem.Permissions {
+			for _, scope := range mem.Scopes {
 				joinMap(permM, header.ScopeM[scope])
 			}
 		}
@@ -1378,7 +1413,7 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 			if !myGroup[mem.GetMemberId()] {
 				continue
 			}
-			for _, scope := range mem.Permissions {
+			for _, scope := range mem.Scopes {
 				joinMap(permM, header.ScopeM[scope])
 			}
 		}
