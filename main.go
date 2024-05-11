@@ -1378,18 +1378,7 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 		return permM, nil
 	}
 
-	groups, err := ListGroups(accid)
-	if err != nil {
-		return nil, err
-	}
-
-	var myGroup map[string]bool
-	for _, group := range groups {
-		if header.ContainString(group.GetAgentIds(), agid) {
-			myGroup[group.GetId()] = true
-		}
-	}
-
+	var myGroup = map[string]bool{}
 	permM := map[string]bool{} // output
 	for _, mem := range resourceGroup.GetPermissions() {
 		if mem.GetMemberId() == agid {
@@ -1409,13 +1398,27 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 			}
 		}
 
-		if strings.HasPrefix(mem.GetMemberId(), "gr") {
-			if !myGroup[mem.GetMemberId()] {
-				continue
+		if !strings.HasPrefix(mem.GetMemberId(), "gr") {
+			continue
+		}
+		if myGroup == nil {
+			myGroup = map[string]bool{}
+			groups, err := ListGroups(accid)
+			if err != nil {
+				return nil, err
 			}
-			for _, scope := range mem.Scopes {
-				joinMap(permM, header.ScopeM[scope])
+			for _, group := range groups {
+				if header.ContainString(group.GetAgentIds(), agid) {
+					myGroup[group.GetId()] = true
+				}
 			}
+		}
+
+		if !myGroup[mem.GetMemberId()] {
+			continue
+		}
+		for _, scope := range mem.Scopes {
+			joinMap(permM, header.ScopeM[scope])
 		}
 	}
 	for _, scope := range agentScopes {
