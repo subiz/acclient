@@ -29,7 +29,6 @@ import (
 const (
 	tblLocale = "lang"
 	tblAgents = "agents"
-	tblGroups = "groups"
 )
 
 var (
@@ -1354,7 +1353,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 }
 
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
-	if value, found := agentScopeCache.Get(accid + "_" + agid + "_" + resourceGroup.GetId()); found {
+	if value, found := agentScopeCache.Get(accid + "_" + agid + "_" + resourceGroup.GetId()); found && value != nil {
 		return value.(map[string]bool), nil
 	}
 
