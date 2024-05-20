@@ -29,7 +29,6 @@ import (
 const (
 	tblLocale = "lang"
 	tblAgents = "agents"
-	tblGroups = "groups"
 )
 
 var (
@@ -1354,7 +1353,11 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 }
 
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
-	if value, found := agentScopeCache.Get(accid + "_" + agid + "_" + resourceGroup.GetId()); found {
+	resourceGroupId := ""
+	if resourceGroup != nil {
+		resourceGroupId = resourceGroup.GetId()
+	}
+	if value, found := agentScopeCache.Get(accid + "_" + agid + "_" + resourceGroupId); found && value != nil {
 		return value.(map[string]bool), nil
 	}
 
@@ -1364,7 +1367,7 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	}
 
 	if agent == nil || agent.GetState() != "active" {
-		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), emptyM)
+		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, emptyM)
 		return emptyM, nil
 	}
 
@@ -1374,11 +1377,11 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 		for _, scope := range agentScopes {
 			joinMap(permM, header.ScopeM[scope])
 		}
-		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), permM)
+		agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, permM)
 		return permM, nil
 	}
 
-	var myGroup = map[string]bool{}
+	var myGroup map[string]bool
 	permM := map[string]bool{} // output
 	for _, mem := range resourceGroup.GetPermissions() {
 		if mem.GetMemberId() == agid {
@@ -1424,6 +1427,6 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	for _, scope := range agentScopes {
 		joinMap(permM, header.ScopeM[scope])
 	}
-	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroup.GetId(), permM)
+	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, permM)
 	return permM, nil
 }
