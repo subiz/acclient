@@ -1318,6 +1318,10 @@ func joinMap(a, b map[string]bool) {
 }
 
 func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroup header.IResourceGroup) error {
+	resourceGroupId := ""
+	if resourceGroup != nil {
+		resourceGroupId = resourceGroup.GetId()
+	}
 	if issuertype == "system" || issuertype == "subiz" {
 		return nil
 	}
@@ -1349,7 +1353,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 			return nil
 		}
 	}
-	return log.EDeny(issuer, string(objectType), log.M{"account_id": accid, "cred_type": issuertype, "action": string(action), "resource_group_id": resourceGroup.GetId()})
+	return log.EDeny(issuer, string(objectType), log.M{"account_id": accid, "cred_type": issuertype, "action": string(action), "resource_group_id": resourceGroupId})
 }
 
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
