@@ -449,7 +449,7 @@ func GetAccount(accid string) (*pb.Account, error) {
 	return acc, err
 }
 
-func makeDefNotiSetting(accid, agid string) *n5pb.Setting {
+func MakeDefNotiSetting(accid, agid string) *n5pb.Setting {
 	now := time.Now().UnixMilli()
 	return &n5pb.Setting{
 		AccountId: &accid,
@@ -460,16 +460,18 @@ func makeDefNotiSetting(accid, agid string) *n5pb.Setting {
 			UserReturned:          conv.B(true),
 			CampaignUserConverted: conv.B(true),
 			UserOpenedEmail:       conv.B(true),
+			TicketUpdated:         &now,
 			TaskUpdated:           &now,
 		},
 		Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
 	}
 }
+
 func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 	waitUntilReady()
 	if value, found := cache.Get("N5Setting_" + accid); found {
 		if value == nil {
-			return makeDefNotiSetting(accid, agid), nil
+			return MakeDefNotiSetting(accid, agid), nil
 		}
 		list := value.([]*n5pb.Setting)
 		for _, item := range list {
@@ -477,7 +479,7 @@ func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 				return item, nil
 			}
 		}
-		return makeDefNotiSetting(accid, agid), nil
+		return MakeDefNotiSetting(accid, agid), nil
 	}
 
 	settings, err := getNotificationSettingDB(accid)
@@ -489,7 +491,7 @@ func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 			return setting, nil
 		}
 	}
-	return makeDefNotiSetting(accid, agid), nil
+	return MakeDefNotiSetting(accid, agid), nil
 }
 
 func GetSubscription(accid string) (*pm.Subscription, error) {
@@ -727,6 +729,7 @@ func Bot2Agent(bot *header.Bot) *pb.Agent {
 		Modified:      &bot.Updated,
 		Joined:        &bot.Created,
 		InvitedBy:     &bot.CreatedBy,
+		Scopes:        []string{"agent"},
 	}
 }
 
