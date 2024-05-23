@@ -1320,6 +1320,35 @@ func joinMap(a, b map[string]bool) {
 	}
 }
 
+func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
+	if cred.GetType() == compb.Type_subiz {
+		return nil
+	}
+
+	if action == "" {
+		return nil
+	}
+
+	permM := map[string]bool{}
+	accid := cred.GetAccountId()
+	agent, err := GetAgent(accid, cred.GetIssuer())
+	if err != nil {
+		return err
+	}
+
+	if agent.GetState() == "active" {
+		for _, scope := range agent.GetScopes() { // agent's account-wide scope
+			joinMap(permM, header.ScopeM[scope])
+		}
+	}
+	// ticket:read ticket:write
+	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
+		return nil
+	}
+
+	return log.EDeny(cred.GetIssuer(), string(objectType), log.M{"no_report": true, "account_id": accid, "cred_type": cred.GetType().String(), "action": string(action)})
+}
+
 func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroups ...header.IResourceGroup) error {
 	if issuertype == "system" || issuertype == "subiz" {
 		return nil
