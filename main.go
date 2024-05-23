@@ -1338,9 +1338,21 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 
 		joinMap(permM, pM)
 	}
+	if len(resourceGroups) == 0 {
+		agent, err := GetAgent(accid, issuer)
+		if err != nil {
+			return err
+		}
+
+		if agent.GetState() == "active" {
+			for _, scope := range agent.GetScopes() { // agent's account-wide scope
+				joinMap(permM, header.ScopeM[scope])
+			}
+		}
+	}
 
 	// ticket:read ticket:write
-	if permM[string(objectType)+":"+string(action)] {
+	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
 		return nil
 	}
 
