@@ -1320,11 +1320,7 @@ func joinMap(a, b map[string]bool) {
 	}
 }
 
-func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroup header.IResourceGroup) error {
-	resourceGroupId := ""
-	if resourceGroup != nil {
-		resourceGroupId = resourceGroup.GetId()
-	}
+func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroups ...header.IResourceGroup) error {
 	if issuertype == "system" || issuertype == "subiz" {
 		return nil
 	}
@@ -1333,9 +1329,14 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 		return nil
 	}
 
-	permM, err := GetAgentPerm(accid, issuer, resourceGroup)
-	if err != nil {
-		return err
+	permM := map[string]bool{}
+	for _, resourceGroup := range resourceGroups {
+		pM, err := GetAgentPerm(accid, issuer, resourceGroup)
+		if err != nil {
+			return err
+		}
+
+		joinMap(permM, pM)
 	}
 
 	// ticket:read ticket:write
@@ -1356,7 +1357,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 			return nil
 		}
 	}
-	return log.EDeny(issuer, string(objectType), log.M{"account_id": accid, "cred_type": issuertype, "action": string(action), "resource_group_id": resourceGroupId})
+	return log.EDeny(issuer, string(objectType), log.M{"no_report": true, "account_id": accid, "cred_type": issuertype, "action": string(action)})
 }
 
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
