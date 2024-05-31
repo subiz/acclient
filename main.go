@@ -148,9 +148,10 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
 	var customerb []byte
+	var use_ticket int64
 
-	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, customer, ended, churned, next_billing_cycle_month, plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
-		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &churned, &next_billing_cycle_month, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price)
+	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, customer, ended, churned, next_billing_cycle_month, plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price, use_ticket FROM account.subs WHERE account_id=?", id).Scan(
+		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &churned, &next_billing_cycle_month, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price, &use_ticket)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil
@@ -180,6 +181,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		ReferralBy:             &referralby,
 		Started:                &started,
 		FpvUnlimitedAgentPrice: &fpv_unlimited_agent_price,
+		UseTicket:              conv.PI64(int(use_ticket)),
 	}
 	cache.Set("SUB_"+id, sub)
 	return acc, sub, nil
