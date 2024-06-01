@@ -49,6 +49,8 @@ var (
 	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
 )
 
+var ACCESS_DENY = log.EDeny("subiz", "not have permission", log.M{"no_report": true})
+
 func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
 
@@ -1359,48 +1361,50 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 	if action == "" {
 		return nil
 	}
-
-	permM := map[string]bool{}
 	for _, resourceGroup := range resourceGroups {
 		pM, err := GetAgentPerm(accid, issuer, resourceGroup)
 		if err != nil {
 			return err
 		}
-
-		joinMap(permM, pM)
+		if CheckAgentPerm(objectType, action, pM, isOwned, isAssigned) {
+			return nil
+		}
 	}
 	if len(resourceGroups) == 0 {
 		agent, err := GetAgent(accid, issuer)
 		if err != nil {
 			return err
 		}
-
 		if agent.GetState() == "active" {
 			for _, scope := range agent.GetScopes() { // agent's account-wide scope
-				joinMap(permM, header.ScopeM[scope])
+				if CheckAgentPerm(objectType, action, header.ScopeM[scope], isOwned, isAssigned) {
+					return nil
+				}
 			}
 		}
 	}
+	return ACCESS_DENY
+}
 
-	// ticket:read ticket:write
+func CheckAgentPerm(objectType header.ObjectType, action header.ObjectAction, permM map[string]bool, isOwned, isAssigned bool) bool {
 	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
-		return nil
+		return true
 	}
 
 	if isOwned {
 		// ticket:read:own ticket:write:own
 		if permM[string(objectType)+":"+string(action)+":own"] {
-			return nil
+			return true
 		}
 	}
 
 	if !isAssigned {
 		// ticket:read:own ticket:write:own
 		if permM[string(objectType)+":"+string(action)+":unassigned"] {
-			return nil
+			return true
 		}
 	}
-	return log.EDeny(issuer, string(objectType), log.M{"no_report": true, "account_id": accid, "cred_type": issuertype, "action": string(action)})
+	return false
 }
 
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
