@@ -1325,7 +1325,7 @@ func joinMap(a, b map[string]bool) {
 }
 
 func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
-	if cred.GetType() == compb.Type_subiz {
+	if cred.GetType() == compb.Type_subiz || cred.GetType() == compb.Type_workflow || cred.GetType() == compb.Type_connector {
 		return nil
 	}
 
@@ -1371,7 +1371,7 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 }
 
 func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroups ...header.IResourceGroup) error {
-	if issuertype == "system" || issuertype == "subiz" {
+	if issuertype == "system" || issuertype == "subiz" || issuertype == "connector" {
 		return nil
 	}
 
