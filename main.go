@@ -196,7 +196,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	setting := &header.ShopSetting{}
 
 	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		return nil, log.EServer(err, log.M{"id": id})
+		return nil, log.ERetry(err, log.M{"id": id})
 	}
 	if len(data) > 0 {
 		proto.Unmarshal(data, setting)
@@ -212,7 +212,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		shopAddresses = append(shopAddresses, &shopAddress)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"id": id})
+		return nil, log.ERetry(err, log.M{"id": id})
 	}
 
 	taxes := []*header.Tax{}
@@ -225,7 +225,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		taxes = append(taxes, &tax)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"id": id})
+		return nil, log.ERetry(err, log.M{"id": id})
 	}
 
 	paymentmethods := []*header.PaymentMethod{}
@@ -238,7 +238,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		paymentmethods = append(paymentmethods, &pm)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"id": id})
+		return nil, log.ERetry(err, log.M{"id": id})
 	}
 
 	shops := make([]*header.ShopeeShop, 0)
@@ -252,7 +252,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		shops = append(shops, shop)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"id": id})
+		return nil, log.ERetry(err, log.M{"id": id})
 	}
 
 	iter = session.Query(`SELECT id, data FROM account.integrated_shipping WHERE account_id=? LIMIT ?`, id, 1000).Iter()
@@ -267,7 +267,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		ishippings = append(ishippings, ishipping)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": id})
+		return nil, log.ERetry(err, log.M{"account_id": id})
 	}
 
 	sps := []*header.ShippingPolicy{}
@@ -279,7 +279,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		sps = append(sps, &sp)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": id})
+		return nil, log.ERetry(err, log.M{"account_id": id})
 	}
 
 	ccs := []*header.CancellationCode{}
@@ -290,7 +290,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		ccs = append(ccs, &cc)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": id})
+		return nil, log.ERetry(err, log.M{"account_id": id})
 	}
 
 	setting.CancellationCodes = ccs
@@ -338,7 +338,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
 	old.Messages = append(old.Messages, lang.Messages...)
@@ -570,7 +570,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	}
 
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
 	list := make([]*pb.Agent, 0)
@@ -600,7 +600,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 		defs[def.Key] = def
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
 	defaults := ListDefaultDefs()
@@ -645,7 +645,7 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 		}
 
 		if err != nil {
-			return nil, log.EServer(err, log.M{"account_id": accid, "agent_id": agid})
+			return nil, log.ERetry(err, log.M{"account_id": accid, "agent_id": agid})
 		}
 
 		dnds := &n5pb.DoNotDisturb{}
@@ -689,7 +689,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
 	cache.Set("BOT_"+accid, list)
@@ -823,7 +823,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 		arr = append(arr, group)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 	cache.Set("GR_"+accid, arr)
 	return arr, nil
@@ -894,7 +894,7 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 	}
 	err := iter.Close()
 	if err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 	cache.Set("PIPELINE_"+accid, pipelines)
 	return pipelines, nil
@@ -915,9 +915,9 @@ func ListPipelines(accid string) ([]*header.Pipeline, error) {
 func SignKey(accid, issuer, typ, keytype string, objects []string) (string, error) {
 	waitUntilReady()
 	key := randomID("SK", 28)
-	err := session.Query(`INSERT INTO account.signed_key(account_id, issuer, type, objects, key_type, key, created) VALUES(?,?,?,?,?,?,?)`, accid, issuer, typ, objects, keytype, key, time.Now().UnixNano()/1e6).Exec()
+	err := session.Query(`INSERT INTO account.signed_key(account_id, issuer, type, objects, key_type, key, created) VALUES(?,?,?,?,?,?,?)`, accid, issuer, typ, objects, keytype, key, time.Now().UnixMilli()).Exec()
 	if err != nil {
-		return "", log.EServer(err, log.M{"account_id": accid, "issuer": issuer, "type": typ, "keytype": keytype})
+		return "", log.ERetry(err, log.M{"account_id": accid, "issuer": issuer, "type": typ, "keytype": keytype})
 	}
 
 	return key, nil
@@ -929,7 +929,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 	objects := make([]string, 0)
 	err := session.Query(`SELECT account_id, issuer, type, key_type, objects FROM account.signed_key WHERE key=?`, key).Scan(&accid, &issuer, &typ, &keytype, &objects)
 	if err != nil {
-		return "", "", "", "", nil, log.EServer(err, log.M{"key": key})
+		return "", "", "", "", nil, log.ERetry(err, log.M{"key": key})
 	}
 
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {

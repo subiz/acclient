@@ -33,11 +33,11 @@ func RemoveFile(path string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return log.EServer(err, log.M{"url": url})
+		return log.ERetry(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return log.EServer(err, log.M{"url": url, "status_code": resp.StatusCode})
+		return log.ERetry(err, log.M{"url": url, "status_code": resp.StatusCode})
 	}
 	return nil
 }
@@ -51,12 +51,12 @@ func WriteFile(path string, stream io.Reader) error {
 	// resp, err := http.Post(url, "application/octet-stream", bytes.NewBuffer(data))
 	resp, err := http.Post(url, "application/octet-stream", stream)
 	if err != nil {
-		return log.EServer(err, log.M{"url": url})
+		return log.ERetry(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return log.EServer(err, log.M{"url": url, "status_code": resp.StatusCode})
+		return log.ERetry(err, log.M{"url": url, "status_code": resp.StatusCode})
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func ReadFile(path string) (io.ReadCloser, error) {
 	url := convertPathToRFSUrl(path)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, log.EServer(err, log.M{"url": url})
+		return nil, log.ERetry(err, log.M{"url": url})
 	}
 	if resp.StatusCode == 404 {
 		resp.Body.Close()
@@ -111,11 +111,11 @@ func WriteFilePipe(path string, predicate func(*os.File) error) error {
 	// resp, err := http.Post(url, "application/octet-stream", bytes.NewBuffer(data))
 	resp, err := http.Post(url, "application/octet-stream", tmpFile)
 	if err != nil {
-		return log.EServer(err, log.M{"url": url})
+		return log.ERetry(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return log.EServer(err, log.M{"url": url, "status_code": resp.StatusCode})
+		return log.ERetry(err, log.M{"url": url, "status_code": resp.StatusCode})
 	}
 	return nil
 }
