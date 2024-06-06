@@ -157,13 +157,13 @@ func uploadFile(url string, data []byte, mimetype, cd string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return log.EServer(err, log.M{"url": url})
+		return log.ERetry(err, log.M{"url": url})
 	}
 	defer resp.Body.Close()
 
 	out, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return log.EServer(err, log.M{"url": url, "body": string(out), "status_code": resp.StatusCode})
+		return log.ERetry(err, log.M{"url": url, "body": string(out), "status_code": resp.StatusCode})
 	}
 	return nil
 }
@@ -172,18 +172,18 @@ func finishUploadFile(accid, fileid string) (*header.File, error) {
 	fullurl := fmt.Sprintf(API+"/4.0/accounts/%s/files/%s", accid, fileid)
 	resp, err := http.Post(fullurl, "application/json", nil)
 	if err != nil {
-		return nil, log.EServer(err, log.M{"url": fullurl})
+		return nil, log.ERetry(err, log.M{"url": fullurl})
 	}
 
 	if resp.StatusCode >= 400 {
-		return nil, log.EServer(err, log.M{"url": fullurl, "status_code": resp.StatusCode})
+		return nil, log.ERetry(err, log.M{"url": fullurl, "status_code": resp.StatusCode})
 	}
 
 	out, _ := io.ReadAll(resp.Body)
 	f := &header.File{}
 	// config.FileUrl + body.url
 	if err := json.Unmarshal(out, f); err != nil {
-		return nil, log.EServer(err, log.M{"url": fullurl})
+		return nil, log.ERetry(err, log.M{"url": fullurl})
 	}
 	return f, nil
 }
@@ -199,12 +199,12 @@ func presign(accid string, f *header.File) (*header.PresignResult, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, log.EServer(err, log.M{"url": fullurl, "account_id": accid})
+		return nil, log.ERetry(err, log.M{"url": fullurl, "account_id": accid})
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		return nil, log.EServer(err, log.M{"url": fullurl, "account_id": accid, "status_code": resp.StatusCode})
+		return nil, log.ERetry(err, log.M{"url": fullurl, "account_id": accid, "status_code": resp.StatusCode})
 	}
 
 	fileres := &header.PresignResult{}
@@ -221,13 +221,13 @@ func HTMLContent2PDF(html []byte) ([]byte, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, log.EServer(err)
+		return nil, log.ERetry(err)
 	}
 	defer resp.Body.Close()
 
 	out, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, log.EServer(err)
+		return nil, log.ERetry(err)
 	}
 
 	return out, nil
@@ -254,7 +254,7 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, log.EServer(err, log.M{"path": path})
+		return nil, log.ERetry(err, log.M{"path": path})
 	}
 
 	defer resp.Body.Close()

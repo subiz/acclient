@@ -97,7 +97,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	}
 
 	if err != nil {
-		return nil, nil, log.EServer(err, log.M{"id": id})
+		return nil, nil, log.ERetry(err, log.M{"id": id})
 	}
 
 	ii := &pb.InvoiceInfo{}
@@ -159,7 +159,7 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		return acc, nil, nil
 	}
 	if err != nil {
-		return nil, nil, log.EServer(err, log.M{"account_id": id})
+		return nil, nil, log.ERetry(err, log.M{"account_id": id})
 	}
 
 	limit := &compb.Limit{}
