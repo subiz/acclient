@@ -49,7 +49,7 @@ var (
 	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
 )
 
-var ACCESS_DENY = log.EDeny("subiz", "not have permission", log.M{"no_report": true})
+var EACCESS_DENY = log.Error(nil, log.M{"no_report": true}, log.E_access_deny)
 
 func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
@@ -1324,7 +1324,7 @@ func joinMap(a, b map[string]bool) {
 	}
 }
 
-func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
+func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
 	if cred.GetType() == compb.Type_subiz {
 		return nil
 	}
@@ -1334,7 +1334,24 @@ func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cre
 	}
 
 	permM := map[string]bool{}
-	accid := cred.GetAccountId()
+	credaccid := cred.GetAccountId()
+	if credaccid != accid {
+		// must be subiz agent
+		agent, err := GetAgent(credaccid, cred.GetIssuer())
+		if err != nil {
+			return err
+		}
+
+		if agent.GetState() == "active" {
+			for _, scope := range agent.GetScopes() { // agent's account-wide scope
+				if header.ScopeM[scope] != nil && header.ScopeM[scope]["accmgr:update"] {
+					return nil
+				}
+			}
+		}
+		return EACCESS_DENY
+	}
+
 	agent, err := GetAgent(accid, cred.GetIssuer())
 	if err != nil {
 		return err
@@ -1350,7 +1367,7 @@ func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cre
 		return nil
 	}
 
-	return log.EDeny(cred.GetIssuer(), string(objectType), log.M{"no_report": true, "account_id": accid, "cred_type": cred.GetType().String(), "action": string(action)})
+	return EACCESS_DENY
 }
 
 func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroups ...header.IResourceGroup) error {
@@ -1383,7 +1400,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 			}
 		}
 	}
-	return ACCESS_DENY
+	return EACCESS_DENY
 }
 
 func CheckAgentPerm(objectType header.ObjectType, action header.ObjectAction, permM map[string]bool, isOwned, isAssigned bool) bool {
