@@ -1195,7 +1195,8 @@ func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string
 	if val, has := creditCache.Get(accid + "." + creditId); has {
 		credit = val.(*header.Credit)
 	} else {
-		credits, err := creditmgr.ListCredits(context.Background(), &header.Id{AccountId: accid, Id: creditId})
+		ctx := header.ToGrpcCtx(&cpb.Context{Credential: &cpb.Credential{AccountId: AccountId, Type: cpb.Type_subiz}})
+		credits, err := creditmgr.ListCredits(ctx, &header.Id{AccountId: accid, Id: creditId})
 		if err != nil {
 			return err
 		}
