@@ -49,7 +49,7 @@ var (
 	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
 )
 
-var EACCESS_DENY = log.Error(nil, log.M{"no_report": true}, log.E_access_deny)
+var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
 
 func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
