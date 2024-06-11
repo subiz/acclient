@@ -1334,7 +1334,6 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		return nil
 	}
 
-	permM := map[string]bool{}
 	credaccid := cred.GetAccountId()
 	if credaccid != accid {
 		// must be subiz agent
@@ -1358,9 +1357,14 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		return err
 	}
 
+	permM := map[string]bool{}
 	if agent.GetState() == "active" {
 		for _, scope := range agent.GetScopes() { // agent's account-wide scope
 			joinMap(permM, header.ScopeM[scope])
+		}
+
+		if agent.GetIsSupervisor() {
+			joinMap(permM, header.ScopeM["supervisor"])
 		}
 	}
 	// ticket:read ticket:write
@@ -1444,9 +1448,13 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 		return emptyM, nil
 	}
 
+	permM := map[string]bool{}
+	if agent.GetIsSupervisor() {
+		joinMap(permM, header.ScopeM["supervisor"])
+	}
+
 	agentScopes := agent.GetScopes() // agent's account-wide scope
 	if resourceGroup == nil {
-		permM := map[string]bool{}
 		for _, scope := range agentScopes {
 			joinMap(permM, header.ScopeM[scope])
 		}
@@ -1455,7 +1463,6 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	}
 
 	var myGroup map[string]bool
-	permM := map[string]bool{} // output
 	for _, mem := range resourceGroup.GetPermissions() {
 		if mem.GetMemberId() == agid {
 			// agent is directly set role in this group ->
