@@ -1,6 +1,3 @@
-//go:build exclude
-// +build exclude
-
 package acclient
 
 import (
@@ -16,10 +13,10 @@ import (
 
 func GetJob(accid, jobid string) *header.Job {
 	var name, description, category, status string
-	var timeout_sec, created, force_ended, ended, status_updated int64
+	var timeout_sec, created, force_ended, ended, status_updated, last_ping_ms int64
 	output := []byte{}
 	for {
-		err := session.Query(`SELECT name, description, category, timeout_sec, created, force_ended, ended, status, status_updated, output FROM account.job WHERE accid=? AND id=?`, accid, jobid).Scan(&name, &description, &category, &timeout_sec, &created, &force_ended, &ended, &status, &status_updated, &output)
+		err := session.Query(`SELECT name, description, category, timeout_sec, created, force_ended, ended, status, status_updated, output, last_ping_ms FROM account.job WHERE accid=? AND id=?`, accid, jobid).Scan(&name, &description, &category, &timeout_sec, &created, &force_ended, &ended, &status, &status_updated, &output, &last_ping_ms)
 		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 			return nil
 		}
@@ -50,6 +47,7 @@ func GetJob(accid, jobid string) *header.Job {
 			Status:        status,
 			StatusUpdated: status_updated,
 			Output:        output,
+			LastPingMs:    last_ping_ms,
 		}
 	}
 }
@@ -88,7 +86,7 @@ func ForceEndJob(accid, jobid string) {
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, force_ended, ended) VALUES(?,?,?,?) TTL 864000`, accid, jobid, ended, ended).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "name": name, "description": description, "category": category})
+			log.ERetry(err, log.M{"account_id": accid, "job_id": jobid})
 			time.Sleep(30 * time.Second)
 			continue
 		}
@@ -99,12 +97,53 @@ func ForceEndJob(accid, jobid string) {
 func EndJob(accid, jobid, status string, output []byte) {
 	ended := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
-		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output) VALUES(?,?,?,?,?) TTL 864000`, accid, jobid, status, ended, output).Exec()
+		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output, last_ping_ms) VALUES(?,?,?,?,?,?) TTL 864000`, accid, jobid, status, ended, output, ended).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "name": name, "description": description, "category": category})
+			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
 			time.Sleep(30 * time.Second)
 			continue
 		}
 		break
 	}
+}
+
+// return ended or job status
+func PingJob(accid, jobid string) string {
+	ping := time.Now().UnixMilli()
+	var status string
+	var timeout_sec, created, force_ended, ended, last_ping_ms int64
+
+	for i := 0; i < 1000; i++ {
+		err := session.Query(`SELECT timeout_sec, created, force_ended, ended, status, last_ping_ms FROM account.job WHERE accid=? AND id=?`, accid, jobid).Scan(&timeout_sec, &created, &force_ended, &ended, &status, &last_ping_ms)
+		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
+			return "ended"
+		}
+
+		if err != nil {
+			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid})
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		if ended == 0 && time.Now().UnixMilli() > created+timeout_sec*1000 {
+			ended = created + timeout_sec*1000
+			if force_ended == 0 {
+				force_ended = ended
+			}
+		}
+
+		err = session.Query(`INSERT INTO account.job(accid, id, last_ping_ms) VALUES(?,?,?) TTL 864000`, accid, jobid, ping).Exec()
+		if err != nil {
+			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid})
+			time.Sleep(30 * time.Second)
+			continue
+		}
+		break
+	}
+
+	if ended > 0 {
+		return "ended"
+	}
+
+	return status
 }
