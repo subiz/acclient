@@ -56,7 +56,7 @@ func StartJob(accid, name, description, category string, timeoutsec int64) strin
 	waitUntilReady()
 	jobid := idgen.NewJobId()
 	for i := 0; i < 1000; i++ {
-		err := session.Query(`INSERT INTO account.job(accid, id, name, description, category, timeout_sec, created) VALUES(?,?,?,?,?,?,?) TTL 864000`, accid, jobid, name, description, category, timeoutsec, time.Now().UnixMilli()).Exec()
+		err := session.Query(`INSERT INTO account.job(accid, id, name, description, category, timeout_sec, created) VALUES(?,?,?,?,?,?,?) USING TTL 864000`, accid, jobid, name, description, category, timeoutsec, time.Now().UnixMilli()).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "name": name, "description": description, "category": category})
 			time.Sleep(30 * time.Second)
@@ -70,7 +70,7 @@ func StartJob(accid, name, description, category string, timeoutsec int64) strin
 func UpdateJobStatus(accid, jobid, status string) {
 	updated := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
-		err := session.Query(`INSERT INTO account.job(accid, id, status, status_updated) VALUES(?,?,?,?) TTL 864000`, accid, jobid, status, updated).Exec()
+		err := session.Query(`INSERT INTO account.job(accid, id, status, status_updated) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, status, updated).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
 			time.Sleep(30 * time.Second)
@@ -84,7 +84,7 @@ func UpdateJobStatus(accid, jobid, status string) {
 func ForceEndJob(accid, jobid string) {
 	ended := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
-		err := session.Query(`INSERT INTO account.job(accid, id, force_ended, ended) VALUES(?,?,?,?) TTL 864000`, accid, jobid, ended, ended).Exec()
+		err := session.Query(`INSERT INTO account.job(accid, id, force_ended, ended) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, ended, ended).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "job_id": jobid})
 			time.Sleep(30 * time.Second)
@@ -97,7 +97,7 @@ func ForceEndJob(accid, jobid string) {
 func EndJob(accid, jobid, status string, output []byte) {
 	ended := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
-		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output, last_ping_ms) VALUES(?,?,?,?,?,?) TTL 864000`, accid, jobid, status, ended, output, ended).Exec()
+		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output, last_ping_ms) VALUES(?,?,?,?,?,?) USING TTL 864000`, accid, jobid, status, ended, output, ended).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
 			time.Sleep(30 * time.Second)
@@ -132,7 +132,7 @@ func PingJob(accid, jobid string) string {
 			}
 		}
 
-		err = session.Query(`INSERT INTO account.job(accid, id, last_ping_ms) VALUES(?,?,?) TTL 864000`, accid, jobid, ping).Exec()
+		err = session.Query(`INSERT INTO account.job(accid, id, last_ping_ms) VALUES(?,?,?) USING TTL 864000`, accid, jobid, ping).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid})
 			time.Sleep(30 * time.Second)
