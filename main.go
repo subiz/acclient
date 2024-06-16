@@ -1352,6 +1352,10 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		return EACCESS_DENY
 	}
 
+	if accid == "" || cred.GetIssuer() == "" {
+		return EACCESS_DENY
+	}
+
 	agent, err := GetAgent(accid, cred.GetIssuer())
 	if err != nil {
 		return err
@@ -1392,7 +1396,8 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 			return nil
 		}
 	}
-	if len(resourceGroups) == 0 {
+
+	if len(resourceGroups) == 0 && accid != "" {
 		agent, err := GetAgent(accid, issuer)
 		if err != nil {
 			return err
@@ -1430,6 +1435,10 @@ func CheckAgentPerm(objectType header.ObjectType, action header.ObjectAction, pe
 }
 
 func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[string]bool, error) {
+	if accid == "" || agid == "" {
+		return emptyM, nil
+	}
+
 	resourceGroupId := ""
 	if resourceGroup != nil {
 		resourceGroupId = resourceGroup.GetId()
