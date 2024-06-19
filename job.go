@@ -12,6 +12,7 @@ import (
 // CREATE TABLE account.job (accid ascii, id ascii, name text, desscription text, category text, timeout_sec bigint, created bigint, force_ended bigint, ended bigint, status text, status_updated bigint, output blob, PRIMARY KEY ((accid, id)));
 
 func GetJob(accid, jobid string) *header.Job {
+	waitUntilReady()
 	var name, description, category, status string
 	var timeout_sec, created, force_ended, ended, status_updated, last_ping_ms int64
 	output := []byte{}
@@ -68,6 +69,7 @@ func StartJob(accid, name, description, category string, timeoutsec int64) strin
 }
 
 func UpdateJobStatus(accid, jobid, status string) {
+	waitUntilReady()
 	updated := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, status, status_updated) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, status, updated).Exec()
@@ -82,6 +84,7 @@ func UpdateJobStatus(accid, jobid, status string) {
 
 // force end -> status code -5
 func ForceEndJob(accid, jobid string) {
+	waitUntilReady()
 	ended := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, force_ended, ended) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, ended, ended).Exec()
@@ -95,6 +98,7 @@ func ForceEndJob(accid, jobid string) {
 }
 
 func EndJob(accid, jobid, status string, output []byte) {
+	waitUntilReady()
 	ended := time.Now().UnixMilli()
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output, last_ping_ms) VALUES(?,?,?,?,?,?) USING TTL 864000`, accid, jobid, status, ended, output, ended).Exec()
@@ -109,6 +113,7 @@ func EndJob(accid, jobid, status string, output []byte) {
 
 // return ended or job status
 func PingJob(accid, jobid string) string {
+	waitUntilReady()
 	ping := time.Now().UnixMilli()
 	var status string
 	var timeout_sec, created, force_ended, ended, last_ping_ms int64
