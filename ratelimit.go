@@ -216,7 +216,7 @@ func LimitRate(configkey, key string) error {
 	realUsage := int64(float32(lastUsage)*tspercentage) + curUsage
 
 	if realUsage > config.Capacity {
-		return log.ELimitExceeded(realUsage, config.Capacity, log.M{"key": key})
+		return log.ELimitExceeded(config.Capacity, log.M{"key": key})
 	}
 
 	if ratelimit_newdb[configkey] == nil {
