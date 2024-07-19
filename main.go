@@ -1325,6 +1325,26 @@ func joinMap(a, b map[string]bool) {
 	}
 }
 
+func MustBeSuperAdmin(cred *compb.Credential) error {
+	if cred.GetAccountId() != "acpxkgumifuoofoosble" {
+		return EACCESS_DENY
+	}
+	agent, err := GetAgent(cred.GetAccountId(), cred.GetIssuer())
+	if err != nil {
+		return err
+	}
+
+	if agent.GetState() != "active" {
+		return EACCESS_DENY
+	}
+	for _, scope := range agent.GetScopes() { // agent's account-wide scope
+		if header.ScopeM[scope] != nil && header.ScopeM[scope]["accmgr:update"] {
+			return nil
+		}
+	}
+	return EACCESS_DENY
+}
+
 func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
 	if cred.GetType() == compb.Type_subiz || cred.GetType() == compb.Type_workflow || cred.GetType() == compb.Type_connector {
 		return nil
