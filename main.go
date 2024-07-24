@@ -1329,6 +1329,11 @@ func MustBeSuperAdmin(cred *compb.Credential) error {
 	if cred.GetAccountId() != "acpxkgumifuoofoosble" {
 		return EACCESS_DENY
 	}
+
+	if cred.GetType() == compb.Type_subiz {
+		return nil
+	}
+
 	agent, err := GetAgent(cred.GetAccountId(), cred.GetIssuer())
 	if err != nil {
 		return err
