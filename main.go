@@ -145,15 +145,14 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 
 	var limitb []byte
 	var autocharge bool
-	var plan, pmmethod, promo, referralby string
+	var plan, promo string
 	var subcreated, churned, ended, started, fpv_unlimited_agent_price int64
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
-	var customerb []byte
 	var use_ticket int64
 
-	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, customer, ended, churned, next_billing_cycle_month, plan, primary_payment_method, promotion_code, referral_by, started, fpv_unlimited_agent_price, use_ticket FROM account.subs WHERE account_id=?", id).Scan(
-		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &customerb, &ended, &churned, &next_billing_cycle_month, &plan, &pmmethod, &promo, &referralby, &started, &fpv_unlimited_agent_price, &use_ticket)
+	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, ended, churned, next_billing_cycle_month, plan, promotion_code, started, fpv_unlimited_agent_price, use_ticket FROM account.subs WHERE account_id=?", id).Scan(
+		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &ended, &churned, &next_billing_cycle_month, &plan, &promo, &started, &fpv_unlimited_agent_price, &use_ticket)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("SUB_"+id, nil)
 		return acc, nil, nil
@@ -165,22 +164,17 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	limit := &compb.Limit{}
 	proto.Unmarshal(limitb, limit)
 
-	customer := &pm.Customer{}
-	proto.Unmarshal(customerb, customer)
 	sub := &pm.Subscription{
 		AccountId:              &id,
 		BillingCycleMonth:      &billingcyclemonth,
 		Created:                &subcreated,
 		Credit:                 &credit,
 		Limit:                  limit,
-		Customer:               customer,
 		Ended:                  &ended,
 		Churned:                &churned,
 		Plan:                   &plan,
 		NextBillingCycleMonth:  &next_billing_cycle_month,
-		PrimaryPaymentMethod:   &pmmethod,
 		PromotionCode:          &promo,
-		ReferralBy:             &referralby,
 		Started:                &started,
 		FpvUnlimitedAgentPrice: &fpv_unlimited_agent_price,
 		UseTicket:              conv.PI64(int(use_ticket)),
