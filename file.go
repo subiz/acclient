@@ -216,7 +216,7 @@ func presign(accid string, f *header.File) (*header.PresignResult, error) {
 }
 
 func HTMLContent2PDF(html []byte) ([]byte, error) {
-	url := "http://html2pdf:80/content2"
+	url := "http://html2pdf:80/content"
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(html))
 	client := &http.Client{}
 	resp, err := client.Do(req)
