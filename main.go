@@ -1363,7 +1363,13 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 
 		if agent.GetState() == "active" {
 			for _, scope := range agent.GetScopes() { // agent's account-wide scope
-				if header.ScopeM[scope] != nil && header.ScopeM[scope]["accmgr:update"] {
+				if header.ScopeM[scope] == nil {
+					continue
+				}
+				if header.ScopeM[scope]["accmgr:update:none"] {
+					return EACCESS_DENY
+				}
+				if header.ScopeM[scope]["accmgr:update"] {
 					return nil
 				}
 			}
@@ -1391,6 +1397,10 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		}
 	}
 	// ticket:read ticket:write
+	if permM[string(objectType)+":"+string(action)+":none"] {
+		return EACCESS_DENY
+	}
+
 	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
 		return nil
 	}
@@ -1433,6 +1443,10 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 }
 
 func CheckAgentPerm(objectType header.ObjectType, action header.ObjectAction, permM map[string]bool, isOwned, isAssigned bool) bool {
+	if permM[string(objectType)+":"+string(action)+":none"] {
+		return false // 	// explicitly prevent this action
+	}
+
 	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
 		return true
 	}
