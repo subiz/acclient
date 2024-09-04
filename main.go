@@ -506,7 +506,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
 	var arr = make([]*pb.Agent, 0)
 
-	var id, avatar_url, avatar_url_128, client_id, email, encrypted_password, fullname, gender string
+	var id, avatar_url, avatar_url_128, client_id, email, fullname, gender string
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
 	var scopes []string
 	var joined, passwordchanged, seen int64
@@ -514,8 +514,8 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var extension int64
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
-	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
+	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, fullname, gender, invited_by, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
+	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &fullname, &gender, &invited_by,
 		&jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
@@ -527,7 +527,6 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			ClientId:          conv.S(client_id),
 			DashboardSetting:  ds,
 			Email:             conv.S(email),
-			EncryptedPassword: conv.S(encrypted_password),
 			Fullname:          conv.S(fullname),
 			Gender:            conv.S(gender),
 			InvitedBy:         conv.S(invited_by),
@@ -555,7 +554,6 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	listM := map[string]*pb.Agent{}
 	for _, ag := range arr {
 		if ag.GetState() != pb.Agent_deleted.String() {
-			ag.EncryptedPassword = nil
 			list = append(list, ag)
 			listM[ag.GetId()] = ag
 		}
