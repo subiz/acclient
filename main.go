@@ -504,12 +504,6 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 
 func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	waitUntilReady()
-	acc, err := GetAccount(accid)
-	if err != nil {
-		return nil, err
-	}
-	ownerId := acc.GetOwnerId()
-
 	var arr = make([]*pb.Agent, 0)
 
 	var id, avatar_url, avatar_url_128, client_id, email, encrypted_password, fullname, gender string
@@ -538,7 +532,6 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			Fullname:          conv.S(fullname),
 			Gender:            conv.S(gender),
 			InvitedBy:         conv.S(invited_by),
-			IsOwner:           conv.B(id == ownerId),
 			IsSupervisor:      conv.B(issupervisor),
 			JobTitle:          conv.S(jobtitle),
 			Joined:            conv.PI64(int(joined)),
