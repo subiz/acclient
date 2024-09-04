@@ -1355,6 +1355,10 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 
 	credaccid := cred.GetAccountId()
 	if credaccid != accid {
+		if credaccid == "" {
+			return EACCESS_DENY
+		}
+
 		// must be subiz agent
 		agent, err := GetAgent(credaccid, cred.GetIssuer())
 		if err != nil {
@@ -1552,3 +1556,4 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, permM)
 	return permM, nil
 }
+cd
