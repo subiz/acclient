@@ -508,16 +508,15 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 
 	var id, avatar_url, avatar_url_128, client_id, email, encrypted_password, fullname, gender string
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
-	var issupervisor bool
 	var scopes []string
 	var joined, passwordchanged, seen int64
 	var dashboard_setting []byte
 	var extension int64
 	var modified int64
 
-	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, is_supervisor, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
+	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, encrypted_password, fullname, gender, invited_by, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
 	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &encrypted_password, &fullname, &gender, &invited_by,
-		&issupervisor, &jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
+		&jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
 		ag := &pb.Agent{
@@ -532,7 +531,6 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			Fullname:          conv.S(fullname),
 			Gender:            conv.S(gender),
 			InvitedBy:         conv.S(invited_by),
-			IsSupervisor:      conv.B(issupervisor),
 			JobTitle:          conv.S(jobtitle),
 			Joined:            conv.PI64(int(joined)),
 			Lang:              conv.S(lang),
@@ -1381,10 +1379,6 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		for _, scope := range agent.GetScopes() { // agent's account-wide scope
 			joinMap(permM, header.ScopeM[scope])
 		}
-
-		if agent.GetIsSupervisor() {
-			joinMap(permM, header.ScopeM["supervisor"])
-		}
 	}
 	// ticket:read ticket:write
 	if permM[string(objectType)+":"+string(action)+":none"] {
@@ -1481,10 +1475,6 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	}
 
 	permM := map[string]bool{}
-	if agent.GetIsSupervisor() {
-		joinMap(permM, header.ScopeM["supervisor"])
-	}
-
 	agentScopes := agent.GetScopes() // agent's account-wide scope
 	if resourceGroup == nil {
 		for _, scope := range agentScopes {
