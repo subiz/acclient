@@ -26,11 +26,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	tblLocale = "lang"
-	tblAgents = "agents"
-)
-
 var (
 	readyLock = &sync.Mutex{}
 
@@ -84,13 +79,13 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	waitUntilReady()
 	var businesshourb, invoice_infob, leadsetting, userattributesetting []byte
 	var supportedlocales []string
-	var address, city, country, dateformat, facebook, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, region, state, timezone, twitter, url string
+	var address, city, country, dateformat, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, state, timezone, url string
 	var created, modified int64
 	var zipcode int32
 	var currency string
 	var currency_locked bool
 
-	err := session.Query("SELECT address, business_hours,city, country, created,date_format, facebook, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, region, state, supported_locales, timezone, twitter, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &facebook, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &region, &state, &supportedlocales, &timezone, &twitter, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
+	err := session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("ACC_"+id, nil)
 		return nil, nil, nil
@@ -119,7 +114,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		Country:              &country,
 		Created:              &created,
 		DateFormat:           &dateformat,
-		Facebook:             &facebook,
 		Lang:                 &lang,
 		LeadSetting:          ls,
 		Locale:               &locale,
@@ -133,7 +127,6 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		State:                &state,
 		SupportedLocales:     supportedlocales,
 		Timezone:             &timezone,
-		Twitter:              &twitter,
 		Url:                  &url,
 		ZipCode:              &zipcode,
 		Currency:             &currency,
@@ -308,7 +301,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 	var updated int64
 	var k string
 
-	iter := session.Query(`SELECT k, message, public_state, last_message, updated, author, category FROM `+tblLocale+` WHERE account_id=? AND locale=?`, accid, locale).Iter()
+	iter := session.Query(`SELECT k, message, public_state, last_message, updated, author, category FROM account.lang WHERE account_id=? AND locale=?`, accid, locale).Iter()
 	for iter.Scan(&k, &message, &public, &lastmsg, &updated, &updatedby, &category) {
 		if message == "" {
 			continue
@@ -1556,4 +1549,3 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, permM)
 	return permM, nil
 }
-cd
