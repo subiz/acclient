@@ -24,6 +24,7 @@ import (
 	gocache "github.com/thanhpk/go-cache"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
+	"github.com/thanhpk/ascii"
 )
 
 var (
@@ -1038,6 +1039,7 @@ func NewID(accid, scope string) int64 {
 }
 
 func NewID2(accid, scope string) int64 {
+	scope = ascii.Convert(scope)
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
 		id, err := registryClient.NewID2(context.Background(), &header.Id{AccountId: accid, Id: scope})
