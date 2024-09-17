@@ -6,10 +6,10 @@ require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.19
-	github.com/subiz/header v1.19.24
+	github.com/subiz/header v1.19.38
 	github.com/subiz/idgen v0.1.36
 	github.com/subiz/kafka v0.0.27
-	github.com/subiz/log v0.0.69
+	github.com/subiz/log v0.0.70
 	github.com/thanhpk/ascii v0.0.7
 	github.com/thanhpk/go-cache v1.0.1
 	github.com/thanhpk/randstr v1.0.6
@@ -50,6 +50,6 @@ require (
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/grpc v1.66.0 // indirect
+	google.golang.org/grpc v1.66.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
