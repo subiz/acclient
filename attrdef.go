@@ -345,5 +345,26 @@ func ListDefaultDefs() []*header.AttributeDefinition {
 			Type:      "boolean",
 			IsSystem:  true,
 		},
+		&header.AttributeDefinition{
+			Name:  "Latest payment made time",
+			Label: "Latest payment made time",
+			I18NLabel: &header.I18NString{
+				Vi_VN: "Thời thanh toán gần nhất",
+				En_US: "Last payment made at",
+			},
+			Key:        "last_payment_made",
+			Type:       "datetime",
+			IsSystem:   true,
+			IsReadonly: true,
+		},
+
+		&header.AttributeDefinition{
+			Label:       "Tổng tiền đã thanh toán",
+			Description: "Tổng tiền đã thanh toán",
+			I18NLabel:   &header.I18NString{Vi_VN: "Tổng Tiền đã thanh toán", En_US: "Total payment made value"},
+			Type:        "number",
+			Key:         "total_payment_made",
+			IsSystem:    true,
+		},
 	}
 }
