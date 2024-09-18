@@ -29,7 +29,7 @@ func BookTaskP(topic, key, accid string, sec int64, partition int32, data []byte
 }
 
 func OnSchedule(csm, topic string, predicate func(accid string, data []byte)) error {
-	return kafka.Listen(csm, topic, func(topic string, partition int32, offset int64, data []byte) {
+	return kafka.Listen(csm, topic, func(partition int32, offset int64, data []byte) {
 		task := &header.SchedulerTask{}
 		proto.Unmarshal(data, task)
 		if task.GetAccountId() == "" {

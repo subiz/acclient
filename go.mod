@@ -6,9 +6,9 @@ require (
 	github.com/gocql/gocql v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.19
-	github.com/subiz/header v1.19.38
+	github.com/subiz/header v1.19.46
 	github.com/subiz/idgen v0.1.36
-	github.com/subiz/kafka v0.0.27
+	github.com/subiz/kafka v0.0.28
 	github.com/subiz/log v0.0.70
 	github.com/thanhpk/ascii v0.0.7
 	github.com/thanhpk/go-cache v1.0.1
@@ -40,7 +40,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/paulbellamy/ratecounter v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
-	github.com/prometheus/client_golang v1.20.3 // indirect
+	github.com/prometheus/client_golang v1.20.4 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.59.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
