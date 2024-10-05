@@ -20,6 +20,19 @@ func Index(col, accid, doc, part, content string, owners ...string) {
 	})
 }
 
+func IndexByLocale(col, accid, doc, part, content string, locale string, owners ...string) {
+	publishIndex(&header.DocIndexRequest{
+		Collection: col,
+		AccountId:  accid,
+		DocumentId: doc,
+		Part:       part,
+		Content:    content,
+		IsName:     false,
+		Owners:     owners,
+		Locale:     locale,
+	})
+}
+
 func publishIndex(req *header.DocIndexRequest) {
 	topic := "search-index-" + strconv.Itoa(int(crc32.ChecksumIEEE([]byte(req.AccountId)))%4)
 	kafka.Publish(topic, req)
