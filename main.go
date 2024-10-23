@@ -1570,7 +1570,7 @@ func GetCounterClient(shard int) header.CounterClient {
 	if _counterClient[shard] != nil {
 		return _counterClient[shard]
 	}
-	conn := header.DialGrpc(fmt.Sprintf("counter-%d.counter:12306"))
+	conn := header.DialGrpc(fmt.Sprintf("counter-%d.counter:12306", shard))
 	client := header.NewCounterClient(conn)
 	_counterClient[shard] = client
 	return client
