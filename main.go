@@ -1054,6 +1054,21 @@ func NewID2(accid, scope string) int64 {
 	return -1
 }
 
+func GetLastID(accid, scope string) int64 {
+	scope = ascii.Convert(scope)
+	waitUntilReady()
+	for attempt := 0; attempt < 100; attempt++ {
+		id, err := registryClient.GetLastID(context.Background(), &header.Id{AccountId: accid, Id: scope})
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		idint, _ := strconv.ParseInt(id.Id, 10, 0)
+		return idint
+	}
+	return -1
+}
+
 func GetAttrAsStringWithDateFormat(user *header.User, key, dateformat string) string {
 	accid := user.AccountId
 	if accid == "" {

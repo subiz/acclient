@@ -98,8 +98,8 @@ github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsT
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/subiz/goutils v0.1.26 h1:mFngvK0LgeT+9pBvWCMa8H7rc6qzwAO5zIU9BiNu6VE=
 github.com/subiz/goutils v0.1.26/go.mod h1:mwg6UyudrJ5P+lZHZLHSpl/PIdEpCS5LQ8tPyXCQkbw=
-github.com/subiz/header v1.20.51 h1:c5vdifNNUCPu+MIt1G0b6Ic0lliqeMCS1cf6JFl66O0=
-github.com/subiz/header v1.20.51/go.mod h1:cEtNelqLECQfm7P1nYL7uFyY6bCBlNXS1b9yXOKJRAw=
+github.com/subiz/header v1.20.53 h1:3EWTpVgKeWP+22C3T3yClbgSxEDipkHJpYhho2n6GK8=
+github.com/subiz/header v1.20.53/go.mod h1:cEtNelqLECQfm7P1nYL7uFyY6bCBlNXS1b9yXOKJRAw=
 github.com/subiz/idgen v0.1.39 h1:ijZpZLrjOQTbxAQ+LIx+xaCBJcd3BZIorF3Vn0sXwcA=
 github.com/subiz/idgen v0.1.39/go.mod h1:hZ4AfPvd29wSSA/2GHL3gNoc+6iKwFP0fo6WUbn8wdA=
 github.com/subiz/kafka v0.0.29 h1:2IYUjbGleMm/deOSxoG7EBG5Ugi1DLcjQOBLe+J0nhU=
