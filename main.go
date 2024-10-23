@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -21,10 +22,10 @@ import (
 	"github.com/subiz/idgen"
 	"github.com/subiz/kafka"
 	"github.com/subiz/log"
+	"github.com/thanhpk/ascii"
 	gocache "github.com/thanhpk/go-cache"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
-	"github.com/thanhpk/ascii"
 )
 
 var (
@@ -521,27 +522,27 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 		ds := &pb.DashboardAgent{}
 		proto.Unmarshal(dashboard_setting, ds)
 		ag := &pb.Agent{
-			AccountId:         conv.S(accid),
-			Id:                conv.S(id),
-			AvatarUrl:         conv.S(avatar_url),
-			AvatarUrl_128:     conv.S(avatar_url_128),
-			ClientId:          conv.S(client_id),
-			DashboardSetting:  ds,
-			Email:             conv.S(email),
-			Fullname:          conv.S(fullname),
-			Gender:            conv.S(gender),
-			InvitedBy:         conv.S(invited_by),
-			JobTitle:          conv.S(jobtitle),
-			Joined:            conv.PI64(int(joined)),
-			Lang:              conv.S(lang),
-			Modified:          conv.PI64(int(modified)),
-			PasswordChanged:   conv.PI64(int(passwordchanged)),
-			Phone:             conv.S(phone),
-			Scopes:            scopes,
-			State:             conv.S(state),
-			Type:              conv.S(typ),
-			Timezone:          conv.S(tz),
-			Extension:         conv.PI64(int(extension)),
+			AccountId:        conv.S(accid),
+			Id:               conv.S(id),
+			AvatarUrl:        conv.S(avatar_url),
+			AvatarUrl_128:    conv.S(avatar_url_128),
+			ClientId:         conv.S(client_id),
+			DashboardSetting: ds,
+			Email:            conv.S(email),
+			Fullname:         conv.S(fullname),
+			Gender:           conv.S(gender),
+			InvitedBy:        conv.S(invited_by),
+			JobTitle:         conv.S(jobtitle),
+			Joined:           conv.PI64(int(joined)),
+			Lang:             conv.S(lang),
+			Modified:         conv.PI64(int(modified)),
+			PasswordChanged:  conv.PI64(int(passwordchanged)),
+			Phone:            conv.S(phone),
+			Scopes:           scopes,
+			State:            conv.S(state),
+			Type:             conv.S(typ),
+			Timezone:         conv.S(tz),
+			Extension:        conv.PI64(int(extension)),
 		}
 		scopes = make([]string, 0)
 		arr = append(arr, ag)
@@ -1531,4 +1532,46 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	}
 	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, permM)
 	return permM, nil
+}
+
+const COUNTERSHARD = 4
+
+func IncreaseCounter(timeseries []string, count int64, createdMs int64) {
+	tss := [COUNTERSHARD][]string{}
+	for _, ts := range timeseries {
+		shard := int(crc32.ChecksumIEEE([]byte(ts))) % COUNTERSHARD
+		tss[shard] = append(tss[shard], ts)
+	}
+
+	for i, ts := range tss {
+		if len(ts) > 0 {
+			kafka.Publish("counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: ts, Created: createdMs, Count: count})
+		}
+	}
+}
+
+func ReportCounter(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
+	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
+	out, err := GetCounterClient(shard).Report(context.Background(), &header.CounterReportRequest{
+		TimeSeries: timeseries,
+		FromSec:    fromSec,
+		Range:      _range,
+		Limit:      limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out.GetCounts(), nil
+}
+
+var _counterClient [COUNTERSHARD]header.CounterClient
+
+func GetCounterClient(shard int) header.CounterClient {
+	if _counterClient[shard] != nil {
+		return _counterClient[shard]
+	}
+	conn := header.DialGrpc(fmt.Sprintf("counter-%d.counter:12306"))
+	client := header.NewCounterClient(conn)
+	_counterClient[shard] = client
+	return client
 }
