@@ -1344,7 +1344,7 @@ func MustBeSuperAdmin(cred *compb.Credential) error {
 	return EACCESS_DENY
 }
 
-func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
+func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
 	if cred.GetType() == compb.Type_subiz || cred.GetType() == compb.Type_workflow || cred.GetType() == compb.Type_connector {
 		return nil
 	}
@@ -1353,34 +1353,7 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		return nil
 	}
 
-	credaccid := cred.GetAccountId()
-	if credaccid != accid {
-		if credaccid == "" {
-			return EACCESS_DENY
-		}
-
-		// must be subiz agent
-		agent, err := GetAgent(credaccid, cred.GetIssuer())
-		if err != nil {
-			return err
-		}
-
-		if agent.GetState() == "active" {
-			for _, scope := range agent.GetScopes() { // agent's account-wide scope
-				if header.ScopeM[scope] == nil {
-					continue
-				}
-				if header.ScopeM[scope]["accmgr:update:none"] {
-					return EACCESS_DENY
-				}
-				if header.ScopeM[scope]["accmgr:update"] {
-					return nil
-				}
-			}
-		}
-		return EACCESS_DENY
-	}
-
+	accid := cred.GetAccountId()
 	if accid == "" || cred.GetIssuer() == "" {
 		return EACCESS_DENY
 	}
