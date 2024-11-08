@@ -40,10 +40,13 @@ var (
 
 	numpubsub header.PubsubClient
 
-	cache      = gocache.New(5 * time.Minute)
+	cache      = gocache.New(60 * time.Minute)
 	hash_cache *gocache.Cache
 
 	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
+
+	subscribeTopicLock = &sync.Mutex{}
+	subscribeTopics    = map[string]bool{}
 )
 
 var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
@@ -335,6 +338,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 }
 
 func ListLocaleMessageDB(accid, locale string) (*header.Lang, error) {
+	subscribe(accid, "lang")
 	lang := &header.Lang{}
 	var err error
 	// read in custom lang first
@@ -430,6 +434,7 @@ func GetLocale(accid, locale string) (*header.Lang, error) {
 // TODO return proto clone of other methods
 func GetAccount(accid string) (*pb.Account, error) {
 	waitUntilReady()
+	subscribe(accid, "account")
 	// cache hit
 	if value, found := cache.Get("ACC_" + accid); found {
 		if value == nil {
@@ -461,6 +466,7 @@ func MakeDefNotiSetting(accid, agid string) *n5pb.Setting {
 }
 
 func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
+	subscribe(accid, "notification_setting")
 	waitUntilReady()
 	if value, found := cache.Get("N5Setting_" + accid); found {
 		if value == nil {
@@ -488,6 +494,7 @@ func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 }
 
 func GetSubscription(accid string) (*pm.Subscription, error) {
+	subscribe(accid, "subscription")
 	waitUntilReady()
 	// cache hit
 	if value, found := cache.Get("SUB_" + accid); found {
@@ -675,6 +682,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 }
 
 func GetAgent(accid, agid string) (*pb.Agent, error) {
+	subscribe(accid, "agent")
 	agM, err := ListAgentM(accid)
 	if err != nil {
 		return nil, err
@@ -716,6 +724,7 @@ func Bot2Agent(bot *header.Bot) *pb.Agent {
 }
 
 func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
+	subscribe(accid, "agent_group")
 	groups, err := ListGroups(accid)
 	if err != nil {
 		return nil, err
@@ -738,6 +747,7 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 }
 
 func ListAgents(accid string) ([]*pb.Agent, error) {
+	subscribe(accid, "agent")
 	waitUntilReady()
 
 	// cache exists
@@ -751,6 +761,7 @@ func ListAgents(accid string) ([]*pb.Agent, error) {
 }
 
 func ListAgentM(accid string) (map[string]*pb.Agent, error) {
+	subscribe(accid, "agent")
 	waitUntilReady()
 
 	// cache exists
@@ -773,6 +784,7 @@ func ListAgentM(accid string) (map[string]*pb.Agent, error) {
 }
 
 func ListGroups(accid string) ([]*header.AgentGroup, error) {
+	subscribe(accid, "agent_group")
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("GR_" + accid); found {
@@ -832,6 +844,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 }
 
 func GetBot(accid, botid string) (*header.Bot, error) {
+	subscribe(accid, "bot")
 	bots, err := ListBots(accid)
 	if err != nil {
 		return nil, err
@@ -846,6 +859,7 @@ func GetBot(accid, botid string) (*header.Bot, error) {
 }
 
 func ListBots(accid string) ([]*header.Bot, error) {
+	subscribe(accid, "bot")
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("BOT_" + accid); found {
@@ -918,6 +932,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 }
 
 func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
+	subscribe(accid, "attribute_definition")
 	waitUntilReady()
 	if value, found := cache.Get("ATTRDEF_" + accid); found {
 		if value == nil {
@@ -929,6 +944,7 @@ func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 }
 
 func GetShopSetting(accid string) (*header.ShopSetting, error) {
+	subscribe(accid, "shop_setting")
 	waitUntilReady()
 	// cache hit
 	if value, found := cache.Get("SHOPSETTING_" + accid); found {
@@ -1246,19 +1262,26 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 	})
 }
 
-func Notify(accid, id string, topic string) {
+func Notify(accid string, topic string) {
 	waitUntilReady()
-	numpubsub.Fire(context.Background(), &header.PsMessage{AccountId: accid, Event: &header.Event{AccountId: accid, Id: id, Created: time.Now().UnixMilli(), Type: topic}, Topics: []string{topic}})
+	numpubsub.Fire(context.Background(), &header.PsMessage{AccountId: accid, Topics: []string{topic + "." + accid}})
 }
 
 func pollLoop() {
 	conn := header.DialGrpc("numreg-0.numreg:8665")
 	client := header.NewPubsubClient(conn)
 
-	topics := []string{"account_updated", "lang_updated", "shop_setting_updated", "agent_updated", "agent_group_updated", "bot_updated", "attribute_definition_updated", "notisetting_updated", "pipeline_updated"}
 	connId := idgen.NewPollingConnId("0", "", randstr.Hex(8))
 	for {
 		time.Sleep(2 * time.Second)
+		topics := []string{}
+
+		subscribeTopicLock.Lock()
+		for topic := range subscribeTopics {
+			topics = append(topics, topic)
+		}
+		subscribeTopicLock.Unlock()
+
 		out, err := client.Poll(context.Background(), &header.RealtimeSubscription{Events: topics, ConnectionId: connId})
 		if err != nil {
 			fmt.Println("ERR", err)
@@ -1269,15 +1292,15 @@ func pollLoop() {
 			if accid == "" {
 				continue
 			}
-			if event.GetType() == "account_updated" {
+			if event.GetType() == "account" {
 				cache.Delete("ACC_" + accid)
 				cache.Delete("SUB_" + accid)
 			}
-			if event.GetType() == "shop_setting_updated" {
+			if event.GetType() == "shop_setting" {
 				cache.Delete("SHOPSETTING_" + accid)
 			}
 
-			if event.GetType() == "lang_updated" {
+			if event.GetType() == "lang" {
 				rawCache := cache.Items()
 				for k := range rawCache {
 					if strings.HasPrefix(k, "LANG_"+accid+"_") {
@@ -1285,17 +1308,17 @@ func pollLoop() {
 					}
 				}
 			}
-			if event.GetType() == "agent_updated" {
+			if event.GetType() == "agent" {
 				cache.Delete("AG_" + accid)
 				cache.Delete("AGM_" + accid)
 			}
-			if event.GetType() == "agent_group_updated" {
+			if event.GetType() == "agent_group" {
 				cache.Delete("GR_" + accid)
 			}
-			if event.GetType() == "bot_updated" {
+			if event.GetType() == "bot" {
 				cache.Delete("BOT_" + accid)
 			}
-			if event.GetType() == "attribute_definition_updated" {
+			if event.GetType() == "attribute_definition" {
 				cache.Delete("ATTRDEF_" + accid)
 			}
 			if event.GetType() == "notisetting_updated" {
@@ -1562,4 +1585,11 @@ func GetCounterClient(shard int) header.CounterClient {
 	client := header.NewCounterClient(conn)
 	_counterClient[shard] = client
 	return client
+}
+
+func subscribe(accid, topic string) {
+	waitUntilReady()
+	subscribeTopicLock.Lock()
+	subscribeTopics[topic+"."+accid] = true
+	subscribeTopicLock.Unlock()
 }
