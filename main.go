@@ -34,18 +34,14 @@ var (
 
 	ready bool
 
-	session        *gocql.Session
-	accmgr         header.AccountMgrClient
-	creditmgr      header.CreditMgrClient
-	registryClient header.NumberRegistryClient
-
-	numpubsub header.PubsubClient
-
-	cache      = gocache.New(60 * time.Minute)
-	hash_cache *gocache.Cache
-
-	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
-
+	session            *gocql.Session
+	accmgr             header.AccountMgrClient
+	creditmgr          header.CreditMgrClient
+	registryClient     header.NumberRegistryClient
+	numpubsub          header.PubsubClient
+	cache              = gocache.New(60 * time.Minute)
+	hash_cache         *gocache.Cache
+	creditCache        = gocache.New(60 * time.Second) // accid+"."+creditid
 	subscribeTopicLock = &sync.Mutex{}
 	subscribeTopics    = map[string]bool{}
 )
@@ -81,7 +77,8 @@ func waitUntilReady() {
 	readyLock.Unlock()
 }
 
-func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
+func getAccountDB(id string) (*pb.Account, error) {
+	subscribe(id, "account")
 	waitUntilReady()
 	var businesshourb, invoice_infob, leadsetting, userattributesetting []byte
 	var supportedlocales []string
@@ -93,12 +90,12 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 
 	err := session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.Set("ACC_"+id, nil)
-		return nil, nil, nil
+		cache.Set("account."+id, nil)
+		return nil, nil
 	}
 
 	if err != nil {
-		return nil, nil, log.ERetry(err, log.M{"id": id})
+		return nil, log.ERetry(err, log.M{"id": id})
 	}
 
 	ii := &pb.InvoiceInfo{}
@@ -140,8 +137,13 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		UserAttributeSetting: uas,
 		InvoiceInfo:          ii,
 	}
-	cache.Set("ACC_"+id, acc)
+	cache.Set("account."+id, acc)
+	return acc, nil
+}
 
+func getSubDB(id string) (*pm.Subscription, error) {
+	subscribe(id, "subscription")
+	waitUntilReady()
 	var limitb []byte
 	var autocharge bool
 	var plan, promo string
@@ -150,14 +152,14 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 	var credit float32
 	var use_ticket int64
 
-	err = session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, ended, churned, next_billing_cycle_month, plan, promotion_code, started, fpv_unlimited_agent_price, use_ticket FROM account.subs WHERE account_id=?", id).Scan(
+	err := session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, ended, churned, next_billing_cycle_month, plan, promotion_code, started, fpv_unlimited_agent_price, use_ticket FROM account.subs WHERE account_id=?", id).Scan(
 		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &ended, &churned, &next_billing_cycle_month, &plan, &promo, &started, &fpv_unlimited_agent_price, &use_ticket)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.Set("SUB_"+id, nil)
-		return acc, nil, nil
+		cache.Set("subscription."+id, nil)
+		return nil, nil
 	}
 	if err != nil {
-		return nil, nil, log.ERetry(err, log.M{"account_id": id})
+		return nil, log.ERetry(err, log.M{"account_id": id})
 	}
 
 	limit := &compb.Limit{}
@@ -178,12 +180,13 @@ func getAccountDB(id string) (*pb.Account, *pm.Subscription, error) {
 		FpvUnlimitedAgentPrice: &fpv_unlimited_agent_price,
 		UseTicket:              conv.PI64(int(use_ticket)),
 	}
-	cache.Set("SUB_"+id, sub)
-	return acc, sub, nil
+	cache.Set("subscription."+id, sub)
+	return sub, nil
 }
 
 func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	waitUntilReady()
+	subscribe(id, "shop_setting")
 	var data = []byte{}
 	err := session.Query("SELECT data FROM account.shop_setting WHERE account_id=?", id).Scan(&data)
 	setting := &header.ShopSetting{}
@@ -435,17 +438,15 @@ func GetLocale(accid, locale string) (*header.Lang, error) {
 // TODO return proto clone of other methods
 func GetAccount(accid string) (*pb.Account, error) {
 	waitUntilReady()
-	subscribe(accid, "account")
 	// cache hit
-	if value, found := cache.Get("ACC_" + accid); found {
+	if value, found := cache.Get("account." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
 		return value.(*pb.Account), nil
 	}
 
-	acc, _, err := getAccountDB(accid)
-	return acc, err
+	return getAccountDB(accid)
 }
 
 func MakeDefNotiSetting(accid, agid string) *n5pb.Setting {
@@ -495,26 +496,21 @@ func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 }
 
 func GetSubscription(accid string) (*pm.Subscription, error) {
-	subscribe(accid, "subscription")
 	waitUntilReady()
 	// cache hit
-	if value, found := cache.Get("SUB_" + accid); found {
+	if value, found := cache.Get("subscription." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
 		return value.(*pm.Subscription), nil
 	}
 
-	_, sub, err := getAccountDB(accid)
-	if err != nil {
-		return nil, err
-	}
-	return sub, nil
+	return getSubDB(accid)
 }
 
-func listAgentsDB(accid string) ([]*pb.Agent, error) {
+func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
+	subscribe(accid, "agent")
 	waitUntilReady()
-	var arr = make([]*pb.Agent, 0)
 
 	var id, avatar_url, avatar_url_128, client_id, email, fullname, gender string
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
@@ -523,7 +519,7 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 	var dashboard_setting []byte
 	var extension int64
 	var modified int64
-
+	listM := map[string]*pb.Agent{}
 	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, fullname, gender, invited_by, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
 	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &fullname, &gender, &invited_by,
 		&jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
@@ -553,35 +549,27 @@ func listAgentsDB(accid string) ([]*pb.Agent, error) {
 			Extension:        conv.PI64(int(extension)),
 		}
 		scopes = make([]string, 0)
-		arr = append(arr, ag)
+		if ag.GetState() != pb.Agent_deleted.String() {
+			listM[id] = ag
+		}
 	}
-
 	if err := iter.Close(); err != nil {
 		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
-	list := make([]*pb.Agent, 0)
-	listM := map[string]*pb.Agent{}
-	for _, ag := range arr {
-		if ag.GetState() != pb.Agent_deleted.String() {
-			list = append(list, ag)
-			listM[ag.GetId()] = ag
-		}
-	}
-
-	cache.Set("AG_"+accid, list)
-	cache.Set("AGM_"+accid, listM)
-	return list, nil
+	cache.Set("agent."+accid, listM)
+	return listM, nil
 }
 
 func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error) {
+	subscribe(accid, "attribute_definition")
 	defs := make(map[string]*header.AttributeDefinition, 0)
 	iter := session.Query("SELECT data FROM user.attr_defs WHERE account_id=? LIMIT 1000", accid).Iter()
 	var data []byte
 	for iter.Scan(&data) {
 		def := &header.AttributeDefinition{}
 		if err := proto.Unmarshal(data, def); err != nil {
-			return nil, log.EServer(err, log.M{"account_id": accid})
+			return nil, log.ERetry(err, log.M{"account_id": accid})
 		}
 		defs[def.Key] = def
 	}
@@ -599,8 +587,9 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 }
 
 func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
+	subscribe(accid, "notification_setting")
 	waitUntilReady()
-	agents, err := ListAgents(accid)
+	agents, err := ListAgentM(accid)
 	if err != nil {
 		return nil, err
 	}
@@ -662,6 +651,7 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 }
 
 func listBotsDB(accid string) ([]*header.Bot, error) {
+	subscribe(accid, "bot")
 	waitUntilReady()
 	iter := session.Query(`SELECT bot FROM bizbot.bots WHERE account_id=?`, accid).Iter()
 	var botb []byte
@@ -683,7 +673,6 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 }
 
 func GetAgent(accid, agid string) (*pb.Agent, error) {
-	subscribe(accid, "agent")
 	agM, err := ListAgentM(accid)
 	if err != nil {
 		return nil, err
@@ -725,7 +714,6 @@ func Bot2Agent(bot *header.Bot) *pb.Agent {
 }
 
 func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
-	subscribe(accid, "agent_group")
 	groups, err := ListGroups(accid)
 	if err != nil {
 		return nil, err
@@ -747,48 +735,23 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 	return nil, nil
 }
 
-func ListAgents(accid string) ([]*pb.Agent, error) {
-	subscribe(accid, "agent")
-	waitUntilReady()
-
-	// cache exists
-	if value, found := cache.Get("AG_" + accid); found {
-		if value == nil {
-			return nil, nil
-		}
-		return value.([]*pb.Agent), nil
-	}
-	return listAgentsDB(accid)
-}
-
 func ListAgentM(accid string) (map[string]*pb.Agent, error) {
-	subscribe(accid, "agent")
 	waitUntilReady()
-
 	// cache exists
-	if value, found := cache.Get("AGM_" + accid); found {
+	if value, found := cache.Get("agent." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
 		return value.(map[string]*pb.Agent), nil
 	}
 
-	agents, err := ListAgents(accid)
-	if err != nil {
-		return nil, err
-	}
-	var agentM = map[string]*pb.Agent{}
-	for _, ag := range agents {
-		agentM[ag.GetId()] = ag
-	}
-	return agentM, nil
+	return listAgentsDB(accid)
 }
 
 func ListGroups(accid string) ([]*header.AgentGroup, error) {
-	subscribe(accid, "agent_group")
 	waitUntilReady()
 	// cache exists
-	if value, found := cache.Get("GR_" + accid); found {
+	if value, found := cache.Get("agent_group." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
@@ -798,6 +761,7 @@ func ListGroups(accid string) ([]*header.AgentGroup, error) {
 }
 
 func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
+	subscribe(accid, "agent_group")
 	waitUntilReady()
 	var arr = make([]*header.AgentGroup, 0)
 	iter := session.Query("SELECT id, data FROM account.agent_groups WHERE account_id=? LIMIT 500", accid).Iter()
@@ -816,7 +780,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	if err := iter.Close(); err != nil {
 		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
-	cache.Set("GR_"+accid, arr)
+	cache.Set("agent_group."+accid, arr)
 	return arr, nil
 }
 
@@ -845,7 +809,6 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 }
 
 func GetBot(accid, botid string) (*header.Bot, error) {
-	subscribe(accid, "bot")
 	bots, err := ListBots(accid)
 	if err != nil {
 		return nil, err
@@ -860,7 +823,6 @@ func GetBot(accid, botid string) (*header.Bot, error) {
 }
 
 func ListBots(accid string) ([]*header.Bot, error) {
-	subscribe(accid, "bot")
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("bot." + accid); found {
@@ -934,7 +896,6 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 }
 
 func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
-	subscribe(accid, "attribute_definition")
 	waitUntilReady()
 	if value, found := cache.Get("attribute_definition." + accid); found {
 		if value == nil {
@@ -946,7 +907,6 @@ func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 }
 
 func GetShopSetting(accid string) (*header.ShopSetting, error) {
-	subscribe(accid, "shop_setting")
 	waitUntilReady()
 	// cache hit
 	if value, found := cache.Get("shop_setting." + accid); found {
@@ -1270,9 +1230,6 @@ func Notify(accid string, topic string) {
 }
 
 func pollLoop() {
-	conn := header.DialGrpc("numreg-0.numreg:8665")
-	client := header.NewPubsubClient(conn)
-
 	connId := idgen.NewPollingConnId("0", "", randstr.Hex(8))
 	for {
 		time.Sleep(2 * time.Second)
@@ -1284,7 +1241,7 @@ func pollLoop() {
 		}
 		subscribeTopicLock.Unlock()
 
-		out, err := client.Poll(context.Background(), &header.RealtimeSubscription{Events: topics, ConnectionId: connId})
+		out, err := numpubsub.Poll(context.Background(), &header.RealtimeSubscription{Events: topics, ConnectionId: connId})
 		if err != nil {
 			fmt.Println("ERR", err)
 			time.Sleep(30 * time.Second)
@@ -1296,11 +1253,6 @@ func pollLoop() {
 			}
 			cache.Delete(event.GetType() + "." + accid)
 
-			if event.GetType() == "account" {
-				cache.Delete("ACC_" + accid)
-				cache.Delete("SUB_" + accid)
-			}
-
 			if event.GetType() == "lang" {
 				rawCache := cache.Items()
 				for k := range rawCache {
@@ -1308,14 +1260,6 @@ func pollLoop() {
 						cache.Delete(k)
 					}
 				}
-			}
-
-			if event.GetType() == "agent" {
-				cache.Delete("AG_" + accid)
-				cache.Delete("AGM_" + accid)
-			}
-			if event.GetType() == "agent_group" {
-				cache.Delete("GR_" + accid)
 			}
 		}
 	}
@@ -1537,7 +1481,6 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 
 func ListBlacklistIPs(accid string) (map[string]*header.BlacklistIP, error) {
 	waitUntilReady()
-	subscribe(accid, "blacklist_ip")
 
 	// cache exists
 	if value, found := cache.Get("blacklist_ip." + accid); found {
@@ -1552,6 +1495,7 @@ func ListBlacklistIPs(accid string) (map[string]*header.BlacklistIP, error) {
 // ListBlacklistIPs returns all blacklist IPs for an account
 // it may updates cache if needed
 func listBlacklistIPsDB(accid string) (map[string]*header.BlacklistIP, error) {
+	subscribe(accid, "blacklist_ip")
 	waitUntilReady()
 
 	ips := map[string]*header.BlacklistIP{}
@@ -1572,13 +1516,12 @@ func listBlacklistIPsDB(accid string) (map[string]*header.BlacklistIP, error) {
 	if err := iter.Close(); err != nil {
 		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
-	cache.Set("blacklist_ip"+accid, ips)
+	cache.Set("blacklist_ip."+accid, ips)
 	return ips, nil
 }
 
 func ListBannedUsers(accid string) (map[string]*header.BannedUser, error) {
 	waitUntilReady()
-	subscribe(accid, "banned_user")
 
 	// cache exists
 	if value, found := cache.Get("banned_user." + accid); found {
@@ -1591,6 +1534,8 @@ func ListBannedUsers(accid string) (map[string]*header.BannedUser, error) {
 }
 
 func listBannedUserDB(accid string) (map[string]*header.BannedUser, error) {
+	subscribe(accid, "banned_user")
+
 	users := map[string]*header.BannedUser{}
 	iter := session.Query(`SELECT user_id, "by", created FROM api.wlusers WHERE account_id=? LIMIT 10000`, accid).Iter()
 	var userid, by string
@@ -1599,9 +1544,9 @@ func listBannedUserDB(accid string) (map[string]*header.BannedUser, error) {
 		users[userid] = &header.BannedUser{AccountId: accid, UserId: userid, By: by, Created: created}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.EServer(err, log.M{"account_id": accid})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
-	cache.Set("BAN_"+accid, users)
+	cache.Set("banned_user."+accid, users)
 	return users, nil
 }
 
