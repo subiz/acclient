@@ -13,6 +13,7 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/subiz/goutils/business_hours"
+	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
@@ -294,7 +295,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	setting.ShopeeShops = shops
 	setting.AccountId = id
 
-	cache.Set("SHOPSETTING_"+id, setting)
+	cache.Set("shop_setting."+id, setting)
 	return setting, nil
 }
 
@@ -468,7 +469,7 @@ func MakeDefNotiSetting(accid, agid string) *n5pb.Setting {
 func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
 	subscribe(accid, "notification_setting")
 	waitUntilReady()
-	if value, found := cache.Get("N5Setting_" + accid); found {
+	if value, found := cache.Get("notification_setting." + accid); found {
 		if value == nil {
 			return MakeDefNotiSetting(accid, agid), nil
 		}
@@ -593,7 +594,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 		defs[a.Key] = a
 	}
 
-	cache.Set("ATTRDEF_"+accid, defs)
+	cache.Set("attribute_definition."+accid, defs)
 	return defs, nil
 }
 
@@ -656,7 +657,7 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 		settings = append(settings, setting)
 	}
 
-	cache.Set("N5Setting_"+accid, settings)
+	cache.Set("notification_setting."+accid, settings)
 	return settings, nil
 }
 
@@ -677,7 +678,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
-	cache.Set("BOT_"+accid, list)
+	cache.Set("bot."+accid, list)
 	return list, nil
 }
 
@@ -862,7 +863,7 @@ func ListBots(accid string) ([]*header.Bot, error) {
 	subscribe(accid, "bot")
 	waitUntilReady()
 	// cache exists
-	if value, found := cache.Get("BOT_" + accid); found {
+	if value, found := cache.Get("bot." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
@@ -873,6 +874,7 @@ func ListBots(accid string) ([]*header.Bot, error) {
 
 func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 	waitUntilReady()
+	subscribe(accid, "pipeline")
 	iter := session.Query(`SELECT id, pipeline FROM apiece.pipelines WHERE account_id=? LIMIT 100`, accid).Iter()
 	pipelines := make([]*header.Pipeline, 0)
 	var dbid string
@@ -888,14 +890,14 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 	if err != nil {
 		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
-	cache.Set("PIPELINE_"+accid, pipelines)
+	cache.Set("pipeline."+accid, pipelines)
 	return pipelines, nil
 }
 
 func ListPipelines(accid string) ([]*header.Pipeline, error) {
 	waitUntilReady()
 	// cache exists
-	if value, found := cache.Get("PIPELINE_" + accid); found {
+	if value, found := cache.Get("pipeline." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
@@ -934,7 +936,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	subscribe(accid, "attribute_definition")
 	waitUntilReady()
-	if value, found := cache.Get("ATTRDEF_" + accid); found {
+	if value, found := cache.Get("attribute_definition." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
@@ -947,7 +949,7 @@ func GetShopSetting(accid string) (*header.ShopSetting, error) {
 	subscribe(accid, "shop_setting")
 	waitUntilReady()
 	// cache hit
-	if value, found := cache.Get("SHOPSETTING_" + accid); found {
+	if value, found := cache.Get("shop_setting." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
@@ -1292,12 +1294,11 @@ func pollLoop() {
 			if accid == "" {
 				continue
 			}
+			cache.Delete(event.GetType() + "." + accid)
+
 			if event.GetType() == "account" {
 				cache.Delete("ACC_" + accid)
 				cache.Delete("SUB_" + accid)
-			}
-			if event.GetType() == "shop_setting" {
-				cache.Delete("SHOPSETTING_" + accid)
 			}
 
 			if event.GetType() == "lang" {
@@ -1308,24 +1309,13 @@ func pollLoop() {
 					}
 				}
 			}
+
 			if event.GetType() == "agent" {
 				cache.Delete("AG_" + accid)
 				cache.Delete("AGM_" + accid)
 			}
 			if event.GetType() == "agent_group" {
 				cache.Delete("GR_" + accid)
-			}
-			if event.GetType() == "bot" {
-				cache.Delete("BOT_" + accid)
-			}
-			if event.GetType() == "attribute_definition" {
-				cache.Delete("ATTRDEF_" + accid)
-			}
-			if event.GetType() == "notisetting_updated" {
-				cache.Delete("N5Setting_" + accid)
-			}
-			if event.GetType() == "pipeline_updated" {
-				cache.Delete("PIPELINE_" + accid)
 			}
 		}
 	}
@@ -1543,6 +1533,76 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 	}
 	agentScopeCache.Set(accid+"_"+agid+"_"+resourceGroupId, permM)
 	return permM, nil
+}
+
+func ListBlacklistIPs(accid string) (map[string]*header.BlacklistIP, error) {
+	waitUntilReady()
+	subscribe(accid, "blacklist_ip")
+
+	// cache exists
+	if value, found := cache.Get("blacklist_ip." + accid); found {
+		if value == nil {
+			return nil, nil
+		}
+		return value.(map[string]*header.BlacklistIP), nil
+	}
+	return listBlacklistIPsDB(accid)
+}
+
+// ListBlacklistIPs returns all blacklist IPs for an account
+// it may updates cache if needed
+func listBlacklistIPsDB(accid string) (map[string]*header.BlacklistIP, error) {
+	waitUntilReady()
+
+	ips := map[string]*header.BlacklistIP{}
+	iter := session.Query(`SELECT ip, "by", created, num_blocked, last_blocked, expired_at FROM api.wlips WHERE account_id=? LIMIT 1000`, accid).Iter()
+	var ip, by string
+	var created, num_blocked, expired, last_blocked int64
+	for iter.Scan(&ip, &by, &created, &num_blocked, &last_blocked, &expired) {
+		if expired == 0 {
+			expired = clock.UnixMili(created) + 86400*90*1000 // 90 days after created
+		}
+
+		if last_blocked+expired < time.Now().UnixMilli() {
+			session.Query(`DELETE FROM api.wlips WHERE account_id=? AND ip=?`, accid, ip).Exec()
+			continue
+		}
+		ips[ip] = &header.BlacklistIP{AccountId: accid, Ip: ip, By: by, Created: clock.UnixMili(created), NumBlocked: num_blocked, ExpiredAt: expired, LastBlocked: last_blocked}
+	}
+	if err := iter.Close(); err != nil {
+		return nil, log.ERetry(err, log.M{"account_id": accid})
+	}
+	cache.Set("blacklist_ip"+accid, ips)
+	return ips, nil
+}
+
+func ListBannedUsers(accid string) (map[string]*header.BannedUser, error) {
+	waitUntilReady()
+	subscribe(accid, "banned_user")
+
+	// cache exists
+	if value, found := cache.Get("banned_user." + accid); found {
+		if value == nil {
+			return nil, nil
+		}
+		return value.(map[string]*header.BannedUser), nil
+	}
+	return listBannedUserDB(accid)
+}
+
+func listBannedUserDB(accid string) (map[string]*header.BannedUser, error) {
+	users := map[string]*header.BannedUser{}
+	iter := session.Query(`SELECT user_id, "by", created FROM api.wlusers WHERE account_id=? LIMIT 10000`, accid).Iter()
+	var userid, by string
+	var created int64
+	for iter.Scan(&userid, &by, &created) {
+		users[userid] = &header.BannedUser{AccountId: accid, UserId: userid, By: by, Created: created}
+	}
+	if err := iter.Close(); err != nil {
+		return nil, log.EServer(err, log.M{"account_id": accid})
+	}
+	cache.Set("BAN_"+accid, users)
+	return users, nil
 }
 
 const COUNTERSHARD = 4
