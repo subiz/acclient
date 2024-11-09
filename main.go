@@ -788,7 +788,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 func ListPresences(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	// cache exists
-	if value, found := cache.Get("presences." + accid); found {
+	if value, found := cache.Get("presence." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
@@ -799,14 +799,14 @@ func ListPresences(accid string) ([]*pb.Presence, error) {
 
 func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
-	subscribe(accid, "presences")
+	subscribe(accid, "presence")
 
 	pres, err := accmgr.ListAgentPresences(context.Background(), &header.Id{Id: accid})
 	if err != nil {
 		return nil, err
 	}
 	presences := pres.GetPresences()
-	cache.Set("presences."+accid, presences)
+	cache.Set("presence."+accid, presences)
 	return presences, nil
 }
 
