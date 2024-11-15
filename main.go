@@ -578,7 +578,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 
-	defaults := ListDefaultDefs()
+	defaults := header.ListDefaultDefs()
 	for _, a := range defaults {
 		defs[a.Key] = a
 	}
