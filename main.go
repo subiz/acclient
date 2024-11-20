@@ -1567,10 +1567,27 @@ func IncreaseCounter(timeseries []string, count int64, createdMs int64) {
 	}
 }
 
+func ReportCounter(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
+	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
+	out, err := GetCounterClient(shard).Report(context.Background(), &header.CounterReportRequest{
+		TimeSeries: timeseries,
+		FromSec:    fromSec,
+		Range:      _range,
+		Limit:      limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out.GetCounts(), nil
+}
+
 func IncreaseCounter2(timeserieCountM map[string]int64, id string, createdMs int64) {
 	tss := [COUNTERSHARD]map[string]int64{}
 	for ts, count := range timeserieCountM {
 		shard := int(crc32.ChecksumIEEE([]byte(ts))) % COUNTERSHARD
+		if tss[shard] == nil {
+			tss[shard] = map[string]int64{}
+		}
 		tss[shard][ts] = count
 	}
 
@@ -1587,9 +1604,9 @@ func IncreaseCounter2(timeserieCountM map[string]int64, id string, createdMs int
 	}
 }
 
-func ReportCounter(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
+func ReportCounter2(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
 	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
-	out, err := GetCounterClient(shard).Report(context.Background(), &header.CounterReportRequest{
+	out, err := GetCounterClient(shard).Report2(context.Background(), &header.CounterReportRequest{
 		TimeSeries: timeseries,
 		FromSec:    fromSec,
 		Range:      _range,
@@ -1599,6 +1616,22 @@ func ReportCounter(timeseries string, fromSec int64, _range string, limit int64)
 		return nil, err
 	}
 	return out.GetCounts(), nil
+}
+
+func CountCounter2(timeseries string, fromSec int64, limit int64) (int64, error) {
+	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
+	out, err := GetCounterClient(shard).Count2(context.Background(), &header.CounterReportRequest{
+		TimeSeries: timeseries,
+		FromSec:    fromSec,
+		Limit:      limit,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if len(out.GetCounts()) < 1 {
+		return 0, nil
+	}
+	return out.GetCounts()[0], nil
 }
 
 var _counterClient [COUNTERSHARD]header.CounterClient
