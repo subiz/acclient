@@ -1567,6 +1567,26 @@ func IncreaseCounter(timeseries []string, count int64, createdMs int64) {
 	}
 }
 
+func IncreaseCounter2(timeserieCountM map[string]int64, id string, createdMs int64) {
+	tss := [COUNTERSHARD]map[string]int64{}
+	for ts, count := range timeserieCountM {
+		shard := int(crc32.ChecksumIEEE([]byte(ts))) % COUNTERSHARD
+		tss[shard][ts] = count
+	}
+
+	for i, tsM := range tss {
+		if len(tsM) > 0 {
+			tses := []string{}
+			counts := []int64{}
+			for ts, count := range tsM {
+				tses = append(tses, ts)
+				counts = append(counts, count)
+			}
+			kafka.Publish("counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: tses, Created: createdMs, Counts: counts, Id: id})
+		}
+	}
+}
+
 func ReportCounter(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
 	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
 	out, err := GetCounterClient(shard).Report(context.Background(), &header.CounterReportRequest{
