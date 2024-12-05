@@ -1211,7 +1211,7 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 	if accid == "" || creditId == "" {
 		return // alway allow
 	}
-	kafka.Publish("credit-spend-log", &header.CreditSpendEntry{
+	kafka.Publish("kafka-1:9092", "credit-spend-log", &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
 		Id:           idgen.NewPaymentLogID(),
@@ -1562,7 +1562,7 @@ func IncreaseCounter(timeseries []string, count int64, createdMs int64) {
 
 	for i, ts := range tss {
 		if len(ts) > 0 {
-			kafka.Publish("counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: ts, Created: createdMs, Count: count})
+			kafka.Publish("kafka-1:9092", "counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: ts, Created: createdMs, Count: count})
 		}
 	}
 }
@@ -1599,7 +1599,7 @@ func IncreaseCounter2(timeserieCountM map[string]int64, id string, createdMs int
 				tses = append(tses, ts)
 				counts = append(counts, count)
 			}
-			kafka.Publish("counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: tses, Created: createdMs, Counts: counts, Id: id})
+			kafka.Publish("kafka-1:9092", "counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: tses, Created: createdMs, Counts: counts, Id: id})
 		}
 	}
 }
@@ -1652,4 +1652,11 @@ func subscribe(accid, topic string) {
 	subscribeTopicLock.Lock()
 	subscribeTopics[topic+"."+accid] = true
 	subscribeTopicLock.Unlock()
+}
+
+func GetAccPar(accid string, N int) string {
+	if accid == "acpxkgumifuoofoosble" || accid == "acqsulrowbxiugvginhw" {
+		return "stg"
+	}
+	return strconv.Itoa(int(crc32.ChecksumIEEE([]byte(accid))) % N)
 }

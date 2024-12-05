@@ -7,7 +7,7 @@ import (
 )
 
 func BookTask(topic, key, accid string, sec int64, data []byte) {
-	kafka.Publish("scheduler", &header.SchedulerTask{
+	kafka.Publish("kafka-1:9092", "scheduler", &header.SchedulerTask{
 		AccountId: accid,
 		Sec:       sec,
 		Payload:   data,
@@ -18,7 +18,7 @@ func BookTask(topic, key, accid string, sec int64, data []byte) {
 }
 
 func BookTaskP(topic, key, accid string, sec int64, partition int32, data []byte) {
-	kafka.Publish("scheduler", &header.SchedulerTask{
+	kafka.Publish("kafka-1:9092", "scheduler", &header.SchedulerTask{
 		AccountId: accid,
 		Sec:       sec,
 		Payload:   data,
@@ -29,14 +29,14 @@ func BookTaskP(topic, key, accid string, sec int64, partition int32, data []byte
 }
 
 func OnSchedule(csm, topic string, predicate func(accid string, data []byte)) error {
-	return kafka.Listen(csm, topic, func(partition int32, offset int64, data []byte, _ string) {
+	return kafka.Listen("kafka-1:9092", csm, topic, func(partition int32, offset int64, data []byte, _ string) {
 		task := &header.SchedulerTask{}
 		proto.Unmarshal(data, task)
 		if task.GetAccountId() == "" {
-			kafka.MarkOffset(csm, topic, partition, offset+1)
+			kafka.MarkOffset("kafka-1:9092", csm, topic, partition, offset+1)
 			return
 		}
 		predicate(task.GetAccountId(), task.GetPayload())
-		kafka.MarkOffset(csm, topic, partition, offset+1)
+		kafka.MarkOffset("kafka-1:9092", csm, topic, partition, offset+1)
 	})
 }

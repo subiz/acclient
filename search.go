@@ -35,7 +35,7 @@ func IndexByLocale(col, accid, doc, part, content string, locale string, owners 
 
 func publishIndex(req *header.DocIndexRequest) {
 	topic := "search-index-" + strconv.Itoa(int(crc32.ChecksumIEEE([]byte(req.AccountId)))%4)
-	kafka.Publish(topic, req)
+	kafka.Publish("kafka-1:9092", topic, req)
 }
 
 func IndexID(col, accid, doc, part, value string, owners ...string) {
