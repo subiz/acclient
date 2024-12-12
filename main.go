@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gocql/gocql"
+	"github.com/paulbellamy/ratecounter"
 	"github.com/subiz/goutils/business_hours"
 	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
@@ -31,8 +33,8 @@ import (
 
 var (
 	readyLock = &sync.Mutex{}
-
-	ready bool
+	hostname  string
+	ready     bool
 
 	session            *gocql.Session
 	accmgr             header.AccountMgrClient
@@ -46,11 +48,12 @@ var (
 	subscribeTopics    = map[string]bool{}
 )
 
+var accRateCounter = ratecounter.NewRateCounter(1 * time.Minute)
 var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
 
 func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
-
+	hostname, _ = os.Hostname()
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
 	creditmgr = header.NewCreditMgrClient(conn)
@@ -58,6 +61,13 @@ func _init() {
 	conn = header.DialGrpc("numreg-0.numreg:8665")
 	registryClient = header.NewNumberRegistryClient(conn)
 	numpubsub = header.NewPubsubClient(conn)
+
+	go func() {
+		for {
+			time.Sleep(120 * time.Second)
+			log.Info("subiz", "READ ACC RATE", hostname, accRateCounter.Rate())
+		}
+	}()
 
 	go pollLoop()
 	hash_cache = gocache.New(10 * time.Minute)
@@ -88,6 +98,7 @@ func getAccountDB(id string) (*pb.Account, error) {
 	var currency string
 	var currency_locked bool
 
+	accRateCounter.Incr(1)
 	err := session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("account."+id, nil)
