@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/paulbellamy/ratecounter"
 	"github.com/subiz/goutils/business_hours"
 	"github.com/subiz/goutils/clock"
 	"github.com/subiz/goutils/conv"
@@ -48,7 +47,6 @@ var (
 	subscribeTopics    = map[string]bool{}
 )
 
-var accRateCounter = ratecounter.NewRateCounter(1 * time.Minute)
 var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
 
 func _init() {
@@ -61,14 +59,6 @@ func _init() {
 	conn = header.DialGrpc("numreg-0.numreg:8665")
 	registryClient = header.NewNumberRegistryClient(conn)
 	numpubsub = header.NewPubsubClient(conn)
-
-	go func() {
-		for {
-			time.Sleep(120 * time.Second)
-			log.Info("subiz", "READ ACC RATE", hostname, accRateCounter.Rate())
-		}
-	}()
-
 	go pollLoop()
 	hash_cache = gocache.New(10 * time.Minute)
 }
@@ -98,7 +88,6 @@ func getAccountDB(id string) (*pb.Account, error) {
 	var currency string
 	var currency_locked bool
 
-	accRateCounter.Incr(1)
 	err := session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("account."+id, nil)
@@ -819,6 +808,15 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	presences := pres.GetPresences()
 	cache.Set("presence."+accid, presences)
 	return presences, nil
+}
+
+func ListActiveAccountIds() ([]string, error) {
+	waitUntilReady()
+	res, err := accmgr.ListActiveAccountIds(context.Background(), &header.Id{})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetIds(), nil
 }
 
 func GetBot(accid, botid string) (*header.Bot, error) {
