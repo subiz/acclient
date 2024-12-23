@@ -261,7 +261,7 @@ func HTML2PDF(path, accid, filename, content_disposition string, input interface
 	out, _ := io.ReadAll(resp.Body)
 	file := &header.File{}
 	if err := json.Unmarshal(out, file); err != nil {
-		return nil, log.EData(err, out, log.M{"account_id": accid, "path": path, "filename": filename})
+		return nil, log.EData(err, out, log.M{"account_id": accid, "path": path, "filename": filename, "_payload": out})
 	}
 	return file, nil
 }
