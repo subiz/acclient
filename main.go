@@ -699,10 +699,11 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 }
 
 func Bot2Agent(bot *header.Bot) *pb.Agent {
+	active := "active"
 	return &pb.Agent{
 		AccountId:     &bot.AccountId,
 		Id:            &bot.Id,
-		State:         &bot.State,
+		State:         &active, // all bot are active as an agent, disabled -> hibernated
 		AvatarUrl:     &bot.AvatarUrl,
 		AvatarUrl_128: &bot.AvatarUrl_128,
 		Fullname:      &bot.Fullname,
