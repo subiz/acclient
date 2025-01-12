@@ -120,106 +120,36 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile(accid, name, category, mimetype string, data []byte, cd string, ttl int64) (*header.File, error) {
-	if len(data) > MAX_SIZE {
-		return nil, log.EPayloadTooLarge(int64(len(data)), int64(MAX_SIZE), log.M{"account_id": accid, "name": name})
-	}
+func UploadFile2(accid, name, category string, data []byte, cd string, ttl int64) (*header.File, error) {
+	req, _ := http.NewRequest("POST", API+"/4.1/files?account-id="+accid, bytes.NewBuffer(data))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("X-By", "acclient")
 
-	presignres, err := presign(accid, &header.File{
-		Name:               name,
-		Size:               int64(len(data)),
-		Type:               mimetype,
-		AccountId:          accid,
-		ContentDisposition: cd,
-		Ttl:                ttl,
-		Category:           category,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := uploadFile(presignres.SignedUrl, data, mimetype, cd); err != nil {
-		return nil, err
-	}
-
-	return finishUploadFile(accid, presignres.Id)
-}
-
-func uploadFile(url string, data []byte, mimetype, cd string) error {
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(data))
-	if mimetype == "" {
-		mimetype = "application/octet-stream"
-	}
-	req.Header.Set("Content-Type", mimetype)
 	if cd != "" {
 		req.Header.Set("Content-Disposition", cd)
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return log.ERetry(err, log.M{"url": url})
+		return nil, log.ERetry(err, log.M{"account_id": accid})
 	}
 	defer resp.Body.Close()
 
 	out, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		return log.ERetry(err, log.M{"url": url, "body": string(out), "status_code": resp.StatusCode})
+	res := &header.Response{}
+	json.Unmarshal(out, res)
+	if res.GetError() != nil {
+		return nil, header.ToErr(res.Error)
 	}
-	return nil
+	if resp.StatusCode != 200 {
+		return nil, log.ERetry(err, log.M{"account_id": accid, "_payload": out, "status_code": resp.StatusCode})
+	}
+	return res.GetFile(), nil
 }
 
-func finishUploadFile(accid, fileid string) (*header.File, error) {
-	fullurl := fmt.Sprintf(API+"/4.0/accounts/%s/files/%s", accid, fileid)
-	resp, err := http.Post(fullurl, "application/json", nil)
-	if err != nil {
-		return nil, log.ERetry(err, log.M{"url": fullurl})
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, log.ERetry(err, log.M{"url": fullurl, "status_code": resp.StatusCode})
-	}
-
-	out, _ := io.ReadAll(resp.Body)
-	f := &header.File{}
-	// config.FileUrl + body.url
-	if err := json.Unmarshal(out, f); err != nil {
-		return nil, log.ERetry(err, log.M{"url": fullurl})
-	}
-	return f, nil
-}
-
-func presign(accid string, f *header.File) (*header.PresignResult, error) {
-	fullurl := fmt.Sprintf(API+"/4.0/accounts/%s/files", accid)
-
-	body, _ := json.Marshal(f)
-	req, _ := http.NewRequest("POST", fullurl, bytes.NewBuffer(body))
-	req.Header.Set("X-By", "acclient")
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, log.ERetry(err, log.M{"url": fullurl, "account_id": accid})
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return nil, log.ERetry(err, log.M{"url": fullurl, "account_id": accid, "status_code": resp.StatusCode})
-	}
-
-	fileres := &header.PresignResult{}
-	out, _ := io.ReadAll(resp.Body)
-	if err := json.Unmarshal(out, fileres); err != nil {
-		return nil, log.EData(err, out, log.M{"url": fullurl, "account_id": accid})
-	}
-	return fileres, nil
-}
-
-func HTMLContent2PDF(html []byte) ([]byte, error) {
-	url := "http://html2pdf:80/content"
+func HTMLContent2PDF(apikey, accid string, html []byte) ([]byte, error) {
+	url := "https://html2pdf-457995922934.asia-southeast1.run.app/content?secret=" + apikey
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(html))
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, log.ERetry(err)
 	}
@@ -229,39 +159,31 @@ func HTMLContent2PDF(html []byte) ([]byte, error) {
 	if err != nil {
 		return nil, log.ERetry(err)
 	}
-
 	return out, nil
 }
 
 // path must start with /
-func HTML2PDF(path, accid, filename, content_disposition string, input interface{}) (*header.File, error) {
+func HTML2PDF(apikey, path, accid, filename, content_disposition string, input interface{}) (*header.File, error) {
 	body, err := json.Marshal(input)
 	if err != nil {
 		return nil, log.EData(err, nil, log.M{"account_id": accid, "path": path, "filename": filename})
 	}
-	url := "http://html2pdf:80" + path
+	url := "https://html2pdf-457995922934.asia-southeast1.run.app/" + path
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	q := req.URL.Query()
+	q.Add("secret", apikey)
 	q.Add("filename", filename)
-	q.Add("account_id", accid)
-	if content_disposition != "" {
-		q.Add("content_disposition", content_disposition)
-	}
+	q.Add("account-id", accid)
 	req.URL.RawQuery = q.Encode()
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, log.ERetry(err, log.M{"path": path})
+		return nil, log.ERetry(err, log.M{"account_id": accid, "path": path})
 	}
 
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
-	file := &header.File{}
-	if err := json.Unmarshal(out, file); err != nil {
-		return nil, log.EData(err, out, log.M{"account_id": accid, "path": path, "filename": filename, "_payload": out})
-	}
-	return file, nil
+	return UploadFile2(accid, filename, "other", out, content_disposition, 0)
 }
