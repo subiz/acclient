@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,7 +31,6 @@ import (
 
 var (
 	readyLock = &sync.Mutex{}
-	hostname  string
 	ready     bool
 
 	session            *gocql.Session
@@ -51,7 +49,6 @@ var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny
 
 func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
-	hostname, _ = os.Hostname()
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
 	creditmgr = header.NewCreditMgrClient(conn)
