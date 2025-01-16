@@ -7,18 +7,21 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/subiz/header"
 	"github.com/subiz/log"
+	gocache "github.com/thanhpk/go-cache"
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
 // const API = "https://api.subiz.com.vn"
 const API = "http://api"
 
-var httpCache = NewHttpCache()
+var fileurlcache = gocache.New(60 * time.Minute)
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
+
 	return UploadTypedFileUrl(accid, url, "", "")
 }
 
@@ -28,12 +31,12 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 		return &header.File{}, nil
 	}
 
-	cached, _, _, has := httpCache.Get(fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url))
-	if has {
-		file := &header.File{}
-		if err := json.Unmarshal(cached, file); err == nil {
-			return file, nil
+	theurl := fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url)
+	if value, found := fileurlcache.Get(theurl); found {
+		if value == nil {
+			return nil, nil
 		}
+		return value.(*header.File), nil
 	}
 
 	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
@@ -67,8 +70,7 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 	if err = json.Unmarshal(out, file); err != nil {
 		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
-
-	httpCache.Store(fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url), out, "", "", 21600) // 6 hour
+	fileurlcache.Set(theurl, file)
 	return file, nil
 }
 
@@ -78,12 +80,12 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 		return &header.File{}, nil
 	}
 
-	cached, _, _, has := httpCache.Get(accid + "." + filetype + "." + url)
-	if has {
-		file := &header.File{}
-		if err := json.Unmarshal(cached, file); err == nil {
-			return file, nil
+	theurl := fmt.Sprintf("%s.%s.%s", accid, filetype, url)
+	if value, found := fileurlcache.Get(theurl); found {
+		if value == nil {
+			return nil, nil
 		}
+		return value.(*header.File), nil
 	}
 
 	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
@@ -116,7 +118,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	if err = json.Unmarshal(out, file); err != nil {
 		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
 	}
-	httpCache.Store(accid+"."+filetype+"."+url, out, "", "", 21600) // 6 hour
+	fileurlcache.Set(theurl, file)
 	return file, nil
 }
 
