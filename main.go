@@ -18,7 +18,6 @@ import (
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
 	compb "github.com/subiz/header/common"
-	n5pb "github.com/subiz/header/noti5"
 	pm "github.com/subiz/header/payment"
 	"github.com/subiz/idgen"
 	"github.com/subiz/kafka"
@@ -447,32 +446,32 @@ func GetAccount(accid string) (*pb.Account, error) {
 	return getAccountDB(accid)
 }
 
-func MakeDefNotiSetting(accid, agid string) *n5pb.Setting {
+func MakeDefNotiSetting(accid, agid string) *header.NotiSetting {
 	now := time.Now().UnixMilli()
-	return &n5pb.Setting{
-		AccountId: &accid,
-		AgentId:   &agid,
-		Web: &n5pb.Subscription{
-			NewMessage:            conv.B(true),
-			UserCreated:           conv.B(true),
-			UserReturned:          conv.B(true),
-			CampaignUserConverted: conv.B(true),
-			UserOpenedEmail:       conv.B(true),
-			TicketUpdated:         &now,
-			TaskUpdated:           &now,
+	return &header.NotiSetting{
+		AccountId: accid,
+		AgentId:   agid,
+		Web: &header.NotiSubscription{
+			NewMessage:            true,
+			UserCreated:           true,
+			UserReturned:          true,
+			CampaignUserConverted: true,
+			UserOpenedEmail:       true,
+			TicketUpdated:         now,
+			TaskUpdated:           now,
 		},
-		Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
+		Mobile: &header.NotiSubscription{NewMessage: true},
 	}
 }
 
-func GetNotificationSetting(accid, agid string) (*n5pb.Setting, error) {
+func GetNotificationSetting(accid, agid string) (*header.NotiSetting, error) {
 	subscribe(accid, "notification_setting")
 	waitUntilReady()
 	if value, found := cache.Get("notification_setting." + accid); found {
 		if value == nil {
 			return MakeDefNotiSetting(accid, agid), nil
 		}
-		list := value.([]*n5pb.Setting)
+		list := value.([]*header.NotiSetting)
 		for _, item := range list {
 			if item.GetAgentId() == agid {
 				return item, nil
@@ -584,35 +583,21 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	return defs, nil
 }
 
-func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
+func getNotificationSettingDB(accid string) ([]*header.NotiSetting, error) {
 	subscribe(accid, "notification_setting")
 	waitUntilReady()
 	agents, err := ListAgentM(accid)
 	if err != nil {
 		return nil, err
 	}
-	settings := []*n5pb.Setting{}
+	settings := []*header.NotiSetting{}
 	for _, ag := range agents {
 		agid := ag.GetId()
-		dnd, em, mobile, web := make([]byte, 0), make([]byte, 0), make([]byte, 0), make([]byte, 0)
-		var instant_mute_until, updated int64
-		err := session.Query(`SELECT do_not_disturb, email, instant_mute_until, mobile, updated, web FROM noti5.notisettings WHERE account_id=? AND agent_id=?`, accid, agid).Scan(&dnd, &em, &instant_mute_until, &mobile, &updated, &web)
+		setting := &header.NotiSetting{}
+		data := []byte{}
+		err := session.Query("SELECT data FROM notibox.setting WHERE accid=? AND agid=?", accid, agid).Scan(&data)
 		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-			now := time.Now().UnixMilli()
-			// default setting
-			setting := &n5pb.Setting{
-				AccountId: &accid,
-				AgentId:   conv.S(agid),
-				Web: &n5pb.Subscription{
-					NewMessage:            conv.B(true),
-					UserCreated:           conv.B(true),
-					UserReturned:          conv.B(true),
-					CampaignUserConverted: conv.B(true),
-					UserOpenedEmail:       conv.B(true),
-					TaskUpdated:           &now,
-				},
-				Mobile: &n5pb.Subscription{NewMessage: conv.B(true)},
-			}
+			setting = MakeDefNotiSetting(accid, agid)
 			settings = append(settings, setting)
 			continue
 		}
@@ -621,26 +606,7 @@ func getNotificationSettingDB(accid string) ([]*n5pb.Setting, error) {
 			return nil, log.ERetry(err, log.M{"account_id": accid, "agent_id": agid})
 		}
 
-		dnds := &n5pb.DoNotDisturb{}
-		proto.Unmarshal(dnd, dnds)
-
-		webs := &n5pb.Subscription{}
-		proto.Unmarshal(web, webs)
-		mobiles := &n5pb.Subscription{}
-		proto.Unmarshal(mobile, mobiles)
-		email := &n5pb.Subscription{}
-		proto.Unmarshal(em, email)
-
-		setting := &n5pb.Setting{
-			AccountId:        &accid,
-			AgentId:          conv.S(agid),
-			DoNotDisturb:     dnds,
-			InstantMuteUntil: &instant_mute_until,
-			Updated:          &updated,
-			Web:              webs,
-			Mobile:           mobiles,
-			Email:            email,
-		}
+		proto.Unmarshal(data, setting)
 		settings = append(settings, setting)
 	}
 
