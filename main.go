@@ -636,6 +636,38 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	return list, nil
 }
 
+func listAIAgentsDB(accid string) (map[string]*pb.Agent, error) {
+	subscribe(accid, "ai_agent")
+	waitUntilReady()
+	iter := session.Query(`SELECT id, data FROM workflow.ai_agents WHERE accid=?`, accid).Iter()
+	aiAgentM := map[string]*pb.Agent{}
+	var data []byte
+	var id string
+	for iter.Scan(&id, &data) {
+		agent := &header.AIAgent{}
+		proto.Unmarshal(data, agent)
+		agent.Id = id
+		aiAgentM[id] = &pb.Agent{
+			Id:        conv.S(id),
+			AccountId: &accid,
+			Fullname:  conv.S(agent.GetFullname()),
+			AvatarUrl: conv.S(agent.GetAvatarUrl()),
+			// Avatar:    agent.GetAvatar(),
+			Joined: conv.PI64(int(agent.GetCreated())),
+			State:  conv.S("active"),
+			Type:   conv.S(compb.Type_bot),
+			Scopes: []string{"agent"},
+		}
+		data = []byte{}
+	}
+	if err := iter.Close(); err != nil {
+		return nil, log.ERetry(err, log.M{"account_id": accid})
+	}
+
+	cache.Set("ai_agent."+accid, aiAgentM)
+	return aiAgentM, nil
+}
+
 func GetAgent(accid, agid string) (*pb.Agent, error) {
 	agM, err := ListAgentM(accid)
 	if err != nil {
@@ -645,6 +677,10 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 	ag, has := agM[agid]
 	if has {
 		return ag, nil
+	}
+
+	if strings.HasPrefix(agid, "at") {
+		return GetAIAgent(accid, agid)
 	}
 
 	if strings.HasPrefix(agid, "bb") {
@@ -783,6 +819,15 @@ func ListActiveAccountIds() ([]string, error) {
 	return res.GetIds(), nil
 }
 
+func GetAIAgent(accid, agid string) (*pb.Agent, error) {
+	aiags, err := ListAIAgents(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	return aiags[agid], nil
+}
+
 func GetBot(accid, botid string) (*header.Bot, error) {
 	bots, err := ListBots(accid)
 	if err != nil {
@@ -807,6 +852,18 @@ func ListBots(accid string) ([]*header.Bot, error) {
 		return value.([]*header.Bot), nil
 	}
 	return listBotsDB(accid)
+}
+
+func ListAIAgents(accid string) (map[string]*pb.Agent, error) {
+	waitUntilReady()
+	// cache exists
+	if value, found := cache.Get("ai_agent." + accid); found {
+		if value == nil {
+			return nil, nil
+		}
+		return value.(map[string]*pb.Agent), nil
+	}
+	return listAIAgentsDB(accid)
 }
 
 func listPipelineDB(accid string) ([]*header.Pipeline, error) {
