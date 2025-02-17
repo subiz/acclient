@@ -1190,7 +1190,7 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64) error {
+func TrySpendCredit(accid, creditId, itemType, itemId string, quantity int64, price float64) error {
 	waitUntilReady()
 	if accid == "" || creditId == "" {
 		return nil // alway allow
@@ -1225,9 +1225,6 @@ func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string
 	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
-		Id:           idgen.NewPaymentLogID(),
-		Service:      service,
-		ServiceId:    serviceId,
 		Item:         itemType,
 		ItemId:       itemId,
 		Created:      time.Now().UnixMilli(),
@@ -1237,7 +1234,7 @@ func TrySpendCredit(accid, creditId, service, serviceId, itemType, itemId string
 	return err
 }
 
-func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, quantity int64, price float64, data *header.CreditSendEntryData) {
+func RecordCredit(accid, creditId, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
 	if accid == "" || creditId == "" {
 		return // alway allow
 	}
@@ -1245,8 +1242,6 @@ func RecordCredit(accid, creditId, service, serviceId, itemType, itemId string, 
 		AccountId:    accid,
 		CreditId:     creditId,
 		Id:           idgen.NewPaymentLogID(),
-		Service:      service,
-		ServiceId:    serviceId,
 		Item:         itemType,
 		ItemId:       itemId,
 		Created:      time.Now().UnixMilli(),
