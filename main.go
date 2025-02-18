@@ -1190,7 +1190,7 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func TrySpendCredit(accid, creditId, itemType, itemId string, quantity int64, price float64) error {
+func TrySpendCredit(accid, creditId string, quantity int64, price float64) error {
 	waitUntilReady()
 	if accid == "" || creditId == "" {
 		return nil // alway allow
@@ -1213,7 +1213,7 @@ func TrySpendCredit(accid, creditId, itemType, itemId string, quantity int64, pr
 	}
 
 	if credit == nil {
-		return log.EMissing(creditId, "credit", log.M{"accid": accid})
+		return log.EMissing(creditId, "credit", log.M{"accid": accid, "credit_id": creditId})
 	}
 
 	// quick estimated
@@ -1225,29 +1225,35 @@ func TrySpendCredit(accid, creditId, itemType, itemId string, quantity int64, pr
 	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
-		Item:         itemType,
-		ItemId:       itemId,
-		Created:      time.Now().UnixMilli(),
 		Quantity:     quantity,
 		FpvUnitPrice: int64(price * 1_000_000),
 	})
 	return err
 }
 
-func RecordCredit(accid, creditId, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
+func RecordCredit(ctx *compb.Context, accid, creditId, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
 	if accid == "" || creditId == "" {
 		return // alway allow
 	}
+
+	byagid := ""
+	if ctx.GetCredential().GetType().String() == "agent" {
+		byagid = ctx.GetCredential().GetIssuer()
+	}
+
+	serviceid := ctx.GetCredential().GetIssuer()
 	kafka.Publish("kafka-1:9092", "credit-spend-log", &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
 		Id:           idgen.NewPaymentLogID(),
 		Item:         itemType,
 		ItemId:       itemId,
+		ServiceId:    serviceid,
 		Created:      time.Now().UnixMilli(),
 		Quantity:     quantity,
 		FpvUnitPrice: int64(price * 1_000_000),
 		Data:         data,
+		ByAgentId:    byagid,
 	})
 }
 
