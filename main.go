@@ -1190,6 +1190,15 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
+func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, error) {
+	ctx := header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: accid, Type: compb.Type_subiz}})
+	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.Id{AccountId: accid, Id: creditId + "." + key})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetCreditUsage(), nil
+}
+
 func TrySpendCredit(accid, creditId string, quantity int64, price float64) error {
 	waitUntilReady()
 	if accid == "" || creditId == "" {

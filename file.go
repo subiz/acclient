@@ -21,7 +21,6 @@ const API = "http://api"
 var fileurlcache = gocache.New(60 * time.Minute)
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
-
 	return UploadTypedFileUrl(accid, url, "", "")
 }
 
