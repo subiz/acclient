@@ -1199,7 +1199,7 @@ func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, er
 	return res.GetCreditUsage(), nil
 }
 
-func TrySpendCredit(accid, creditId string, quantity int64, price float64) error {
+func TrySpendCredit(accid, creditId string, price float64) error {
 	waitUntilReady()
 	if accid == "" || creditId == "" {
 		return nil // alway allow
@@ -1226,7 +1226,7 @@ func TrySpendCredit(accid, creditId string, quantity int64, price float64) error
 	}
 
 	// quick estimated
-	if credit.GetFpvBalance()+credit.GetFpvCreditLimit() > quantity*int64(price*1_000_000)*2 {
+	if credit.GetFpvBalance()+credit.GetFpvCreditLimit() > int64(price*1_000_000)*2 {
 		return nil
 	}
 
@@ -1234,7 +1234,7 @@ func TrySpendCredit(accid, creditId string, quantity int64, price float64) error
 	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
-		Quantity:     quantity,
+		Quantity:     1,
 		FpvUnitPrice: int64(price * 1_000_000),
 	})
 	return err
