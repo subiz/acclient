@@ -76,6 +76,12 @@ func waitUntilReady() {
 func getAccountDB(id string) (*pb.Account, error) {
 	subscribe(id, "account")
 	waitUntilReady()
+
+	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: id, Type: compb.Type_subiz}}), &header.Id{AccountId: id, Id: id})
+	if err == nil && account != nil {
+		cache.Set("account."+id, account)
+		return account, nil
+	}
 	var businesshourb, invoice_infob, leadsetting, userattributesetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, state, timezone, url string
@@ -83,13 +89,6 @@ func getAccountDB(id string) (*pb.Account, error) {
 	var zipcode int32
 	var currency string
 	var currency_locked bool
-
-	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: id, Type: compb.Type_subiz}}), &header.Id{AccountId: id, Id: id})
-	if err == nil && account != nil {
-		cache.Set("account."+id, account)
-		return account, nil
-	}
-
 	err = session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("account."+id, nil)
@@ -514,6 +513,18 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 	subscribe(accid, "agent")
 	waitUntilReady()
+	listM := map[string]*pb.Agent{}
+
+	res, err := accmgr.ListAgents(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: accid, Type: compb.Type_subiz}}), &header.Id{AccountId: accid})
+	if err == nil && res != nil {
+		for _, ag := range res.GetAgents() {
+			if ag.GetState() != pb.Agent_deleted.String() {
+				listM[ag.GetId()] = ag
+			}
+		}
+		cache.Set("agent."+accid, listM)
+		return listM, nil
+	}
 
 	var id, avatar_url, avatar_url_128, client_id, email, fullname, gender string
 	var invited_by, jobtitle, lang, phone, state, typ, tz string
@@ -522,7 +533,6 @@ func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 	var dashboard_setting []byte
 	var extension int64
 	var modified int64
-	listM := map[string]*pb.Agent{}
 	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, fullname, gender, invited_by, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
 	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &fullname, &gender, &invited_by,
 		&jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
@@ -791,7 +801,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	return arr, nil
 }
 
-func ListPresences(accid string) ([]*pb.Presence, error) {
+func ListOnlineAgents(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("presence." + accid); found {
@@ -807,7 +817,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	subscribe(accid, "presence")
 
-	pres, err := accmgr.ListAgentPresences(context.Background(), &header.Id{Id: accid})
+	pres, err := accmgr.ListAgentOnlines(context.Background(), &header.ListAgentOnlineRequest{AccountId: accid})
 	if err != nil {
 		return nil, err
 	}
