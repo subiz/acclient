@@ -30,9 +30,11 @@ import (
 )
 
 var (
-	readyLock = &sync.Mutex{}
-	ready     bool
-	hostname  string
+	readyLock  = &sync.Mutex{}
+	missingAcc = map[string]bool{}
+
+	ready    bool
+	hostname string
 
 	session            *gocql.Session
 	accmgr             header.AccountMgrClient
@@ -80,11 +82,28 @@ func getAccountDB(id string) (*pb.Account, error) {
 	subscribe(id, "account")
 	waitUntilReady()
 
+	readyLock.Lock()
+	if missingAcc[id] {
+		readyLock.Unlock()
+		return nil, nil
+	}
+	readyLock.Unlock()
+
 	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{Issuer: hostname, AccountId: id, Type: compb.Type_subiz}}), &header.Id{AccountId: id, Id: id})
 	if err == nil && account != nil {
 		cache.Set("account."+id, account)
 		return account, nil
 	}
+
+	if log.IsErr(err, log.E_missing_resource.String()) {
+		cache.Set("account."+id, nil)
+		readyLock.Lock()
+		missingAcc[id] = true
+		readyLock.Unlock()
+
+		return nil, nil
+	}
+
 	var businesshourb, invoice_infob, leadsetting, userattributesetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, state, timezone, url string
@@ -95,6 +114,9 @@ func getAccountDB(id string) (*pb.Account, error) {
 	err = session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("account."+id, nil)
+		readyLock.Lock()
+		missingAcc[id] = true
+		readyLock.Unlock()
 		return nil, nil
 	}
 
