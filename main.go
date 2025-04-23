@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ import (
 var (
 	readyLock = &sync.Mutex{}
 	ready     bool
+	hostname  string
 
 	session            *gocql.Session
 	accmgr             header.AccountMgrClient
@@ -47,6 +49,7 @@ var (
 var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
 
 func _init() {
+	hostname, _ = os.Hostname()
 	session = header.ConnectDB([]string{"db-0"}, "account")
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
@@ -77,7 +80,7 @@ func getAccountDB(id string) (*pb.Account, error) {
 	subscribe(id, "account")
 	waitUntilReady()
 
-	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: id, Type: compb.Type_subiz}}), &header.Id{AccountId: id, Id: id})
+	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{Issuer: hostname, AccountId: id, Type: compb.Type_subiz}}), &header.Id{AccountId: id, Id: id})
 	if err == nil && account != nil {
 		cache.Set("account."+id, account)
 		return account, nil
