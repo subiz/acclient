@@ -24,6 +24,33 @@ func UploadFileUrl(accid, url string) (*header.File, error) {
 	return UploadTypedFileUrl(accid, url, "", "")
 }
 
+func SummaryTextFile(accid, fileid string) (*header.File, error) {
+	resp, err := http.Post(API+"/4.1/files/"+fileid+"/summary?account-id="+accid, "application/json", nil)
+	if err != nil {
+		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.1/files/" + fileid + "/summary?account-id=" + accid})
+	}
+
+	defer resp.Body.Close()
+	out, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		// try to cast to error
+		e := &log.AError{}
+		if jserr := json.Unmarshal(out, e); jserr == nil {
+			if e.Code != "" && e.Class != 0 {
+				return nil, e
+			}
+		}
+		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.1/files/" + fileid + "/summary?account-id=" + accid})
+	}
+
+	file := &header.File{}
+	if err = json.Unmarshal(out, file); err != nil {
+		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
+	}
+	return file, nil
+}
+
 func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {
