@@ -16,7 +16,7 @@ import (
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
 // const API = "https://api.subiz.com.vn"
-const API = "http://api"
+var API = "http://api"
 
 var fileurlcache = gocache.New(60 * time.Minute)
 

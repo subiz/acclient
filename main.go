@@ -64,6 +64,13 @@ func _init() {
 	hash_cache = gocache.New(10 * time.Minute)
 }
 
+// for testing purpose
+func ClearCache() {
+	cache = gocache.New(60 * time.Minute)
+	hash_cache = gocache.New(10 * time.Minute)
+	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
+}
+
 func waitUntilReady() {
 	if ready {
 		return
