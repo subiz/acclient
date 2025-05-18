@@ -1692,23 +1692,9 @@ func IncreaseCounter2(timeserieCountM map[string]int64, id string, createdMs int
 	}
 }
 
-func ReportCounter2(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
-	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
-	out, err := GetCounterClient(shard).Report2(context.Background(), &header.CounterReportRequest{
-		TimeSeries: timeseries,
-		FromSec:    fromSec,
-		Range:      _range,
-		Limit:      limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out.GetCounts(), nil
-}
-
 func CountCounter2(timeseries string, fromSec int64, _range string, limit int64) (int64, error) {
 	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
-	out, err := GetCounterClient(shard).Count2(context.Background(), &header.CounterReportRequest{
+	out, err := GetCounterClient(shard).Count(context.Background(), &header.CounterReportRequest{
 		TimeSeries: timeseries,
 		FromSec:    fromSec,
 		Range:      _range,
