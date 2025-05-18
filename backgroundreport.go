@@ -54,18 +54,3 @@ func ReportBackgroundJob(fullrunid RunID, status string) { //
 }
 
 const E_track log.E = "track"
-
-// acclient.Track("dupplicated_email", log.M{"title": "duplicated email"})
-// acclient.Track("dupplicated_email", log.M{"title": "duplicated email", "noti": false})
-func Track(code string, fields ...log.M) {
-	var field = log.M{}
-	if len(fields) > 0 && fields[0] != nil {
-		field = fields[0]
-	}
-
-	issue := log.NewError(nil, field, E_track)
-	issue.Number = "TRK-" + code
-	issue.Class = 0
-	b, _ := json.Marshal(issue)
-	log.Info("123TRACK", string(b))
-}
