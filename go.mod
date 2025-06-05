@@ -6,11 +6,12 @@ require (
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.27
-	github.com/subiz/header v1.24.6
+	github.com/subiz/header v1.24.7
 	github.com/subiz/idgen v0.1.41
 	github.com/subiz/kafka v0.0.39
 	github.com/subiz/log v1.0.7
 	github.com/thanhpk/ascii v0.0.7
+	github.com/thanhpk/breaker v0.0.1
 	github.com/thanhpk/go-cache v1.0.1
 	github.com/thanhpk/randstr v1.0.6
 	google.golang.org/protobuf v1.36.6

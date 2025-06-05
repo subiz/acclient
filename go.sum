@@ -114,8 +114,8 @@ github.com/subiz/executor/v2 v2.0.6 h1:etrVemqcuB1Th1vTSKMq0oycYspwNgYueJJ23jdTa
 github.com/subiz/executor/v2 v2.0.6/go.mod h1:gPEh4r4khVbxzcu6oO/C7eVwxbgbah3An725TH8M8HQ=
 github.com/subiz/goutils v0.1.27 h1:X53ZHpU9sxZ/8cnTyeG5nd3UlNAKylD2Cd28MgQuww8=
 github.com/subiz/goutils v0.1.27/go.mod h1:A7DDFRtwPFNg/X3/HkQBMP2t4KY+QrcOEg6Q2CJ9JLA=
-github.com/subiz/header v1.24.6 h1:fm4I9pYLyahwW/CNltqcqG4PyYwQG/qTFH8L6+6OfSQ=
-github.com/subiz/header v1.24.6/go.mod h1:HST/ZtEpOF65UAdMUMGvHx6+yw8QGMjACAoaU18Tm50=
+github.com/subiz/header v1.24.7 h1:0ZYtZLdUna2/M3xvfv1Nbq6YwxEVQc9L2c4vhlOXhsM=
+github.com/subiz/header v1.24.7/go.mod h1:HST/ZtEpOF65UAdMUMGvHx6+yw8QGMjACAoaU18Tm50=
 github.com/subiz/idgen v0.1.41 h1:yre+dXafpWkm7Lxe0SYbhsPLmiDCOpTG+IhB49XOUtk=
 github.com/subiz/idgen v0.1.41/go.mod h1:hZ4AfPvd29wSSA/2GHL3gNoc+6iKwFP0fo6WUbn8wdA=
 github.com/subiz/kafka v0.0.39 h1:N2W8+gUMP/eCBFAcH0ofC3rIK4w0qOABxOk3M2z+La0=
@@ -126,6 +126,8 @@ github.com/subiz/squasher/v2 v2.0.5 h1:T5l1mvJTAqhd+GCITOBU7+AkwfbMjURn2mU6fea5I
 github.com/subiz/squasher/v2 v2.0.5/go.mod h1:kP/qhQi3Lqs2rIdXCdsp646kQbzL90hY4XUR0bm+1wU=
 github.com/thanhpk/ascii v0.0.7 h1:XNrLI9G2/CxFt5yHdMywETKBC15WA45kcRH2V1Zfd2c=
 github.com/thanhpk/ascii v0.0.7/go.mod h1:dHROUuZSZUlAqJJdran9ffzuqtnDnaoDg4v5PkYsC1A=
+github.com/thanhpk/breaker v0.0.1 h1:2lzqFpY7dg4h4aerRnLhOLGMbzAQum7UIKAbvneSD/w=
+github.com/thanhpk/breaker v0.0.1/go.mod h1:LXNIUxQPrSBZbgnWJaI3ccSWhA/7Vk+nOsjwUX5/Syk=
 github.com/thanhpk/go-cache v1.0.1 h1:NFJibGD/xMZ7YlrEse5YBngoDVBP9E4z6+UQPEHg7yQ=
 github.com/thanhpk/go-cache v1.0.1/go.mod h1:pDE0vrIIF9EBXp7JI8st5Ql2nTCXS6Mr+Eetk1MTAJ0=
 github.com/thanhpk/randstr v1.0.6 h1:psAOktJFD4vV9NEVb3qkhRSMvYh4ORRaj1+w/hn4B+o=
