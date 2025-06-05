@@ -684,28 +684,18 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	return list, nil
 }
 
-func listAIAgentsDB(accid string) (map[string]*pb.Agent, error) {
+func listAIAgentsDB(accid string) (map[string]*header.AIAgent, error) {
 	subscribe(accid, "ai_agent")
 	waitUntilReady()
 	iter := session.Query(`SELECT id, data FROM workflow.ai_agents WHERE accid=?`, accid).Iter()
-	aiAgentM := map[string]*pb.Agent{}
+	aiAgentM := map[string]*header.AIAgent{}
 	var data []byte
 	var id string
 	for iter.Scan(&id, &data) {
 		agent := &header.AIAgent{}
 		proto.Unmarshal(data, agent)
 		agent.Id = id
-		aiAgentM[id] = &pb.Agent{
-			Id:        conv.S(id),
-			AccountId: &accid,
-			Fullname:  conv.S(agent.GetFullname()),
-			AvatarUrl: conv.S(agent.GetAvatarUrl()),
-			// Avatar:    agent.GetAvatar(),
-			Joined: conv.PI64(int(agent.GetCreated())),
-			State:  conv.S("active"),
-			Type:   conv.S(compb.Type_bot),
-			Scopes: []string{"agent"},
-		}
+		aiAgentM[id] = agent
 		data = []byte{}
 	}
 	if err := iter.Close(); err != nil {
@@ -743,6 +733,27 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 	}
 
 	return nil, nil
+}
+
+func AIAgent2Agent(bot *header.AIAgent) *pb.Agent {
+	if bot == nil {
+		return nil
+	}
+
+	active := "active"
+	return &pb.Agent{
+		AccountId:     &bot.AccountId,
+		Id:            &bot.Id,
+		State:         &active, // all bot are active as an agent, disabled -> hibernated
+		AvatarUrl:     &bot.AvatarUrl,
+		AvatarUrl_128: &bot.AvatarUrl,
+		Fullname:      conv.S(bot.GetFullname()),
+		Type:          conv.S(compb.Type_bot),
+		Modified:      &bot.Updated,
+		Joined:        &bot.Created,
+		InvitedBy:     &bot.CreatedBy,
+		Scopes:        []string{"agent"},
+	}
 }
 
 func Bot2Agent(bot *header.Bot) *pb.Agent {
@@ -873,7 +884,7 @@ func GetAIAgent(accid, agid string) (*pb.Agent, error) {
 		return nil, err
 	}
 
-	return aiags[agid], nil
+	return AIAgent2Agent(aiags[agid]), nil
 }
 
 func GetBot(accid, botid string) (*header.Bot, error) {
@@ -902,14 +913,14 @@ func ListBots(accid string) ([]*header.Bot, error) {
 	return listBotsDB(accid)
 }
 
-func ListAIAgents(accid string) (map[string]*pb.Agent, error) {
+func ListAIAgents(accid string) (map[string]*header.AIAgent, error) {
 	waitUntilReady()
 	// cache exists
 	if value, found := cache.Get("ai_agent." + accid); found {
 		if value == nil {
 			return nil, nil
 		}
-		return value.(map[string]*pb.Agent), nil
+		return value.(map[string]*header.AIAgent), nil
 	}
 	return listAIAgentsDB(accid)
 }
