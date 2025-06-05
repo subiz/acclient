@@ -1,10 +1,8 @@
 package acclient
 
 import (
-	"time"
-	"os"
-	"strings"
 	"context"
+	"time"
 
 	"github.com/subiz/header"
 	"github.com/subiz/log"
@@ -13,32 +11,39 @@ import (
 
 var cb = breaker.New()
 
-var usercache header.UserCacheClient
+var _usercache header.UserCacheClient
+var _usercachestg header.UserCacheClient
 
-func getUserCacheClient() header.UserCacheClient {
-	if usercache != nil {
-		return usercache
-	}
-
-	hostname, _ := os.Hostname()
-	if strings.HasSuffix(hostname, "-stg-0") {
-		usercache = header.NewUserCacheClient(header.DialGrpc("diskcache:14954"))
+func getUserCacheClient(accid string) header.UserCacheClient {
+	if header.IsStagging(accid) {
+		if _usercachestg != nil {
+			return _usercachestg
+		}
+		_usercachestg = header.NewUserCacheClient(header.DialGrpc("diskcache:14954"))
+		return _usercachestg
 	} else {
-		usercache = header.NewUserCacheClient(header.DialGrpc("diskcache:14955"))
+		if _usercache != nil {
+			return _usercache
+		}
+		_usercache = header.NewUserCacheClient(header.DialGrpc("diskcache:14955"))
+		return _usercache
 	}
-	return usercache
 }
 
 func UpdateUser(ctx context.Context, user *header.User) error {
+	if user == nil {
+		return nil
+	}
+
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	usercache = getUserCacheClient()
 	accid := user.GetAccountId()
+	client := getUserCacheClient(accid)
 	return cb.Execute(func() error {
 		var err error
 		for range 4 { // retry 4 times
-			if _, err = usercache.UpdateUser(ctx, user); err != nil {
+			if _, err = client.UpdateUser(ctx, user); err != nil {
 				log.Err(accid, err)
 				log.Track(nil, "user_cache_down", "account_id", accid, "user_id", user.GetId(), "err", err)
 				time.Sleep(5 * time.Second)
@@ -54,11 +59,11 @@ func AddUsersToSegment(ctx context.Context, accid, segid string, userids []strin
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	usercache = getUserCacheClient()
+	client := getUserCacheClient(accid)
 	return cb.Execute(func() error {
 		var err error
 		for range 4 { // retry 4 times
-			if _, err = usercache.AddUsersToSegment(context.Background(), &header.SegmentUsersRequest{
+			if _, err = client.AddUsersToSegment(ctx, &header.SegmentUsersRequest{
 				AccountId: accid,
 				SegmentId: segid,
 				UserIds:   userids,
@@ -78,11 +83,11 @@ func RemoveUserFromSegment(ctx context.Context, accid, segid string, userids []s
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	usercache = getUserCacheClient()
+	client := getUserCacheClient(accid)
 	return cb.Execute(func() error {
 		var err error
 		for range 4 { // retry 4 times
-			if _, err = usercache.RemoveUsersFromSegment(context.Background(), &header.SegmentUsersRequest{
+			if _, err = client.RemoveUsersFromSegment(context.Background(), &header.SegmentUsersRequest{
 				AccountId: accid,
 				SegmentId: segid,
 				UserIds:   userids,
@@ -103,12 +108,12 @@ func ListLeads(ctx context.Context, view *header.UserView) (*header.Response, er
 		ctx = context.Background()
 	}
 	accid := view.GetAccountId()
-	usercache = getUserCacheClient()
+	client := getUserCacheClient(accid)
 	var resp *header.Response
 	err := cb.Execute(func() error {
 		var err error
 		for range 4 { // retry 4 times
-			if resp, err = usercache.ListLeads(ctx, view); err != nil {
+			if resp, err = client.ListLeads(ctx, view); err != nil {
 				log.Err(accid, err)
 				log.Track(nil, "user_cache_down", "account_id", accid, "view", view, "err", err)
 				time.Sleep(5 * time.Second)
