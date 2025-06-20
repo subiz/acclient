@@ -125,3 +125,26 @@ func ListLeads(ctx context.Context, view *header.UserView) (*header.Response, er
 	})
 	return resp, err
 }
+
+func CountLeads(ctx context.Context, view *header.UserView) (*header.Response, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	accid := view.GetAccountId()
+	client := getUserCacheClient(accid)
+	var resp *header.Response
+	err := cb.Execute(func() error {
+		var err error
+		for range 4 { // retry 4 times
+			if resp, err = client.CountLeads(ctx, view); err != nil {
+				log.Err(accid, err)
+				log.Track(nil, "user_cache_down", "account_id", accid, "view", view, "err", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			return nil
+		}
+		return err
+	})
+	return resp, err
+}
