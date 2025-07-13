@@ -1249,21 +1249,22 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, error) {
+func GetCreditUsage(accid string, key string) (*header.CreditUsage, error) {
 	ctx := header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: accid, Type: compb.Type_subiz}})
-	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.Id{AccountId: accid, Id: creditId + "." + key})
+	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.Id{AccountId: accid, Id: "marketing." + key})
 	if err != nil {
 		return nil, err
 	}
 	return res.GetCreditUsage(), nil
 }
 
-func TrySpendCredit(accid, creditId string, price float64) error {
+func TrySpendCredit(accid string, price float64) error {
 	waitUntilReady()
-	if accid == "" || creditId == "" {
+	if accid == "" {
 		return nil // alway allow
 	}
 	var credit *header.Credit
+	creditId := "marketing"
 	if val, has := creditCache.Get(accid + "." + creditId); has {
 		credit = val.(*header.Credit)
 	} else {
@@ -1299,8 +1300,8 @@ func TrySpendCredit(accid, creditId string, price float64) error {
 	return err
 }
 
-func RecordCredit(ctx *compb.Context, accid, creditId, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
-	if accid == "" || creditId == "" {
+func RecordCredit(ctx *compb.Context, accid, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
+	if accid == ""  {
 		return // alway allow
 	}
 
@@ -1312,7 +1313,7 @@ func RecordCredit(ctx *compb.Context, accid, creditId, itemType, itemId string, 
 	serviceid := ctx.GetCredential().GetIssuer()
 	kafka.Publish("kafka-1:9092", "credit-spend-log", &header.CreditSpendEntry{
 		AccountId:    accid,
-		CreditId:     creditId,
+		CreditId:     "marketing",
 		Id:           idgen.NewPaymentLogID(),
 		Item:         itemType,
 		ItemId:       itemId,
