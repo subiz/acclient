@@ -38,6 +38,7 @@ var (
 
 	session            *gocql.Session
 	accmgr             header.AccountMgrClient
+	fabikon            header.FabikonServiceClient
 	creditmgr          header.CreditMgrClient
 	registryClient     header.NumberRegistryClient
 	numpubsub          header.PubsubClient
@@ -55,6 +56,8 @@ func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
+	fabikonconn := header.DialGrpc("fabikon:21111")
+	fabikon = header.NewFabikonServiceClient(fabikonconn)
 	creditmgr = header.NewCreditMgrClient(conn)
 
 	conn = header.DialGrpc("numreg-0.numreg:8665")
@@ -629,6 +632,36 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 
 	cache.Set("attribute_definition."+accid, defs)
 	return defs, nil
+}
+
+func ListFanpageSyncLifecycleStages(accid string) (map[string]bool, error) {
+	waitUntilReady()
+	if value, found := cache.Get("fb_setting." + accid); found {
+		if value == nil {
+			return nil, nil
+		}
+		return value.(map[string]bool), nil
+	}
+	return listFanpageSetting(accid)
+}
+
+func listFanpageSetting(accid string) (map[string]bool, error) {
+	subscribe(accid, "fb_setting")
+	lss := map[string]bool{}
+	ctx := header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{Issuer: hostname, AccountId: accid, Type: compb.Type_subiz}})
+	res, err := fabikon.ListFbFanpageSettings2(ctx, &header.ListPageSettingRequest{AccountId: accid, OnlyLeadConversion: true})
+	if err != nil {
+		return nil, err
+	}
+	for _, setting := range res.GetFanpageSettings() {
+		for _, ls := range setting.GetSendLeadEventOnLifecycleStages() {
+			if strings.TrimSpace(ls) != "" {
+				lss[strings.TrimSpace(ls)] = true
+			}
+		}
+	}
+	cache.Set("fb_setting."+accid, lss)
+	return lss, nil
 }
 
 func getNotificationSettingDB(accid string) ([]*header.NotiSetting, error) {

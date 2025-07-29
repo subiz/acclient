@@ -45,7 +45,7 @@ func UpdateUser(ctx context.Context, user *header.User) error {
 		for range 4 { // retry 4 times
 			if _, err = client.UpdateUser(ctx, user); err != nil {
 				log.Err(accid, err)
-				log.Track(nil, "user_cache_down", "account_id", accid, "user_id", user.GetId(), "err", err)
+				log.Track(ctx, "user_cache_down", "account_id", accid, "user_id", user.GetId(), "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
@@ -69,7 +69,7 @@ func AddUsersToSegment(ctx context.Context, accid, segid string, userids []strin
 				UserIds:   userids,
 			}); err != nil {
 				log.Err(accid, err)
-				log.Track(nil, "user_cache_down", "account_id", accid, "seg_id", segid, "user_ids", userids, "err", err)
+				log.Track(ctx, "user_cache_down", "account_id", accid, "seg_id", segid, "user_ids", userids, "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
