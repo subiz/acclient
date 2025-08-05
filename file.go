@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,8 +16,29 @@ import (
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
-// const API = "https://api.subiz.com.vn"
-var API = "http://api"
+const REMOTEAPIHOST = "https://api.subiz.com.vn"
+
+var apihost = REMOTEAPIHOST // will switch to http://api if available
+
+// check if local api server is available, use that instead
+func loopfileapidomain() {
+	for {
+		if apihost == "http://api" {
+			time.Sleep(60 * time.Second)
+			continue
+		}
+
+		if resp, _ := http.Get("http://api/ping"); resp != nil {
+			out, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode == 200 && strings.HasPrefix(string(out), "SUBIZAPI") {
+				// local api server is available
+				apihost = "http://api"
+			}
+		}
+		time.Sleep(60 * time.Second)
+	}
+}
 
 var fileurlcache = gocache.New(60 * time.Minute)
 
@@ -25,9 +47,9 @@ func UploadFileUrl(accid, url string) (*header.File, error) {
 }
 
 func SummaryTextFile(accid, fileid string) (*header.File, error) {
-	resp, err := http.Post(API+"/4.1/files/"+fileid+"/summary?account-id="+accid, "application/json", nil)
+	resp, err := http.Post(apihost+"/4.1/files/"+fileid+"/summary?account-id="+accid, "application/json", nil)
 	if err != nil {
-		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.1/files/" + fileid + "/summary?account-id=" + accid})
+		return nil, log.EInternalConnect(err, log.M{"url": apihost + "/4.1/files/" + fileid + "/summary?account-id=" + accid})
 	}
 
 	defer resp.Body.Close()
@@ -41,7 +63,7 @@ func SummaryTextFile(accid, fileid string) (*header.File, error) {
 				return nil, e
 			}
 		}
-		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.1/files/" + fileid + "/summary?account-id=" + accid})
+		return nil, log.EInternalConnect(err, log.M{"url": apihost + "/4.1/files/" + fileid + "/summary?account-id=" + accid})
 	}
 
 	file := &header.File{}
@@ -73,9 +95,9 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 		MaxHeight:  maxHeight,
 	})
 
-	resp, err := http.Post(API+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(apihost+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"url": apihost + "/4.0/accounts/" + accid + "/files/url/download"})
 	}
 
 	defer resp.Body.Close()
@@ -89,7 +111,7 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 				return nil, e
 			}
 		}
-		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"url": apihost + "/4.0/accounts/" + accid + "/files/url/download"})
 	}
 
 	file := &header.File{}
@@ -121,9 +143,9 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 		Extension: extension,
 	})
 
-	resp, err := http.Post(API+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(apihost+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"url": apihost + "/4.0/accounts/" + accid + "/files/url/download"})
 	}
 
 	defer resp.Body.Close()
@@ -137,7 +159,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 				return nil, e
 			}
 		}
-		return nil, log.EInternalConnect(err, log.M{"url": API + "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"url": apihost + "/4.0/accounts/" + accid + "/files/url/download"})
 	}
 
 	file := &header.File{}
@@ -148,14 +170,24 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile2(accid, name, category string, data []byte, cd string, ttl int64) (*header.File, error) {
-	req, _ := http.NewRequest("POST", API+"/4.1/files?account-id="+accid, bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/octet-stream")
-	req.Header.Set("X-By", "acclient")
-
+func UploadFile2(accid, name, category string, data []byte, cd string, ttlsec int64) (*header.File, error) {
+	req, _ := http.NewRequest("POST", apihost+"/4.1/files", bytes.NewBuffer(data))
+	q := req.URL.Query()
+	q.Add("account-id", accid)
+	q.Add("name", name)
+	if category != "" {
+		q.Add("category", category)
+	}
 	if cd != "" {
+		q.Add("content_disposition", cd)
 		req.Header.Set("Content-Disposition", cd)
 	}
+	if ttlsec > 0 {
+		q.Add("ttl", strconv.Itoa(int(ttlsec)))
+	}
+	req.URL.RawQuery = q.Encode()
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("X-By", "acclient")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, log.ERetry(err, log.M{"account_id": accid})

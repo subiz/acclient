@@ -43,7 +43,6 @@ var (
 	registryClient     header.NumberRegistryClient
 	numpubsub          header.PubsubClient
 	cache              = gocache.New(60 * time.Minute)
-	hash_cache         *gocache.Cache
 	creditCache        = gocache.New(60 * time.Second) // accid+"."+creditid
 	subscribeTopicLock = &sync.Mutex{}
 	subscribeTopics    = map[string]bool{}
@@ -64,13 +63,12 @@ func _init() {
 	registryClient = header.NewNumberRegistryClient(conn)
 	numpubsub = header.NewPubsubClient(conn)
 	go pollLoop()
-	hash_cache = gocache.New(10 * time.Minute)
+	go loopfileapidomain()
 }
 
 // for testing purpose
 func ClearCache() {
 	cache = gocache.New(60 * time.Minute)
-	hash_cache = gocache.New(10 * time.Minute)
 	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
 }
 
