@@ -16,7 +16,7 @@ import (
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
-const REMOTEAPIHOST = "https://api5.subiz.com.vn"
+const REMOTEAPIHOST = "https://api.subiz.com.vn"
 
 var apihost = REMOTEAPIHOST // will switch to http://api if available
 
