@@ -6,7 +6,7 @@ require (
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.27
-	github.com/subiz/header v1.24.83
+	github.com/subiz/header v1.24.91
 	github.com/subiz/idgen v0.1.41
 	github.com/subiz/kafka v0.0.40
 	github.com/subiz/log v1.0.9
@@ -46,13 +46,16 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/paulbellamy/ratecounter v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/prometheus/client_golang v1.22.0 // indirect
+	github.com/prometheus/client_golang v1.23.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/subiz/executor/v2 v2.0.7 // indirect
 	github.com/subiz/squasher/v2 v2.0.5 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelslog v0.12.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.62.0 // indirect
@@ -66,13 +69,13 @@ require (
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
 	go.opentelemetry.io/otel/sdk/log v0.13.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.7.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250728155136-f173205681a0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250728155136-f173205681a0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/grpc v1.74.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

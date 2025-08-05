@@ -16,7 +16,7 @@ import (
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
-const REMOTEAPIHOST = "https://api.subiz.com.vn"
+const REMOTEAPIHOST = "https://api5.subiz.com.vn"
 
 var apihost = REMOTEAPIHOST // will switch to http://api if available
 
@@ -170,11 +170,14 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile2(accid, name, category string, data []byte, cd string, ttlsec int64) (*header.File, error) {
+func UploadFile(accid, name, category string, data []byte, cd string, ttlsec int64, gentext bool) (*header.File, error) {
 	req, _ := http.NewRequest("POST", apihost+"/4.1/files", bytes.NewBuffer(data))
 	q := req.URL.Query()
 	q.Add("account-id", accid)
 	q.Add("name", name)
+	if gentext {
+		q.Add("gentext", "true")
+	}
 	if category != "" {
 		q.Add("category", category)
 	}
@@ -245,5 +248,5 @@ func HTML2PDF(apikey, path, accid, filename, content_disposition string, input i
 
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
-	return UploadFile2(accid, filename, "other", out, content_disposition, 0)
+	return UploadFile(accid, filename, "other", out, content_disposition, 0, false)
 }

@@ -10,7 +10,7 @@ func TestRandomId(t *testing.T) {
 }
 
 func TestUploadFile(t *testing.T) {
-	url, err := UploadFile2("acpxkgumifuoofoosble", "thanhtest", []byte("Cộng hòa xã hội"), "")
+	url, err := UploadFile("acpxkgumifuoofoosble", "thanhtest.md", "",  []byte("Cộng hòa xã hội 6"), "", 3600, true)
 	if err != nil {
 		t.Errorf("error %v", err)
 	}
