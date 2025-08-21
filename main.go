@@ -749,7 +749,11 @@ func GetAgent(accid, agid string) (*pb.Agent, error) {
 	}
 
 	if strings.HasPrefix(agid, "at") {
-		return GetAIAgent(accid, agid)
+		aiag, err := GetAIAgent(accid, agid)
+		if err != nil {
+			return nil, err
+		}
+		return AIAgent2Agent(aiag), nil
 	}
 
 	if strings.HasPrefix(agid, "bb") {
@@ -909,13 +913,13 @@ func ListActiveAccountIds() ([]string, error) {
 	return res.GetIds(), nil
 }
 
-func GetAIAgent(accid, agid string) (*pb.Agent, error) {
+func GetAIAgent(accid, agid string) (*header.AIAgent, error) {
 	aiags, err := ListAIAgents(accid)
 	if err != nil {
 		return nil, err
 	}
 
-	return AIAgent2Agent(aiags[agid]), nil
+	return aiags[agid], nil
 }
 
 func GetBot(accid, botid string) (*header.Bot, error) {
