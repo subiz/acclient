@@ -1129,7 +1129,7 @@ func randomID(sign string, randomfactor int) string {
 //    FPV: 20000000,
 // }
 
-func NewID(accid, scope string) int64 {
+func NewID_(accid, scope string) int64 {
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
 		id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
