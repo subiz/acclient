@@ -112,14 +112,14 @@ func getAccountDB(id string) (*pb.Account, error) {
 		return nil, nil
 	}
 
-	var businesshourb, invoice_infob, leadsetting, userattributesetting []byte
+	var businesshourb, invoice_infob, leadsetting []byte
 	var supportedlocales []string
 	var address, city, country, dateformat, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, state, timezone, url string
 	var created, modified int64
 	var zipcode int32
 	var currency string
 	var currency_locked bool
-	err = session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, user_attribute_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &userattributesetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
+	err = session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("account."+id, nil)
 		readyLock.Lock()
@@ -134,9 +134,6 @@ func getAccountDB(id string) (*pb.Account, error) {
 
 	ii := &pb.InvoiceInfo{}
 	proto.Unmarshal(invoice_infob, ii)
-
-	uas := &pb.UserAttributeSetting{}
-	proto.Unmarshal(userattributesetting, uas)
 
 	ls := &pb.LeadSetting{}
 	proto.Unmarshal(leadsetting, ls)
@@ -168,7 +165,6 @@ func getAccountDB(id string) (*pb.Account, error) {
 		ZipCode:              &zipcode,
 		Currency:             &currency,
 		CurrencyLocked:       &currency_locked,
-		UserAttributeSetting: uas,
 		InvoiceInfo:          ii,
 	}
 	cache.Set("account."+id, acc)
