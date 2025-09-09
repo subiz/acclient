@@ -1778,6 +1778,14 @@ func GetAccPar(accid string, N int) string {
 	return strconv.Itoa(int(crc32.ChecksumIEEE([]byte(accid))) % N)
 }
 
+// for testing
+func SetDomainVerified(accid, domain string, verified bool) {
+	waitUntilReady()
+	domain = strings.TrimPrefix(domain, "www.")
+	cachekey := "website." + accid + "/" + domain
+	cache.SetWithExpire(cachekey, verified, time.Hour)
+}
+
 func IsDomainVerified(accid, domain string) (bool, error) {
 	waitUntilReady()
 	domain = strings.TrimPrefix(domain, "www.")
