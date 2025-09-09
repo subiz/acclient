@@ -1788,6 +1788,36 @@ func SetDomainVerified(accid, domain string, verified bool) {
 
 func IsDomainVerified(accid, domain string) (bool, error) {
 	waitUntilReady()
+	domains := strings.Split(domain, ".")
+
+	// example.com
+	if len(domains) <= 2 {
+		return isDomainVerified(accid, domain)
+	}
+
+	// support upto 10 sub domains
+	if len(domains) > 10 {
+		domains = domains[len(domains)-10:]
+	}
+
+	// check from top domain down to full domain
+	// e.g. domain is a.b.c.com, it will check c.com, then b.c.com, then a.b.c.com
+	for i := len(domains) - 2; i >= 0; i-- {
+		thedomain := strings.Join(domains[i:], ".")
+		verified, err := isDomainVerified(accid, thedomain)
+		if err != nil {
+			return false, err
+		}
+
+		if verified {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func isDomainVerified(accid, domain string) (bool, error) {
+	waitUntilReady()
 	domain = strings.TrimPrefix(domain, "www.")
 	cachekey := "website." + accid + "/" + domain
 	if value, found := cache.Get(cachekey); found {
