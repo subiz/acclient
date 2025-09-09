@@ -2,6 +2,7 @@ package acclient
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
@@ -141,31 +142,31 @@ func getAccountDB(id string) (*pb.Account, error) {
 	bh := &pb.BusinessHours{}
 	proto.Unmarshal(businesshourb, bh)
 	acc := &pb.Account{
-		Id:                   &id,
-		Address:              &address,
-		BusinessHours:        bh,
-		City:                 &city,
-		Country:              &country,
-		Created:              &created,
-		DateFormat:           &dateformat,
-		Lang:                 &lang,
-		LeadSetting:          ls,
-		Locale:               &locale,
-		LogoUrl:              &logo_url,
-		LogoUrl_128:          &logo_url_128,
-		Modified:             &modified,
-		Name:                 &name,
-		OwnerId:              &ownerid,
-		Phone:                &phone,
-		ReferrerFrom:         &referrer_from,
-		State:                &state,
-		SupportedLocales:     supportedlocales,
-		Timezone:             &timezone,
-		Url:                  &url,
-		ZipCode:              &zipcode,
-		Currency:             &currency,
-		CurrencyLocked:       &currency_locked,
-		InvoiceInfo:          ii,
+		Id:               &id,
+		Address:          &address,
+		BusinessHours:    bh,
+		City:             &city,
+		Country:          &country,
+		Created:          &created,
+		DateFormat:       &dateformat,
+		Lang:             &lang,
+		LeadSetting:      ls,
+		Locale:           &locale,
+		LogoUrl:          &logo_url,
+		LogoUrl_128:      &logo_url_128,
+		Modified:         &modified,
+		Name:             &name,
+		OwnerId:          &ownerid,
+		Phone:            &phone,
+		ReferrerFrom:     &referrer_from,
+		State:            &state,
+		SupportedLocales: supportedlocales,
+		Timezone:         &timezone,
+		Url:              &url,
+		ZipCode:          &zipcode,
+		Currency:         &currency,
+		CurrencyLocked:   &currency_locked,
+		InvoiceInfo:      ii,
 	}
 	cache.Set("account."+id, acc)
 	return acc, nil
@@ -1775,4 +1776,34 @@ func GetAccPar(accid string, N int) string {
 		return "stg"
 	}
 	return strconv.Itoa(int(crc32.ChecksumIEEE([]byte(accid))) % N)
+}
+
+func IsDomainVerified(accid, domain string) (bool, error) {
+	waitUntilReady()
+	domain = strings.TrimPrefix(domain, "www.")
+	cachekey := "website." + accid + "/" + domain
+	if value, found := cache.Get(cachekey); found {
+		if value == nil {
+			return false, nil
+		}
+		b, _ := value.(bool)
+		return b, nil
+	}
+
+	inteid := accid + "." + base64.StdEncoding.EncodeToString([]byte(domain)) + ".website"
+	data := make([]byte, 0)
+	err := session.Query("SELECT data FROM convo.channels WHERE account_id=? AND id=?", accid, inteid).Scan(&data)
+	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
+		return false, log.ERetry(err, log.M{"account_id": accid, "domain": domain})
+	}
+
+	inte := &header.Integration{}
+	proto.Unmarshal(data, inte)
+	verified := inte.GetWebsiteVerified() > 0
+	if verified {
+		cache.SetWithExpire(cachekey, verified, time.Hour)
+	} else {
+		cache.SetWithExpire(cachekey, verified, time.Minute)
+	}
+	return verified, nil
 }
