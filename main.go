@@ -2,6 +2,7 @@ package acclient
 
 import (
 	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -30,6 +31,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+//go:embed skipdomain.txt
+var skipdomain string
+
 var (
 	readyLock  = &sync.Mutex{}
 	missingAcc = map[string]bool{}
@@ -50,8 +54,26 @@ var (
 )
 
 var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
+var skipDomainM = map[string]bool{}
+var skipWholeDomainM = map[string]bool{}
 
 func _init() {
+	for _, domain := range strings.Split(skipdomain, "\n") {
+		domain = strings.ToLower(strings.TrimSpace(strings.Split(domain, ";")[0]))
+		domain = strings.TrimPrefix(domain, ".")
+		domain = strings.TrimSuffix(domain, ".")
+		if domain == "" {
+			continue
+		}
+		if strings.HasPrefix(domain, "*") {
+			domain = strings.TrimPrefix(domain, "*")
+			domain = strings.TrimPrefix(domain, ".")
+			domain = strings.TrimSuffix(domain, ".")
+			skipWholeDomainM[domain] = true
+		}
+		skipDomainM[domain] = true
+	}
+
 	hostname, _ = os.Hostname()
 	session = header.ConnectDB([]string{"db-0"}, "account")
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
@@ -1818,7 +1840,22 @@ func IsDomainVerified(accid, domain string) (bool, error) {
 
 func isDomainVerified(accid, domain string) (bool, error) {
 	waitUntilReady()
-	domain = strings.TrimPrefix(domain, "www.")
+	domain = header.Substring(strings.ToLower(strings.TrimSpace(strings.TrimPrefix(domain, "www."))), 0, 1000)
+	if skipDomainM[domain] {
+		return false, nil
+	}
+
+	dms := strings.Split(domain, ".")
+	if len(dms) == 1 {
+		return false, nil
+	}
+	for i := 2; i < 5 && i < len(dms); i++ {
+		// *.facebook.com
+		if skipWholeDomainM[strings.Join(dms[len(dms)-i:], ".")] {
+			return false, nil
+		}
+	}
+
 	cachekey := "website." + accid + "/" + domain
 	if value, found := cache.Get(cachekey); found {
 		if value == nil {

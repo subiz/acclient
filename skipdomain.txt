@@ -1,0 +1,33 @@
+; List of domains to skip: these domains will not be crawled.
+; Syntax:
+; domain.com      -> Skip the domain.com domain.
+; *domain.com     -> Skip domain.com and all its subdomains (e.g., a.domain.com, b.domain.com).
+; Comments can be added after the ';' character.
+;
+; Note: This file should be sorted alphabetically for easier maintenance.
+
+; block exact domains
+com.vn
+
+; block domain and whole sub domains
+; support upto 5 level, eg: a.b.c.d.com
+*apple.com
+*facebook.com
+*facebook.net
+*fb.com
+*goo.gl
+*google.com
+*googletagmanager.com
+*gov.vn
+*gstatic.com
+*hstatic.net ; haravan cdn
+*instagram.com
+*linkedin.com
+*subiz.com.vn
+*tiktok.com
+*twitter.com
+*x.com
+*youtube.com
+*zalo.com
+*zalo.com.vn
+*zalo.me
