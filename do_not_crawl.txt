@@ -1,4 +1,4 @@
-; List of domains to skip: these domains will not be crawled.
+; List of domains to skip: these domains will never be crawled.
 ; Syntax:
 ; domain.com      -> Skip the domain.com domain.
 ; *domain.com     -> Skip domain.com and all its subdomains (e.g., a.domain.com, b.domain.com).
@@ -8,26 +8,104 @@
 
 ; block exact domains
 com.vn
+api.sbz.vn
+widget.subiz.net
 
 ; block domain and whole sub domains
 ; support upto 5 level, eg: a.b.c.d.com
+
+; a
 *apple.com
+*amazonaws.com
+*admost.com
+*adjust.com
+
+; b
+*bing.com
+*booking.com
+
+; c
+*criteo.com
+*clarity.ms
+*canva.com
+
+; d
+*doubleclick.net
+*discord.com
+
+; e
+
+; f
 *facebook.com
 *facebook.net
 *fb.com
+
+; g
 *goo.gl
 *google.com
+*google.com.vn
+*googleadservices.com
+*googleapis.com
 *googletagmanager.com
 *gov.vn
 *gstatic.com
+
+; h
 *hstatic.net ; haravan cdn
+
+; i
 *instagram.com
+
+; l
 *linkedin.com
+*live.com
+
+; m
+*media.net
+
+; n
+
+; o
+*org.vn
+*r.com
+*reddit.com
+*youtube.com
+*youtu.be
+
+; p
+*pinterest.com
+*pornhub.com
+
+; s
 *subiz.com.vn
+*subiz-cdn.com
+
+; t
+*tawk.to
+*taobao.com
 *tiktok.com
 *twitter.com
-*x.com
-*youtube.com
+
+; v
+*vk.com
+
+; w
+*wikipedia.org
 *zalo.com
 *zalo.com.vn
 *zalo.me
+
+; u
+*useinsider.com
+
+; x
+*x.com
+*xnxx.com
+*xhamster.com
+*xvideos.com
+
+; y
+*yahoo.com
+
+; z
+*zoom.us

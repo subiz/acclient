@@ -31,7 +31,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//go:embed skipdomain.txt
+//go:embed do_not_crawl.txt
 var skipdomain string
 
 var (
