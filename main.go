@@ -1051,6 +1051,12 @@ func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	return listAttrDefsDB(accid)
 }
 
+// for testing
+func SetShopSetting(accid string, setting *header.ShopSetting) {
+	waitUntilReady()
+	cache.Set("shop_setting."+accid, setting)
+}
+
 func GetShopSetting(accid string) (*header.ShopSetting, error) {
 	waitUntilReady()
 	// cache hit

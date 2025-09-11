@@ -56,6 +56,8 @@ widget.subiz.net
 ; i
 *instagram.com
 
+; j
+
 ; l
 *linkedin.com
 *live.com
@@ -75,6 +77,10 @@ widget.subiz.net
 ; p
 *pinterest.com
 *pornhub.com
+
+; q
+
+; r
 
 ; s
 *subiz.com.vn
