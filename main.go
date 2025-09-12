@@ -304,33 +304,6 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		return nil, log.ERetry(err, log.M{"id": id})
 	}
 
-	iter = session.Query(`SELECT id, data FROM account.integrated_shipping WHERE account_id=? LIMIT ?`, id, 1000).Iter()
-	ishippings := make([]*header.IntegratedShipping, 0)
-	var shipid string
-	var ishippingb []byte
-	for iter.Scan(&shipid, &ishippingb) {
-		ishipping := &header.IntegratedShipping{}
-		proto.Unmarshal(ishippingb, ishipping)
-		ishipping.Id = shipid
-		ishipping.AccountId = id
-		ishippings = append(ishippings, ishipping)
-	}
-	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": id})
-	}
-
-	sps := []*header.ShippingPolicy{}
-	data = []byte{}
-	iter = session.Query(`SELECT data FROM account.shipping_policy WHERE account_id=?`, id).Iter()
-	for iter.Scan(&data) {
-		sp := header.ShippingPolicy{}
-		proto.Unmarshal(data, &sp)
-		sps = append(sps, &sp)
-	}
-	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": id})
-	}
-
 	ccs := []*header.CancellationCode{}
 	iter = session.Query(`SELECT data FROM account.cancellation_code WHERE account_id=?`, id).Iter()
 	for iter.Scan(&data) {
@@ -346,8 +319,8 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	setting.Taxes = taxes
 	setting.PaymentMethods = paymentmethods
 	setting.Addresses = shopAddresses
-	setting.Shippings = ishippings
-	setting.ShippingPolicies = sps
+	// setting.Shippings = ishippings
+	// setting.ShippingPolicies = sps
 	setting.ShopeeShops = shops
 	setting.AccountId = id
 

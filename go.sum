@@ -92,6 +92,8 @@ github.com/subiz/goutils v0.1.27 h1:X53ZHpU9sxZ/8cnTyeG5nd3UlNAKylD2Cd28MgQuww8=
 github.com/subiz/goutils v0.1.27/go.mod h1:A7DDFRtwPFNg/X3/HkQBMP2t4KY+QrcOEg6Q2CJ9JLA=
 github.com/subiz/header v1.25.68 h1:0pqWs98BOiKEgGToYU4JaUK/uQtpoOz5vNC7jfneVqc=
 github.com/subiz/header v1.25.68/go.mod h1:K69/zKNPYLZOy8SJk2c4kJGmNxVRln5P9YraJX51XKM=
+github.com/subiz/header v1.25.70 h1:2wEuTANsp1Y24U2Ei0GNDcXolv0jxv19VgkNwI5OehM=
+github.com/subiz/header v1.25.70/go.mod h1:K69/zKNPYLZOy8SJk2c4kJGmNxVRln5P9YraJX51XKM=
 github.com/subiz/idgen v0.1.41 h1:yre+dXafpWkm7Lxe0SYbhsPLmiDCOpTG+IhB49XOUtk=
 github.com/subiz/idgen v0.1.41/go.mod h1:hZ4AfPvd29wSSA/2GHL3gNoc+6iKwFP0fo6WUbn8wdA=
 github.com/subiz/kafka v0.0.48 h1:lUFOIwsYDCtBVHhh7rLI4f+Rf6VngOK1E7LCedNTsdg=
@@ -119,6 +121,8 @@ github.com/tidwall/pretty v1.2.1/go.mod h1:ITEVvHYasfjBbM0u2Pg8T2nJnzm8xPwvNhhso
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
+go.opentelemetry.io/auto/sdk v1.2.0 h1:YpRtUFjvhSymycLS2T81lT6IGhcUP+LUPtv0iv1N8bM=
+go.opentelemetry.io/auto/sdk v1.2.0/go.mod h1:1deq2zL7rwjwC8mR7XgY2N+tlIl6pjmEUoLDENMEzwk=
 go.opentelemetry.io/contrib/bridges/otelslog v0.13.0 h1:bwnLpizECbPr1RrQ27waeY2SPIPeccCx/xLuoYADZ9s=
 go.opentelemetry.io/contrib/bridges/otelslog v0.13.0/go.mod h1:3nWlOiiqA9UtUnrcNk82mYasNxD8ehOspL0gOfEo6Y4=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 h1:YH4g8lQroajqUwWbq/tr2QX1JFmEXaDLgG+ew9bLMWo=
