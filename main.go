@@ -1819,7 +1819,7 @@ func IsDomainVerified(accid, domain string) (bool, error) {
 
 func isDomainVerified(accid, domain string) (bool, error) {
 	waitUntilReady()
-	domain = header.Substring(strings.ToLower(strings.TrimSpace(strings.TrimPrefix(domain, "www."))), 0, 1000)
+	domain = strings.ToLower(strings.TrimPrefix(header.Norm(domain, 1000), "www."))
 	if skipDomainM[domain] {
 		return false, nil
 	}
