@@ -25,7 +25,6 @@ import (
 	"github.com/subiz/idgen"
 	"github.com/subiz/kafka"
 	"github.com/subiz/log"
-	"github.com/thanhpk/ascii"
 	gocache "github.com/thanhpk/go-cache"
 	"github.com/thanhpk/randstr"
 	"google.golang.org/protobuf/proto"
@@ -1142,7 +1141,7 @@ func NewID_(accid, scope string) int64 {
 }
 
 func NewID2(accid, scope string) int64 {
-	scope = ascii.Convert(scope)
+	scope = header.Ascii(scope)
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
 		id, err := registryClient.NewID2(context.Background(), &header.Id{AccountId: accid, Id: scope})
@@ -1157,7 +1156,7 @@ func NewID2(accid, scope string) int64 {
 }
 
 func GetLastID(accid, scope string) int64 {
-	scope = ascii.Convert(scope)
+	scope = header.Ascii(scope)
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
 		id, err := registryClient.GetLastID(context.Background(), &header.Id{AccountId: accid, Id: scope})
