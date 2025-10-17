@@ -83,7 +83,6 @@ widget.subiz.net
 ; r
 
 ; s
-*subiz.com.vn
 *subiz-cdn.com
 
 ; t
