@@ -47,6 +47,23 @@ func SetKV(scope, key, value string) error {
 	return nil
 }
 
+// Set puts a new key-value pair to the database
+// scope is a required paramenter, used as a namespace to prevent collision between
+// multiple services while using this lib concurrently.
+// E.g: kvclient.Set("user", "324234", "onetwothree")
+// E.g: kvclient.Set("account", "324234", "onetwothree")
+func SetKVTTL(scope, key, value string, ttlsec int) error {
+	waitUntilReady()
+	key = scope + "@" + key
+	// ttl 60 days
+	err := session.Query(`INSERT INTO kv.kv(k,v) VALUES(?,?) USING TTL ?`, key, value, ttlsec).Exec()
+	if err != nil {
+		return log.ERetry(err, log.M{"scope": scope, "key": key, "value": value, "ttl_sec": ttlsec})
+	}
+
+	return nil
+}
+
 // Del removes key from the database
 // scope is a required paramenter, used as a namespace to prevent collision between
 // multiple services while using this lib concurrently.
