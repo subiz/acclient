@@ -1126,6 +1126,30 @@ func randomID(sign string, randomfactor int) string {
 //    FPV: 20000000,
 // }
 
+func ShortenLink(accid, link string) (string, error) {
+	waitUntilReady()
+	out, err := registryClient.ShortenLink(context.Background(), &header.Link{AccountId: accid, Url: link})
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+func LookupLink(shorten string) (*header.Link, error) {
+	waitUntilReady()
+	cachekey := "shortenlink." + shorten
+	if val, has := cache.Get(cachekey); has {
+		return val.(*header.Link), nil
+	}
+
+	link, err := registryClient.LookupLink(context.Background(), &header.String{Str: shorten})
+	if err != nil {
+		return nil, err
+	}
+	cache.Set(cachekey, link)
+	return link, nil
+}
+
 func NewID_(accid, scope string) int64 {
 	waitUntilReady()
 	for attempt := 0; attempt < 100; attempt++ {
