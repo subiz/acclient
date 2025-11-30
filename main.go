@@ -202,10 +202,9 @@ func getSubDB(id string) (*pm.Subscription, error) {
 	var subcreated, churned, ended, started, fpv_custom_price int64
 	var billingcyclemonth, next_billing_cycle_month uint32
 	var credit float32
-	var use_ticket int64
 
-	err := session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, ended, churned, next_billing_cycle_month, plan, promotion_code, started, fpv_unlimited_agent_price, use_ticket FROM account.subs WHERE account_id=?", id).Scan(
-		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &ended, &churned, &next_billing_cycle_month, &plan, &promo, &started, &fpv_custom_price, &use_ticket)
+	err := session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, ended, churned, next_billing_cycle_month, plan, promotion_code, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
+		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &ended, &churned, &next_billing_cycle_month, &plan, &promo, &started, &fpv_custom_price)
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 		cache.Set("subscription."+id, nil)
 		return nil, nil
@@ -230,7 +229,6 @@ func getSubDB(id string) (*pm.Subscription, error) {
 		PromotionCode:         &promo,
 		Started:               &started,
 		FpvCustomPrice:        &fpv_custom_price,
-		UseTicket:             conv.PI64(int(use_ticket)),
 	}
 	cache.Set("subscription."+id, sub)
 	return sub, nil

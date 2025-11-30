@@ -6,6 +6,7 @@ github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932 h1:mXoPYz/Ul5HYE
 github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932/go.mod h1:NOuUCSz6Q9T7+igc/hlvDOUdtWKryOrtFyIVABv/p7k=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
+github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
 github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
@@ -111,6 +112,8 @@ github.com/subiz/goutils v0.1.27 h1:X53ZHpU9sxZ/8cnTyeG5nd3UlNAKylD2Cd28MgQuww8=
 github.com/subiz/goutils v0.1.27/go.mod h1:A7DDFRtwPFNg/X3/HkQBMP2t4KY+QrcOEg6Q2CJ9JLA=
 github.com/subiz/header v1.26.61 h1:fkUxxgJHaYbIdc5q5AQ/4OVx7q9+Q658lbL6/FoBidU=
 github.com/subiz/header v1.26.61/go.mod h1:AgaJ0Ybj/ayRkoQzTAyTJbdpVRzwNH9Ya8G3lvZwFzk=
+github.com/subiz/header v1.26.62 h1:odINWxduMpIvgFkHzRYRdMBTDJZXMrlcE43VpGWM6Ss=
+github.com/subiz/header v1.26.62/go.mod h1:AgaJ0Ybj/ayRkoQzTAyTJbdpVRzwNH9Ya8G3lvZwFzk=
 github.com/subiz/idgen v0.1.41 h1:yre+dXafpWkm7Lxe0SYbhsPLmiDCOpTG+IhB49XOUtk=
 github.com/subiz/idgen v0.1.41/go.mod h1:hZ4AfPvd29wSSA/2GHL3gNoc+6iKwFP0fo6WUbn8wdA=
 github.com/subiz/kafka v0.0.49 h1:pwRHrnSujvmJ8ZJF8fCqSlwfuQknQuVhvQ6qVpmqaws=
