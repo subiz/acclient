@@ -119,7 +119,13 @@ func getAccountDB(id string) (*pb.Account, error) {
 	}
 	readyLock.Unlock()
 
-	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{Issuer: hostname, AccountId: id, Type: compb.Type_subiz}}), &header.Id{AccountId: id, Id: id})
+	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{
+		Credential: &compb.Credential{
+			Issuer:    hostname,
+			AccountId: id,
+			Type:      compb.Type_subiz,
+		},
+	}), &header.Id{AccountId: id, Id: id})
 	if err == nil && account != nil {
 		cache.Set("account."+id, account)
 		return account, nil
@@ -537,7 +543,13 @@ func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 	waitUntilReady()
 	listM := map[string]*pb.Agent{}
 
-	res, err := accmgr.ListAgents(header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: accid, Type: compb.Type_subiz}}), &header.Id{AccountId: accid})
+	res, err := accmgr.ListAgents(header.ToGrpcCtx(&compb.Context{
+		Credential: &compb.Credential{
+			AccountId: accid,
+			Type:      compb.Type_subiz,
+			Issuer:    hostname,
+		},
+	}), &header.Id{AccountId: accid})
 	if err == nil && res != nil {
 		for _, ag := range res.GetAgents() {
 			if ag.GetState() != pb.Agent_deleted.String() {
@@ -884,7 +896,15 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
 	subscribe(accid, "presence")
 
-	pres, err := accmgr.ListAgentOnlines(context.Background(), &header.ListAgentOnlineRequest{AccountId: accid})
+	pres, err := accmgr.ListAgentOnlines(header.ToGrpcCtx(&compb.Context{
+		Credential: &compb.Credential{
+			Issuer:    hostname,
+			AccountId: accid,
+			Type:      compb.Type_subiz,
+		},
+	}), &header.ListAgentOnlineRequest{
+		AccountId: accid,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -895,7 +915,12 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 
 func ListActiveAccountIds() ([]string, error) {
 	waitUntilReady()
-	res, err := accmgr.ListActiveAccountIds(context.Background(), &header.Id{})
+	res, err := accmgr.ListActiveAccountIds(header.ToGrpcCtx(&compb.Context{
+		Credential: &compb.Credential{
+			Issuer: hostname,
+			Type:   compb.Type_subiz,
+		},
+	}), &header.Id{})
 	if err != nil {
 		return nil, err
 	}
