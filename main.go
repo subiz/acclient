@@ -457,6 +457,8 @@ func GetNotificationSetting(accid, agid string) (*header.NotiSetting, error) {
 
 func GetSubscription(accid string) (*pm.Subscription, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_getsub." + accid)()
+
 	// cache hit
 	if value, found := cache.Get("subscription." + accid); found {
 		if value == nil {
