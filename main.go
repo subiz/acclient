@@ -42,6 +42,7 @@ var (
 
 	session            *gocql.Session
 	accmgr             header.AccountMgrClient
+	paymgr             header.PaymentMgrClient
 	fabikon            header.FabikonServiceClient
 	creditmgr          header.CreditMgrClient
 	registryClient     header.NumberRegistryClient
@@ -77,6 +78,7 @@ func _init() {
 	session = header.ConnectDB([]string{"db-0"}, "account")
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
+	paymgr = header.NewPaymentMgrClient(conn)
 	fabikonconn := header.DialGrpc("fabikon:21111")
 	fabikon = header.NewFabikonServiceClient(fabikonconn)
 	creditmgr = header.NewCreditMgrClient(conn)
@@ -139,105 +141,32 @@ func getAccountDB(id string) (*pb.Account, error) {
 
 		return nil, nil
 	}
-
-	var businesshourb, invoice_infob, leadsetting []byte
-	var supportedlocales []string
-	var address, city, country, dateformat, lang, locale, logo_url, logo_url_128, name, ownerid, phone, referrer_from, state, timezone, url string
-	var created, modified int64
-	var zipcode int32
-	var currency string
-	var currency_locked bool
-	err = session.Query("SELECT address, business_hours,city, country, created, date_format, lang, lead_setting, locale, logo_url, logo_url_128, modified, name, owner_id, phone, referrer_from, state, supported_locales, timezone, url, zip_code, currency, currency_locked, invoice_info FROM account.accounts WHERE id=?", id).Scan(&address, &businesshourb, &city, &country, &created, &dateformat, &lang, &leadsetting, &locale, &logo_url, &logo_url_128, &modified, &name, &ownerid, &phone, &referrer_from, &state, &supportedlocales, &timezone, &url, &zipcode, &currency, &currency_locked, &invoice_infob)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.Set("account."+id, nil)
-		readyLock.Lock()
-		missingAcc[id] = true
-		readyLock.Unlock()
-		return nil, nil
-	}
-
-	if err != nil {
-		return nil, log.ERetry(err, log.M{"id": id})
-	}
-
-	ii := &pb.InvoiceInfo{}
-	proto.Unmarshal(invoice_infob, ii)
-
-	ls := &pb.LeadSetting{}
-	proto.Unmarshal(leadsetting, ls)
-
-	bh := &pb.BusinessHours{}
-	proto.Unmarshal(businesshourb, bh)
-	acc := &pb.Account{
-		Id:               &id,
-		Address:          &address,
-		BusinessHours:    bh,
-		City:             &city,
-		Country:          &country,
-		Created:          &created,
-		DateFormat:       &dateformat,
-		Lang:             &lang,
-		LeadSetting:      ls,
-		Locale:           &locale,
-		LogoUrl:          &logo_url,
-		LogoUrl_128:      &logo_url_128,
-		Modified:         &modified,
-		Name:             &name,
-		OwnerId:          &ownerid,
-		Phone:            &phone,
-		ReferrerFrom:     &referrer_from,
-		State:            &state,
-		SupportedLocales: supportedlocales,
-		Timezone:         &timezone,
-		Url:              &url,
-		ZipCode:          &zipcode,
-		Currency:         &currency,
-		CurrencyLocked:   &currency_locked,
-		InvoiceInfo:      ii,
-	}
-	cache.Set("account."+id, acc)
-	return acc, nil
+	return nil, err
 }
 
 func getSubDB(id string) (*pm.Subscription, error) {
 	subscribe(id, "subscription")
 	waitUntilReady()
-	var limitb []byte
-	var autocharge bool
-	var plan, promo string
-	var subcreated, churned, ended, started, fpv_custom_price int64
-	var billingcyclemonth, next_billing_cycle_month uint32
-	var credit float32
 
-	err := session.Query("SELECT \"limit\", auto_charge, billing_cycle_month, created, credit, ended, churned, next_billing_cycle_month, plan, promotion_code, started, fpv_unlimited_agent_price FROM account.subs WHERE account_id=?", id).Scan(
-		&limitb, &autocharge, &billingcyclemonth, &subcreated, &credit, &ended, &churned, &next_billing_cycle_month, &plan, &promo, &started, &fpv_custom_price)
-	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
-		cache.Set("subscription."+id, nil)
+	readyLock.Lock()
+	if missingAcc[id] {
+		readyLock.Unlock()
 		return nil, nil
 	}
-	if err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": id})
-	}
+	readyLock.Unlock()
 
-	limit := &compb.Limit{}
-	proto.Unmarshal(limitb, limit)
-
-	sub := &pm.Subscription{
-		AccountId:             &id,
-		BillingCycleMonth:     &billingcyclemonth,
-		Created:               &subcreated,
-		Credit:                &credit,
-		Limit:                 limit,
-		Ended:                 &ended,
-		Churned:               &churned,
-		Plan:                  &plan,
-		NextBillingCycleMonth: &next_billing_cycle_month,
-		PromotionCode:         &promo,
-		Started:               &started,
-		FpvCustomPrice:        &fpv_custom_price,
+	sub, err := paymgr.GetSubscription(header.ToGrpcCtx(&compb.Context{
+		Credential: &compb.Credential{
+			Issuer:    hostname,
+			AccountId: id,
+			Type:      compb.Type_subiz,
+		},
+	}), &header.Id{AccountId: id, Id: id})
+	if err == nil && sub != nil {
+		cache.Set("subscription."+id, sub)
+		return sub, nil
 	}
-	cache.Set("subscription."+id, sub)
-	return sub, nil
+	return nil, err
 }
 
 func getShopSettingDb(id string) (*header.ShopSetting, error) {
