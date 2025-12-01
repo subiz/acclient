@@ -468,6 +468,7 @@ func GetLocale(accid, locale string) (*header.Lang, error) {
 // TODO return proto clone of other methods
 func GetAccount(accid string) (*pb.Account, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_getacc." + accid)()
 	// cache hit
 	if value, found := cache.Get("account." + accid); found {
 		if value == nil {
@@ -833,6 +834,7 @@ func ListAgentsInGroup(accid, groupid string) ([]*pb.Agent, error) {
 
 func ListAgentM(accid string) (map[string]*pb.Agent, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_list_agent." + accid)()
 	// cache exists
 	if value, found := cache.Get("agent." + accid); found {
 		if value == nil {
