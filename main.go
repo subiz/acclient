@@ -3,11 +3,11 @@ package acclient
 import (
 	"context"
 	_ "embed"
-	"io"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"math/rand"
 	"net/http"
 	neturl "net/url"
@@ -1087,6 +1087,11 @@ func randomID(sign string, randomfactor int) string {
 
 func ShortenLink(accid, link string) (string, error) {
 	waitUntilReady()
+
+	link = header.Norm(link, 2000)
+	if link == "" || link == "/" {
+		return link, nil
+	}
 
 	params := neturl.Values{}
 	params.Add("url", link)

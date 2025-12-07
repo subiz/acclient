@@ -2,12 +2,16 @@ package acclient
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/subiz/header"
@@ -17,6 +21,10 @@ import (
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
 const REMOTEAPIHOST = "https://api.subiz.com.vn"
+
+func init() {
+	os.MkdirAll("./.cache", os.ModePerm)
+}
 
 var apihost = REMOTEAPIHOST // will switch to http://api if available
 
@@ -40,7 +48,51 @@ func loopfileapidomain() {
 	}
 }
 
-var fileurlcache = gocache.New(60 * time.Minute)
+type FileUrlCache struct {
+	*sync.Mutex
+	cache *gocache.Cache
+}
+
+func (me *FileUrlCache) Set(key string, file *header.File) {
+	me.cache.Set(key, file)
+	fileb, _ := json.Marshal(file)
+	cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
+	os.WriteFile(cachepath, fileb, 0644)
+}
+
+func (me *FileUrlCache) Get(key string) (*header.File, bool) {
+	me.Lock()
+	defer me.Unlock()
+
+	if value, found := me.cache.Get(key); found {
+		if value == nil {
+			return nil, true
+		}
+		return value.(*header.File), true
+	}
+
+	// check diskcache first
+	cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
+	cache, err := os.ReadFile(cachepath)
+	if err != nil {
+		if _, err := os.Stat("./.cache"); os.IsNotExist(err) {
+			os.MkdirAll("./.cache", os.ModePerm)
+		}
+		_, err := os.Stat(cachepath)
+		if err == nil || !os.IsNotExist(err) {
+		}
+		return nil, false
+	}
+	file := &header.File{}
+	json.Unmarshal(cache, file)
+	me.cache.Set(key, file)
+	return file, true
+}
+
+var fileurlcache = &FileUrlCache{
+	Mutex: &sync.Mutex{},
+	cache: gocache.New(60 * time.Minute),
+}
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
 	return UploadTypedFileUrl(accid, url, "", "")
@@ -81,10 +133,7 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 
 	theurl := fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url)
 	if value, found := fileurlcache.Get(theurl); found {
-		if value == nil {
-			return nil, nil
-		}
-		return value.(*header.File), nil
+		return value, nil
 	}
 
 	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
@@ -130,10 +179,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 
 	theurl := fmt.Sprintf("%s.%s.%s", accid, filetype, url)
 	if value, found := fileurlcache.Get(theurl); found {
-		if value == nil {
-			return nil, nil
-		}
-		return value.(*header.File), nil
+		return value, nil
 	}
 
 	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
@@ -249,4 +295,9 @@ func HTML2PDF(apikey, path, accid, filename, content_disposition string, input i
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
 	return UploadFile(accid, filename, "other", out, content_disposition, 0, false)
+}
+
+func md5sum(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
 }
