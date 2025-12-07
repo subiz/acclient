@@ -2,9 +2,11 @@ package acclient
 
 import (
 	"context"
+	"crypto/sha256"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/hex"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -1087,10 +1089,14 @@ func randomID(sign string, randomfactor int) string {
 
 func ShortenLink(accid, link string) (string, error) {
 	waitUntilReady()
-
 	link = header.Norm(link, 2000)
 	if link == "" || link == "/" {
 		return link, nil
+	}
+
+	hit, has := shortencache.Get(link)
+	if has {
+		return hit, nil
 	}
 
 	params := neturl.Values{}
@@ -1119,6 +1125,7 @@ func ShortenLink(accid, link string) (string, error) {
 	if err = json.Unmarshal(out, outlink); err != nil {
 		return "", log.EData(err, nil, log.M{"account_id": accid, "_payload": string(out)})
 	}
+	shortencache.Set(link, outlink.GetUrl())
 	return outlink.GetUrl(), nil
 }
 
@@ -1870,4 +1877,35 @@ func isDomainVerified(accid, domain string) (bool, error) {
 		cache.SetWithExpire(cachekey, verified, time.Minute)
 	}
 	return verified, nil
+}
+
+type ShortenCache struct {
+	*sync.Mutex
+}
+
+func (me *ShortenCache) Set(key, shorten string) {
+	me.Lock()
+	defer me.Unlock()
+
+	cachepath := fmt.Sprintf("./.cache/shorten-%s", GetSha256(key))
+	os.WriteFile(cachepath, []byte(shorten), 0644)
+}
+
+func (me *ShortenCache) Get(key string) (string, bool) {
+	me.Lock()
+	defer me.Unlock()
+
+	cachepath := fmt.Sprintf("./.cache/shorten-%s", GetSha256(key))
+	cache, err := os.ReadFile(cachepath)
+	if err == nil {
+		return string(cache), true
+	}
+	return "", false
+}
+
+var shortencache = &ShortenCache{Mutex: &sync.Mutex{}}
+
+func GetSha256(b string) string {
+	result := sha256.Sum256([]byte(b))
+	return hex.EncodeToString(result[:])
 }
