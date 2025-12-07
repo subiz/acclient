@@ -3,11 +3,14 @@ package acclient
 import (
 	"context"
 	_ "embed"
+	"io"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"math/rand"
+	"net/http"
+	neturl "net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -1084,11 +1087,34 @@ func randomID(sign string, randomfactor int) string {
 
 func ShortenLink(accid, link string) (string, error) {
 	waitUntilReady()
-	out, err := registryClient.ShortenLink(context.Background(), &header.Link{AccountId: accid, Url: link})
+
+	params := neturl.Values{}
+	params.Add("url", link)
+	params.Add("account-id", accid)
+	resp, err := http.Post(apihost+"/4.1/shorten-links?"+params.Encode(), "application/json", nil)
 	if err != nil {
-		return "", err
+		return "", log.EInternalConnect(err, log.M{"account_id": accid, "url": apihost + "/4.1/shorten-links/"})
 	}
-	return out.String(), nil
+
+	defer resp.Body.Close()
+	out, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		// try to cast to error
+		e := &log.AError{}
+		if jserr := json.Unmarshal(out, e); jserr == nil {
+			if e.Code != "" && e.Class != 0 {
+				return "", e
+			}
+		}
+		return "", log.EInternalConnect(err, log.M{"account_id": accid, "url": apihost + "/4.1/shorten-links"})
+	}
+
+	outlink := &header.Link{}
+	if err = json.Unmarshal(out, outlink); err != nil {
+		return "", log.EData(err, nil, log.M{"account_id": accid, "_payload": string(out)})
+	}
+	return outlink.GetUrl(), nil
 }
 
 func LookupLink(shorten string) (*header.Link, error) {
