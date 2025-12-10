@@ -5,8 +5,8 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -1016,12 +1016,11 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 
 	defcur := strings.TrimSpace(acc.GetCurrency())
 	if defcur == "" && order_cur != "" {
-		return 0, 0, log.Error3(nil, log.M{
+		return 0, 0, log.Error3(accid, nil, log.M{
 			"_message": map[string]string{
 				"En_US": "Invalid base currency. You must specify base currency setting for your account",
 				"Vi_VN": "Tiền tệ cơ sở không hợp lệ. Bạn cần thiết lập tiền tệ cơ sở cho tài khoản trước",
 			},
-			"account_id": accid,
 		}, log.E_internal)
 	}
 
@@ -1041,23 +1040,21 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 		}
 
 		if cur.GetRate() <= 0 {
-			return 0, 0, log.Error3(nil, log.M{
+			return 0, 0, log.Error3(accid, nil, log.M{
 				"_message": map[string]string{
 					"En_US": fmt.Sprintf("Wrong currency rate (%f). Please contact Support for support", cur.GetRate()),
 					"Vi_VN": fmt.Sprintf("Tỉ giá tiền không hợp lệ (%f). Vui lòng liên hệ Subiz để được hỗ trợ", cur.GetRate()),
 				},
-				"account_id": accid,
 				"rate":       cur.GetRate(),
 			}, log.E_internal)
 		}
 		return int64(price * cur.GetRate() * 1000000), cur.GetRate(), nil
 	}
-	return 0, 0, log.Error3(nil, log.M{
+	return 0, 0, log.Error3(accid, nil, log.M{
 		"_message": map[string]string{
 			"En_US": fmt.Sprintf("Unsupported currency (%s)", order_cur),
 			"Vi_VN": fmt.Sprintf("Tiền tệ (%s) không được hỗ trợ", order_cur),
 		},
-		"account_id": accid,
 		"currency":   order_cur,
 	}, log.E_internal)
 }
