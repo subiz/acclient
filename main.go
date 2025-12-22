@@ -475,6 +475,19 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 	return getSubDB(accid)
 }
 
+func ListAgentProfileAccounts(agid string) ([]*pb.Account, error) {
+	res, err := accmgr.ListAgentProfileAccounts(header.ToGrpcCtx(&compb.Context{
+		Credential: &compb.Credential{
+			Issuer:    hostname,
+			Type:      compb.Type_subiz,
+		},
+	}), &header.Id{Id: agid})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetAccounts(), nil
+}
+
 func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 	subscribe(accid, "agent")
 	waitUntilReady()
