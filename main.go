@@ -476,6 +476,7 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 }
 
 func ListAgentProfileAccounts(agid string) ([]*pb.Account, error) {
+	waitUntilReady()
 	res, err := accmgr.ListAgentProfileAccounts(header.ToGrpcCtx(&compb.Context{
 		Credential: &compb.Credential{
 			Issuer:    hostname,
