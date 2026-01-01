@@ -53,7 +53,6 @@ var (
 	registryClient     header.NumberRegistryClient
 	numpubsub          header.PubsubClient
 	cache              = gocache.New(60 * time.Minute)
-	creditCache        = gocache.New(60 * time.Second) // accid+"."+creditid
 	subscribeTopicLock = &sync.Mutex{}
 	subscribeTopics    = map[string]bool{}
 )
@@ -98,7 +97,6 @@ func _init() {
 // for testing purpose
 func ClearCache() {
 	cache = gocache.New(60 * time.Minute)
-	creditCache = gocache.New(60 * time.Second) // accid+"."+creditid
 }
 
 func waitUntilReady() {
@@ -479,8 +477,8 @@ func ListAgentProfileAccounts(agid string) ([]*pb.Account, error) {
 	waitUntilReady()
 	res, err := accmgr.ListAgentProfileAccounts(header.ToGrpcCtx(&compb.Context{
 		Credential: &compb.Credential{
-			Issuer:    hostname,
-			Type:      compb.Type_subiz,
+			Issuer: hostname,
+			Type:   compb.Type_subiz,
 		},
 	}), &header.Id{Id: agid})
 	if err != nil {
@@ -1059,7 +1057,7 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 					"En_US": fmt.Sprintf("Wrong currency rate (%f). Please contact Support for support", cur.GetRate()),
 					"Vi_VN": fmt.Sprintf("Tỉ giá tiền không hợp lệ (%f). Vui lòng liên hệ Subiz để được hỗ trợ", cur.GetRate()),
 				},
-				"rate":       cur.GetRate(),
+				"rate": cur.GetRate(),
 			}, log.E_internal)
 		}
 		return int64(price * cur.GetRate() * 1000000), cur.GetRate(), nil
@@ -1069,7 +1067,7 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 			"En_US": fmt.Sprintf("Unsupported currency (%s)", order_cur),
 			"Vi_VN": fmt.Sprintf("Tiền tệ (%s) không được hỗ trợ", order_cur),
 		},
-		"currency":   order_cur,
+		"currency": order_cur,
 	}, log.E_internal)
 }
 
@@ -1324,34 +1322,28 @@ func TrySpendCredit(accid, creditId string, price float64) error {
 	if accid == "" || creditId == "" {
 		return nil // alway allow
 	}
-	var credit *header.Credit
-	if val, has := creditCache.Get(accid + "." + creditId); has {
-		credit = val.(*header.Credit)
-	} else {
-		ctx := header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: accid, Type: compb.Type_subiz}})
-		credits, err := creditmgr.ListCredits(ctx, &header.Id{AccountId: accid, Id: creditId})
-		if err != nil {
-			return err
-		}
-		for _, freshCredit := range credits.GetCredits() {
-			if freshCredit.GetId() == creditId {
-				credit = freshCredit
-			}
-			creditCache.Set(accid+"."+creditId, freshCredit)
-		}
-	}
 
-	if credit == nil {
-		return log.EMissing(creditId, "credit", log.M{"accid": accid, "credit_id": creditId})
+	sub, err := getSubDB(accid)
+	if err != nil {
+		return err
 	}
 
 	// quick estimated
-	if credit.GetFpvBalance()+credit.GetFpvCreditLimit() > int64(price*1_000_000)*2 {
-		return nil
+	if creditId == "balance" {
+		if sub.GetFpvNovatCreditLimitUsd()+sub.GetFpvNovatBalanceUsd() > int64(price*1_000_000)*2 {
+			return nil
+		}
+	} else if creditId == "marketing" {
+		if sub.GetFpvMarketingCreditLimitVnd()+sub.GetFpvMarketingBalanceVnd() > int64(price*1_000_000)*2 {
+			return nil
+		}
+	} else {
+		// credit not found
+		return log.EMissing(creditId, "credit", log.M{"account_id": accid})
 	}
 
 	// must ask
-	_, err := creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
+	_, err = creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
 		CreditId:     creditId,
 		Quantity:     1,
@@ -1362,7 +1354,11 @@ func TrySpendCredit(accid, creditId string, price float64) error {
 
 func RecordCredit(ctx *compb.Context, accid, creditId, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
 	if accid == "" || creditId == "" {
-		return // alway allow
+		return // alway disallow
+	}
+
+	if creditId != "balance" && creditId != "marketing" {
+		return
 	}
 
 	byagid := ""
