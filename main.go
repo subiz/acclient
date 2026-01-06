@@ -1330,11 +1330,11 @@ func TrySpendCredit(accid, creditId string, price float64) error {
 
 	// quick estimated
 	if creditId == "balance" {
-		if sub.GetFpvNovatCreditLimitUsd()+sub.GetFpvNovatBalanceUsd() > int64(price*1_000_000)*2 {
+		if sub.GetFpvNovatBalanceUsd() > 2000_000-int64(price*1_000_000)*2 { // allow to spend more than $2
 			return nil
 		}
 	} else if creditId == "marketing" {
-		if sub.GetFpvMarketingCreditLimitVnd()+sub.GetFpvMarketingBalanceVnd() > int64(price*1_000_000)*2 {
+		if sub.GetFpvMarketingBalanceVnd() > 20000_000_000-int64(price*1_000_000)*2 { // allow to spend more than 20k
 			return nil
 		}
 	} else {
