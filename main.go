@@ -125,10 +125,10 @@ func getAccountDB(id string) (*pb.Account, error) {
 	readyLock.Unlock()
 
 	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{
+		AccountId: id,
 		Credential: &compb.Credential{
-			Issuer:    hostname,
-			AccountId: id,
-			Type:      compb.Type_subiz,
+			Issuer: hostname,
+			Type:   compb.Type_subiz,
 		},
 	}), &header.Id{AccountId: id, Id: id})
 	if err == nil && account != nil {
@@ -159,10 +159,10 @@ func getSubDB(id string) (*pm.Subscription, error) {
 	readyLock.Unlock()
 
 	sub, err := paymgr.GetSubscription(header.ToGrpcCtx(&compb.Context{
+		AccountId: id,
 		Credential: &compb.Credential{
-			Issuer:    hostname,
-			AccountId: id,
-			Type:      compb.Type_subiz,
+			Issuer: hostname,
+			Type:   compb.Type_subiz,
 		},
 	}), &header.Id{AccountId: id, Id: id})
 	if err == nil && sub != nil {
@@ -493,10 +493,10 @@ func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 	listM := map[string]*pb.Agent{}
 
 	res, err := accmgr.ListAgents(header.ToGrpcCtx(&compb.Context{
+		AccountId: accid,
 		Credential: &compb.Credential{
-			AccountId: accid,
-			Type:      compb.Type_subiz,
-			Issuer:    hostname,
+			Type:   compb.Type_subiz,
+			Issuer: hostname,
 		},
 	}), &header.Id{AccountId: accid})
 	if err == nil && res != nil {
@@ -596,7 +596,7 @@ func ListFanpageSyncLifecycleStages(accid string) (map[string]bool, error) {
 func listFanpageSetting(accid string) (map[string]bool, error) {
 	subscribe(accid, "fb_setting")
 	lss := map[string]bool{}
-	ctx := header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{Issuer: hostname, AccountId: accid, Type: compb.Type_subiz}})
+	ctx := header.ToGrpcCtx(&compb.Context{AccountId: accid, Credential: &compb.Credential{Issuer: hostname, Type: compb.Type_subiz}})
 	res, err := fabikon.ListFbFanpageSettings2(ctx, &header.ListPageSettingRequest{AccountId: accid, OnlyLeadConversion: true})
 	if err != nil {
 		return nil, err
@@ -847,10 +847,10 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 	subscribe(accid, "presence")
 
 	pres, err := accmgr.ListAgentOnlines(header.ToGrpcCtx(&compb.Context{
+		AccountId: accid,
 		Credential: &compb.Credential{
-			Issuer:    hostname,
-			AccountId: accid,
-			Type:      compb.Type_subiz,
+			Issuer: hostname,
+			Type:   compb.Type_subiz,
 		},
 	}), &header.ListAgentOnlineRequest{
 		AccountId: accid,
@@ -1309,7 +1309,7 @@ func GetAttrAsString(user *header.User, key string) string {
 }
 
 func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, error) {
-	ctx := header.ToGrpcCtx(&compb.Context{Credential: &compb.Credential{AccountId: accid, Type: compb.Type_subiz}})
+	ctx := header.ToGrpcCtx(&compb.Context{AccountId: accid, Credential: &compb.Credential{Type: compb.Type_subiz}})
 	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.Id{AccountId: accid, Id: creditId + "." + key})
 	if err != nil {
 		return nil, err
@@ -1434,41 +1434,25 @@ func joinMap(a, b map[string]bool) {
 }
 
 func MustBeSuperAdmin(cred *compb.Credential) error {
-	if cred.GetAccountId() != "acpxkgumifuoofoosble" {
-		return EACCESS_DENY
-	}
-
-	if cred.GetType() == compb.Type_subiz {
+	if cred.GetType() == compb.Type_subiz || cred.AdminRole == "manager" {
 		return nil
-	}
-
-	agent, err := GetAgent(cred.GetAccountId(), cred.GetIssuer())
-	if err != nil {
-		return err
-	}
-
-	if agent.GetState() != "active" {
-		return EACCESS_DENY
-	}
-	for _, scope := range agent.GetScopes() { // agent's account-wide scope
-		if header.ScopeM[scope] != nil && header.ScopeM[scope]["accmgr:update"] {
-			return nil
-		}
 	}
 	return EACCESS_DENY
 }
 
-func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
-	if cred.GetType() == compb.Type_subiz || cred.GetType() == compb.Type_workflow || cred.GetType() == compb.Type_connector {
-		return nil
-	}
-
+func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
 	if action == "" {
 		return nil
 	}
 
-	accid := cred.GetAccountId()
-	if accid == "" || cred.GetIssuer() == "" {
+	if cred.GetType() == compb.Type_subiz ||
+		cred.GetType() == compb.Type_workflow ||
+		cred.GetType() == compb.Type_connector ||
+		cred.AdminRole == "manager" {
+		return nil
+	}
+
+	if accid == "" || cred.Type == compb.Type_unknown || cred.GetIssuer() == "" {
 		return EACCESS_DENY
 	}
 
@@ -1483,6 +1467,7 @@ func AccessFeature(objectType header.ObjectType, action header.ObjectAction, cre
 			joinMap(permM, header.ScopeM[scope])
 		}
 	}
+
 	// ticket:read ticket:write
 	if permM[string(objectType)+":"+string(action)+":none"] {
 		return EACCESS_DENY
