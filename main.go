@@ -125,11 +125,8 @@ func getAccountDB(id string) (*pb.Account, error) {
 	readyLock.Unlock()
 
 	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{
-		AccountId: id,
-		Credential: &compb.Credential{
-			Issuer: hostname,
-			Type:   compb.Type_subiz,
-		},
+		AccountId:  id,
+		Credential: &compb.Credential{Issuer: hostname, Type: compb.Type_subiz},
 	}), &header.Id{AccountId: id, Id: id})
 	if err == nil && account != nil {
 		cache.Set("account."+id, account)
@@ -141,7 +138,6 @@ func getAccountDB(id string) (*pb.Account, error) {
 		readyLock.Lock()
 		missingAcc[id] = true
 		readyLock.Unlock()
-
 		return nil, nil
 	}
 	return nil, err
@@ -159,11 +155,8 @@ func getSubDB(id string) (*pm.Subscription, error) {
 	readyLock.Unlock()
 
 	sub, err := paymgr.GetSubscription(header.ToGrpcCtx(&compb.Context{
-		AccountId: id,
-		Credential: &compb.Credential{
-			Issuer: hostname,
-			Type:   compb.Type_subiz,
-		},
+		AccountId:  id,
+		Credential: &compb.Credential{Issuer: hostname, Type: compb.Type_subiz},
 	}), &header.Id{AccountId: id, Id: id})
 	if err == nil && sub != nil {
 		cache.Set("subscription."+id, sub)
@@ -493,66 +486,18 @@ func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 	listM := map[string]*pb.Agent{}
 
 	res, err := accmgr.ListAgents(header.ToGrpcCtx(&compb.Context{
-		AccountId: accid,
-		Credential: &compb.Credential{
-			Type:   compb.Type_subiz,
-			Issuer: hostname,
-		},
+		AccountId:  accid,
+		Credential: &compb.Credential{Type: compb.Type_subiz, Issuer: hostname},
 	}), &header.Id{AccountId: accid})
-	if err == nil && res != nil {
-		for _, ag := range res.GetAgents() {
-			if ag.GetState() != pb.Agent_deleted.String() {
-				listM[ag.GetId()] = ag
-			}
-		}
-		cache.Set("agent."+accid, listM)
-		return listM, nil
+	if err != nil {
+		return nil, log.EServer(err)
 	}
 
-	var id, avatar_url, avatar_url_128, client_id, email, fullname, gender string
-	var invited_by, jobtitle, lang, phone, state, typ, tz string
-	var scopes []string
-	var joined, passwordchanged, seen int64
-	var dashboard_setting []byte
-	var extension int64
-	var modified int64
-	iter := session.Query("SELECT id, avatar_url, avatar_url_128, client_id, dashboard_setting, email, fullname, gender, invited_by, job_title, joined, lang, modified, password_changed, phone, scopes, state, type, timezone, seen, extension FROM account.agents where account_id=?", accid).Iter()
-	for iter.Scan(&id, &avatar_url, &avatar_url_128, &client_id, &dashboard_setting, &email, &fullname, &gender, &invited_by,
-		&jobtitle, &joined, &lang, &modified, &passwordchanged, &phone, &scopes, &state, &typ, &tz, &seen, &extension) {
-		ds := &pb.DashboardAgent{}
-		proto.Unmarshal(dashboard_setting, ds)
-		ag := &pb.Agent{
-			AccountId:        conv.S(accid),
-			Id:               conv.S(id),
-			AvatarUrl:        conv.S(avatar_url),
-			AvatarUrl_128:    conv.S(avatar_url_128),
-			ClientId:         conv.S(client_id),
-			DashboardSetting: ds,
-			Email:            conv.S(email),
-			Fullname:         conv.S(fullname),
-			Gender:           conv.S(gender),
-			InvitedBy:        conv.S(invited_by),
-			JobTitle:         conv.S(jobtitle),
-			Joined:           conv.PI64(int(joined)),
-			Lang:             conv.S(lang),
-			Modified:         conv.PI64(int(modified)),
-			PasswordChanged:  conv.PI64(int(passwordchanged)),
-			Phone:            conv.S(phone),
-			Scopes:           scopes,
-			State:            conv.S(state),
-			Type:             conv.S(typ),
-			Timezone:         conv.S(tz),
-			Extension:        conv.PI64(int(extension)),
-		}
-		scopes = make([]string, 0)
+	for _, ag := range res.GetAgents() {
 		if ag.GetState() != pb.Agent_deleted.String() {
-			listM[id] = ag
+			listM[ag.GetId()] = ag
 		}
 	}
-	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
-	}
-
 	cache.Set("agent."+accid, listM)
 	return listM, nil
 }
@@ -866,10 +811,7 @@ func listPresencesDB(accid string) ([]*pb.Presence, error) {
 func ListActiveAccountIds() ([]string, error) {
 	waitUntilReady()
 	res, err := accmgr.ListActiveAccountIds(header.ToGrpcCtx(&compb.Context{
-		Credential: &compb.Credential{
-			Issuer: hostname,
-			Type:   compb.Type_subiz,
-		},
+		Credential: &compb.Credential{Issuer: hostname, Type: compb.Type_subiz},
 	}), &header.Id{})
 	if err != nil {
 		return nil, err
@@ -1352,12 +1294,19 @@ func TrySpendCredit(accid, creditId string, price float64) error {
 	return err
 }
 
-func RecordCredit(ctx *compb.Context, accid, creditId, itemType, itemId string, quantity int64, price float64, data *header.CreditEntryData) {
-	if accid == "" || creditId == "" {
-		return // alway disallow
+type Credit string
+
+const MARKETING Credit = "marketing" // currency VND
+const BALANCE Credit = "balance"     // currency USD
+
+func RecordCredit(ctx *compb.Context, accid string, creditId Credit, itemType, itemId string, unitprice float64, data *header.CreditEntryData) {
+	if accid == "" {
+		log.Track(context.Background(), "record-credit-missing-account-id")
+		return
 	}
 
-	if creditId != "balance" && creditId != "marketing" {
+	if creditId != BALANCE && creditId != MARKETING {
+		log.Track(context.Background(), "wrong-credit-id", "account_id", accid, "credit_id", creditId)
 		return
 	}
 
@@ -1366,17 +1315,17 @@ func RecordCredit(ctx *compb.Context, accid, creditId, itemType, itemId string, 
 		byagid = ctx.GetCredential().GetIssuer()
 	}
 
-	serviceid := ctx.GetCredential().GetIssuer()
+	serviceid := ctx.GetFromService()
 	kafka.Publish("kafka-1:9092", "credit-spend-log", &header.CreditSpendEntry{
 		AccountId:    accid,
-		CreditId:     creditId,
+		CreditId:     string(creditId),
 		Id:           idgen.NewPaymentLogID(),
 		Item:         itemType,
 		ItemId:       itemId,
 		ServiceId:    serviceid,
 		Created:      time.Now().UnixMilli(),
-		Quantity:     quantity,
-		FpvUnitPrice: int64(price * 1_000_000),
+		Quantity:     1,
+		FpvUnitPrice: int64(unitprice * 1_000_000),
 		Data:         data,
 		ByAgentId:    byagid,
 	})
