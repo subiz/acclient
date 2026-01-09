@@ -1259,37 +1259,39 @@ func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, er
 	return res.GetCreditUsage(), nil
 }
 
-func TrySpendCredit(accid, creditId string, price float64) error {
+func TrySpendCredit(accid string, creditId Credit, unitprice float64) error {
 	waitUntilReady()
-	if accid == "" || creditId == "" {
+	if accid == "" {
 		return nil // alway allow
 	}
 
-	sub, err := getSubDB(accid)
+	if creditId != BALANCE && creditId != MARKETING {
+		log.Track(context.Background(), "wrong-credit-id", "account_id", accid, "credit_id", creditId)
+		return log.EMissing(string(creditId), "credit", log.M{"account_id": accid})
+	}
+
+	sub, err := GetSubscription(accid)
 	if err != nil {
 		return err
 	}
 
-	// quick estimated
-	if creditId == "balance" {
-		if sub.GetFpvNovatBalanceUsd() > 2000_000-int64(price*1_000_000)*2 { // allow to spend more than $2
+	// quick estimated if credit is plenty
+	if creditId == BALANCE {
+		if sub.GetFpvNovatBalanceUsd() > 2_000_000 { // allow to spend more than $2
 			return nil
 		}
-	} else if creditId == "marketing" {
-		if sub.GetFpvMarketingBalanceVnd() > 20000_000_000-int64(price*1_000_000)*2 { // allow to spend more than 20k
+	} else if creditId == MARKETING {
+		if sub.GetFpvMarketingBalanceVnd() > 20_000_000_000 { // allow to spend more than 20k
 			return nil
 		}
-	} else {
-		// credit not found
-		return log.EMissing(creditId, "credit", log.M{"account_id": accid})
 	}
 
 	// must ask
 	_, err = creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
 		AccountId:    accid,
-		CreditId:     creditId,
+		CreditId:     string(creditId),
 		Quantity:     1,
-		FpvUnitPrice: int64(price * 1_000_000),
+		FpvUnitPrice: int64(unitprice * 1_000_000),
 	})
 	return err
 }
