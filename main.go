@@ -1777,6 +1777,26 @@ func IsDomainVerified(accid, domain string) (bool, error) {
 	return false, nil
 }
 
+func IsDomainSkip(domain string) bool {
+	waitUntilReady()
+	domain = strings.ToLower(strings.TrimPrefix(header.Norm(domain, 1000), "www."))
+	if skipDomainM[domain] {
+		return true
+	}
+
+	dms := strings.Split(domain, ".")
+	if len(dms) == 1 {
+		return true
+	}
+	for i := 2; i < 5 && i < len(dms); i++ {
+		// *.facebook.com
+		if skipWholeDomainM[strings.Join(dms[len(dms)-i:], ".")] {
+			return true
+		}
+	}
+	return false
+}
+
 func isDomainVerified(accid, domain string) (bool, error) {
 	waitUntilReady()
 	domain = strings.ToLower(strings.TrimPrefix(header.Norm(domain, 1000), "www."))
