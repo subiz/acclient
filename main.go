@@ -57,7 +57,7 @@ var (
 	subscribeTopics    = map[string]bool{}
 )
 
-var EACCESS_DENY = log.NewError(nil, log.M{"no_report": true}, log.E_access_deny)
+var EACCESS_DENY = log.NewError(nil, log.M{}, log.E_access_deny)
 var skipDomainM = map[string]bool{}
 var skipWholeDomainM = map[string]bool{}
 
@@ -1407,6 +1407,15 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 		return EACCESS_DENY
 	}
 
+	acc, err := GetAccount(accid)
+	if err != nil {
+		return err
+	}
+
+	if acc.GetState() != "activated" {
+		return log.EAccountLocked(accid)
+	}
+
 	agent, err := GetAgent(accid, cred.GetIssuer())
 	if err != nil {
 		return err
@@ -1439,6 +1448,16 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 	if action == "" {
 		return nil
 	}
+
+	acc, err := GetAccount(accid)
+	if err != nil {
+		return err
+	}
+
+	if acc.GetState() != "activated" {
+		return log.EAccountLocked(accid)
+	}
+
 	for _, resourceGroup := range resourceGroups {
 		pM, err := GetAgentPerm(accid, issuer, resourceGroup)
 		if err != nil {
