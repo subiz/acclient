@@ -751,6 +751,21 @@ func ListGroups(accid string) ([]*header.AgentGroup, error) {
 	return listGroupsDB(accid)
 }
 
+func GetGroup(accid, grid string) (*header.AgentGroup, error) {
+	groups, err := ListGroups(accid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, gr := range groups {
+		if gr.GetId() == grid {
+			return gr, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	subscribe(accid, "agent_group")
 	waitUntilReady()
