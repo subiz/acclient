@@ -1,6 +1,7 @@
 package acclient
 
 import (
+	"context"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -23,7 +24,7 @@ func GetJob(accid, jobid string) *header.Job {
 		}
 
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid})
+			log.EServer(context.Background(), accid, err, "jobid", jobid)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -59,7 +60,7 @@ func StartJob(accid, name, description, category string, timeoutsec int64) strin
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, name, description, category, timeout_sec, created) VALUES(?,?,?,?,?,?,?) USING TTL 864000`, accid, jobid, name, description, category, timeoutsec, time.Now().UnixMilli()).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "name": name, "description": description, "category": category})
+			log.EServer(context.Background(), accid, err, "name", name, "description", description, "category", category)
 			time.Sleep(30 * time.Second)
 			continue
 		}
@@ -74,7 +75,7 @@ func UpdateJobStatus(accid, jobid, status string) {
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, status, status_updated) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, status, updated).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
+			log.EServer(context.Background(), accid, err, "jobid", jobid, "status", status)
 			time.Sleep(30 * time.Second)
 			continue
 		}
@@ -89,7 +90,7 @@ func ForceEndJob(accid, jobid string) {
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, force_ended, ended) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, ended, ended).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "job_id": jobid})
+			log.EServer(context.Background(), accid, err, "job_id", jobid)
 			time.Sleep(30 * time.Second)
 			continue
 		}
@@ -103,7 +104,7 @@ func EndJob(accid, jobid, status string, output []byte) {
 	for i := 0; i < 1000; i++ {
 		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output, last_ping_ms) VALUES(?,?,?,?,?,?) USING TTL 864000`, accid, jobid, status, ended, output, ended).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
+			log.EServer(context.Background(), accid, err, "jobid", jobid, "status", status)
 			time.Sleep(30 * time.Second)
 			continue
 		}
@@ -125,7 +126,7 @@ func PingJob(accid, jobid string) string {
 		}
 
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid})
+			log.EServer(context.Background(),accid, err, "jobid", jobid)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -139,7 +140,7 @@ func PingJob(accid, jobid string) string {
 
 		err = session.Query(`INSERT INTO account.job(accid, id, last_ping_ms) VALUES(?,?,?) USING TTL 864000`, accid, jobid, ping).Exec()
 		if err != nil {
-			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid})
+			log.EServer(context.Background(), accid, err, "jobid", jobid)
 			time.Sleep(30 * time.Second)
 			continue
 		}

@@ -2,6 +2,7 @@ package acclient
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
@@ -120,7 +121,7 @@ func SummaryTextFile(accid, fileid string) (*header.File, error) {
 
 	file := &header.File{}
 	if err = json.Unmarshal(out, file); err != nil {
-		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
+		return nil, log.EData(context.Background(), err, nil, log.M{"account_id": accid, "_payload": string(out)})
 	}
 	return file, nil
 }
@@ -165,7 +166,7 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 
 	file := &header.File{}
 	if err = json.Unmarshal(out, file); err != nil {
-		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
+		return nil, log.EData(context.Background(), err, nil, log.M{"account_id": accid, "_payload": string(out)})
 	}
 	fileurlcache.Set(theurl, file)
 	return file, nil
@@ -210,7 +211,7 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 
 	file := &header.File{}
 	if err = json.Unmarshal(out, file); err != nil {
-		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
+		return nil, log.EData(context.Background(), err, nil, log.M{"account_id": accid, "_payload": string(out)})
 	}
 	fileurlcache.Set(theurl, file)
 	return file, nil
@@ -239,7 +240,7 @@ func UploadFile(accid, name, category string, data []byte, cd string, ttlsec int
 	req.Header.Set("X-By", "acclient")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	defer resp.Body.Close()
 
@@ -250,7 +251,7 @@ func UploadFile(accid, name, category string, data []byte, cd string, ttlsec int
 		return nil, header.ToErr(res.Error)
 	}
 	if resp.StatusCode != 200 {
-		return nil, log.ERetry(err, log.M{"account_id": accid, "_payload": out, "status_code": resp.StatusCode})
+		return nil, log.EServer(context.Background(), accid, err, "_payload", out, "status_code", resp.StatusCode)
 	}
 	return res.GetFile(), nil
 }
@@ -260,13 +261,13 @@ func HTMLContent2PDF(apikey, accid string, html []byte) ([]byte, error) {
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(html))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, log.ERetry(err)
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	defer resp.Body.Close()
 
 	out, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, log.ERetry(err)
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	return out, nil
 }
@@ -275,7 +276,7 @@ func HTMLContent2PDF(apikey, accid string, html []byte) ([]byte, error) {
 func HTML2PDF(apikey, path, accid, filename, content_disposition string, input interface{}) (*header.File, error) {
 	body, err := json.Marshal(input)
 	if err != nil {
-		return nil, log.EData(err, nil, log.M{"account_id": accid, "path": path, "filename": filename})
+		return nil, log.EData(context.Background(), err, nil, log.M{"account_id": accid, "path": path, "filename": filename})
 	}
 	url := "https://html2pdf-457995922934.asia-southeast1.run.app/" + path
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
@@ -289,7 +290,7 @@ func HTML2PDF(apikey, path, accid, filename, content_disposition string, input i
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid, "path": path})
+		return nil, log.EServer(context.Background(), accid, err, "path", path)
 	}
 
 	defer resp.Body.Close()

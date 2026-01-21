@@ -173,7 +173,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	setting := &header.ShopSetting{}
 
 	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		return nil, log.ERetry(err, log.M{"id": id})
+		return nil, log.EServer(context.Background(), id, err)
 	}
 	if len(data) > 0 {
 		proto.Unmarshal(data, setting)
@@ -189,7 +189,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		shopAddresses = append(shopAddresses, &shopAddress)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"id": id})
+		return nil, log.EServer(context.Background(), id, err)
 	}
 
 	taxes := []*header.Tax{}
@@ -202,7 +202,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		taxes = append(taxes, &tax)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"id": id})
+		return nil, log.EServer(context.Background(), id, err)
 	}
 
 	paymentmethods := []*header.PaymentMethod{}
@@ -215,7 +215,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		paymentmethods = append(paymentmethods, &pm)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"id": id})
+		return nil, log.EServer(context.Background(), id, err)
 	}
 
 	shops := make([]*header.ShopeeShop, 0)
@@ -224,12 +224,12 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 	for iter.Scan(&b) {
 		shop := &header.ShopeeShop{}
 		if err := proto.Unmarshal(b, shop); err != nil {
-			return nil, log.EData(err, b, log.M{"account_id": id})
+			return nil, log.EData(context.Background(), err, b, log.M{"account_id": id})
 		}
 		shops = append(shops, shop)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"id": id})
+		return nil, log.EServer(context.Background(), id, err)
 	}
 
 	ccs := []*header.CancellationCode{}
@@ -240,7 +240,7 @@ func getShopSettingDb(id string) (*header.ShopSetting, error) {
 		ccs = append(ccs, &cc)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": id})
+		return nil, log.EServer(context.Background(), id, err)
 	}
 
 	setting.CancellationCodes = ccs
@@ -288,7 +288,7 @@ func loadLangDB(accid, locale string, old *header.Lang, fallback bool) (*header.
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 
 	old.Messages = append(old.Messages, lang.Messages...)
@@ -490,7 +490,7 @@ func listAgentsDB(accid string) (map[string]*pb.Agent, error) {
 		Credential: &compb.Credential{Type: compb.Type_subiz, Issuer: hostname},
 	}), &header.Id{AccountId: accid})
 	if err != nil {
-		return nil, log.EServer(err)
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 
 	for _, ag := range res.GetAgents() {
@@ -510,12 +510,12 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 	for iter.Scan(&data) {
 		def := &header.AttributeDefinition{}
 		if err := proto.Unmarshal(data, def); err != nil {
-			return nil, log.ERetry(err, log.M{"account_id": accid})
+			return nil, log.EServer(context.Background(), accid, err)
 		}
 		defs[def.Key] = def
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 
 	defaults := header.ListDefaultDefs()
@@ -577,7 +577,7 @@ func getNotificationSettingDB(accid string) ([]*header.NotiSetting, error) {
 		}
 
 		if err != nil {
-			return nil, log.ERetry(err, log.M{"account_id": accid, "agent_id": agid})
+			return nil, log.EServer(context.Background(), accid, err, "agent_id", agid)
 		}
 
 		proto.Unmarshal(data, setting)
@@ -603,7 +603,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 		}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 
 	cache.Set("bot."+accid, list)
@@ -625,7 +625,7 @@ func listAIAgentsDB(accid string) (map[string]*header.AIAgent, error) {
 		data = []byte{}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 
 	cache.Set("ai_agent."+accid, aiAgentM)
@@ -776,7 +776,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 	for iter.Scan(&id, &data) {
 		group := &header.AgentGroup{}
 		if err := proto.Unmarshal(data, group); err != nil {
-			return nil, log.EData(err, data, log.M{"account_id": accid, "group_id": id})
+			return nil, log.EData(context.Background(), err, data, log.M{"account_id": accid, "group_id": id})
 		}
 		group.AccountId = accid
 		group.Id = id
@@ -784,7 +784,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 		arr = append(arr, group)
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	cache.Set("agent_group."+accid, arr)
 	return arr, nil
@@ -897,7 +897,7 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 	}
 	err := iter.Close()
 	if err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	cache.Set("pipeline."+accid, pipelines)
 	return pipelines, nil
@@ -920,7 +920,7 @@ func SignKey(accid, issuer, typ, keytype string, objects []string) (string, erro
 	key := randomID("SK", 28)
 	err := session.Query(`INSERT INTO account.signed_key(account_id, issuer, type, objects, key_type, key, created) VALUES(?,?,?,?,?,?,?)`, accid, issuer, typ, objects, keytype, key, time.Now().UnixMilli()).Exec()
 	if err != nil {
-		return "", log.ERetry(err, log.M{"account_id": accid, "issuer": issuer, "type": typ, "keytype": keytype})
+		return "", log.EServer(context.Background(), accid, err, "issuer", issuer, "type", typ, "keytype", keytype)
 	}
 
 	return key, nil
@@ -932,7 +932,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 	objects := make([]string, 0)
 	err := session.Query(`SELECT account_id, issuer, type, key_type, objects FROM account.signed_key WHERE key=?`, key).Scan(&accid, &issuer, &typ, &keytype, &objects)
 	if err != nil {
-		return "", "", "", "", nil, log.ERetry(err, log.M{"key": key})
+		return "", "", "", "", nil, log.EServer(context.Background(), accid, err, "key", key)
 	}
 
 	if err != nil && err.Error() == gocql.ErrNotFound.Error() {
@@ -985,7 +985,7 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 
 	defcur := strings.TrimSpace(acc.GetCurrency())
 	if defcur == "" && order_cur != "" {
-		return 0, 0, log.Error3(accid, nil, log.M{
+		return 0, 0, log.Error3(context.Background(), accid, nil, log.M{
 			"_message": map[string]string{
 				"En_US": "Invalid base currency. You must specify base currency setting for your account",
 				"Vi_VN": "Tiền tệ cơ sở không hợp lệ. Bạn cần thiết lập tiền tệ cơ sở cho tài khoản trước",
@@ -1009,7 +1009,7 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 		}
 
 		if cur.GetRate() <= 0 {
-			return 0, 0, log.Error3(accid, nil, log.M{
+			return 0, 0, log.Error3(context.Background(), accid, nil, log.M{
 				"_message": map[string]string{
 					"En_US": fmt.Sprintf("Wrong currency rate (%f). Please contact Support for support", cur.GetRate()),
 					"Vi_VN": fmt.Sprintf("Tỉ giá tiền không hợp lệ (%f). Vui lòng liên hệ Subiz để được hỗ trợ", cur.GetRate()),
@@ -1019,7 +1019,7 @@ func ConvertToFPV(accid string, price float32, order_cur string) (int64, float32
 		}
 		return int64(price * cur.GetRate() * 1000000), cur.GetRate(), nil
 	}
-	return 0, 0, log.Error3(accid, nil, log.M{
+	return 0, 0, log.Error3(context.Background(), accid, nil, log.M{
 		"_message": map[string]string{
 			"En_US": fmt.Sprintf("Unsupported currency (%s)", order_cur),
 			"Vi_VN": fmt.Sprintf("Tiền tệ (%s) không được hỗ trợ", order_cur),
@@ -1089,7 +1089,7 @@ func ShortenLink(accid, link string) (string, error) {
 
 	outlink := &header.Link{}
 	if err = json.Unmarshal(out, outlink); err != nil {
-		return "", log.EData(err, nil, log.M{"account_id": accid, "_payload": string(out)})
+		return "", log.EData(context.Background(), err, nil, log.M{"account_id": accid, "_payload": string(out)})
 	}
 	shortencache.Set(link, outlink.GetUrl())
 	return outlink.GetUrl(), nil
@@ -1282,7 +1282,7 @@ func TrySpendCredit(accid string, creditId Credit, unitprice float64) error {
 
 	if creditId != BALANCE && creditId != MARKETING {
 		log.Track(context.Background(), "wrong-credit-id", "account_id", accid, "credit_id", creditId)
-		return log.EMissing(string(creditId), "credit", log.M{"account_id": accid})
+		return log.EMissing(context.Background(), accid, string(creditId), "credit")
 	}
 
 	sub, err := GetSubscription(accid)
@@ -1428,7 +1428,7 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 	}
 
 	if acc.GetState() != "activated" {
-		return log.EAccountLocked(accid)
+		return log.EAccountLocked(context.Background(), accid)
 	}
 
 	agent, err := GetAgent(accid, cred.GetIssuer())
@@ -1470,7 +1470,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 	}
 
 	if acc.GetState() != "activated" {
-		return log.EAccountLocked(accid)
+		return log.EAccountLocked(context.Background(), accid)
 	}
 
 	for _, resourceGroup := range resourceGroups {
@@ -1641,7 +1641,7 @@ func listBlacklistIPsDB(accid string) (map[string]*header.BlacklistIP, error) {
 		ips[ip] = &header.BlacklistIP{AccountId: accid, Ip: ip, By: by, Created: clock.UnixMili(created), NumBlocked: num_blocked, ExpiredAt: expired, LastBlocked: last_blocked}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	cache.Set("blacklist_ip."+accid, ips)
 	return ips, nil
@@ -1671,7 +1671,7 @@ func listBannedUserDB(accid string) (map[string]*header.BannedUser, error) {
 		users[userid] = &header.BannedUser{AccountId: accid, UserId: userid, By: by, Created: created}
 	}
 	if err := iter.Close(); err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
+		return nil, log.EServer(context.Background(), accid, err)
 	}
 	cache.Set("banned_user."+accid, users)
 	return users, nil
@@ -1862,7 +1862,7 @@ func isDomainVerified(accid, domain string) (bool, error) {
 	data := make([]byte, 0)
 	err := session.Query("SELECT data FROM convo.channels WHERE account_id=? AND id=?", accid, inteid).Scan(&data)
 	if err != nil && err.Error() != gocql.ErrNotFound.Error() {
-		return false, log.ERetry(err, log.M{"account_id": accid, "domain": domain})
+		return false, log.EServer(context.Background(), accid, err, "domain", domain)
 	}
 
 	inte := &header.Integration{}
