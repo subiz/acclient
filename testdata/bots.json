@@ -1,0 +1,266 @@
+{
+  "1": {
+    "bot": {
+      "account_id": "acqsulrowbxiugvginhw",
+      "id": "bbsogzhkzrikinlixy",
+      "fullname": "New Test",
+      "avatar_url": "https://vcdn.subiz-cdn.com/file/fiqvzdrxkmikqcsmebom-ellipse_2320.png",
+      "avatar_url_128": "https://vcdn.subiz-cdn.com/file/fisfroflhytrjnvwhvnt_acqsulrowbxiugvginhw/fiqvzdrxkmikqcsmebom-ellipse_2320.png",
+      "state": "active",
+      "action": {
+        "id": "1",
+        "nexts": [
+          {
+            "action": {
+              "id": "2",
+              "nexts": [
+                {
+                  "action": {
+                    "id": "3",
+                    "nexts": [
+                      {
+                        "action": {
+                          "id": "4",
+                          "type": "ask_question",
+                          "ask_question": {
+                            "wait_for_user_response": true,
+                            "messages": [
+                              {
+                                "text": "cho agent tra loi",
+                                "format": "block",
+                                "attachments": [
+                                  {
+                                    "type": "quick_replies",
+                                    "quick_replies": [
+                                      {
+                                        "title": "Optic",
+                                        "payload": "{\"type\":\"bot_jump\",\"bot_id\":\"bbsogzhkzrikinlixy\",\"title\":\"\",\"i18n_title\":{\"en-US\":\"Optic\"},\"from_action\":\"4\"}",
+                                        "i18n_title": {
+                                          "en_US": "Optic"
+                                        }
+                                      },
+                                      {
+                                        "title": "Physic",
+                                        "payload": "{\"type\":\"bot_jump\",\"bot_id\":\"bbsogzhkzrikinlixy\",\"title\":\"\",\"i18n_title\":{\"en-US\":\"Physic\"},\"from_action\":\"4\"}",
+                                        "i18n_title": {
+                                          "en_US": "Physic"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "block": {
+                                  "type": "div",
+                                  "content": [
+                                    {
+                                      "type": "text",
+                                      "text": "cho agent tra loi"
+                                    }
+                                  ]
+                                },
+                                "i18n_block": {
+                                  "en_US": {
+                                    "type": "div",
+                                    "content": [
+                                      {
+                                        "type": "text",
+                                        "text": "cho agent tra loi"
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    "type": "assign",
+                    "assign": {
+                      "strategy": "agents",
+                      "assign_tos": ["agrhfgegopdpzubwnv"]
+                    }
+                  }
+                }
+              ],
+              "type": "update_conversation",
+              "update_conversation": {
+                "tag_ids": ["tgqsvvukxihozyagxpia"]
+              }
+            }
+          }
+        ],
+        "type": "ask_question",
+        "ask_question": {
+          "messages": [
+            {
+              "text": "tin nhan 11111",
+              "format": "block",
+              "block": {
+                "type": "div",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "tin nhan 11111"
+                  }
+                ]
+              },
+              "i18n_block": {
+                "en_US": {
+                  "type": "div",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "tin nhan 11111"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "text": "tin nhan 22222",
+              "format": "block",
+              "block": {
+                "type": "div",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "tin nhan 22222"
+                  }
+                ]
+              },
+              "i18n_block": {
+                "en_US": {
+                  "type": "div",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "tin nhan 22222"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "created": 1770090332930,
+      "created_by": "agqsulrowbxilyzhds",
+      "updated": 1770092504248,
+      "updated_by": "agqsulrowbxilyzhds",
+      "triggers": [
+        {
+          "type": "conversation_start",
+          "disabled": true
+        },
+        {
+          "type": "after_pageview",
+          "after_pageview_sec": 1
+        }
+      ],
+      "initiative_frequency": {
+        "once_per_session": true
+      },
+      "channels": ["subiz", "facebook", "zalo", "instagram"],
+      "bot_state": "active",
+      "bot_type": "lead",
+      "locale": "en-US",
+      "locales": ["en-US"]
+    },
+    "expects": [
+      {
+        "text": "tin nhan 11111",
+        "format": "block",
+        "block": {
+          "type": "div",
+          "content": [
+            {
+              "type": "text",
+              "text": "tin nhan 11111"
+            }
+          ]
+        },
+        "i18n_block": {
+          "en_US": {
+            "type": "div",
+            "content": [
+              {
+                "type": "text",
+                "text": "tin nhan 11111"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "text": "tin nhan 22222",
+        "format": "block",
+        "block": {
+          "type": "div",
+          "content": [
+            {
+              "type": "text",
+              "text": "tin nhan 22222"
+            }
+          ]
+        },
+        "i18n_block": {
+          "en_US": {
+            "type": "div",
+            "content": [
+              {
+                "type": "text",
+                "text": "tin nhan 22222"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "text": "cho agent tra loi",
+        "format": "block",
+        "attachments": [
+          {
+            "type": "quick_replies",
+            "quick_replies": [
+              {
+                "title": "Optic",
+                "payload": "{\"type\":\"bot_jump\",\"bot_id\":\"bbsogzhkzrikinlixy\",\"title\":\"\",\"i18n_title\":{\"en-US\":\"Optic\"},\"from_action\":\"4\"}",
+                "i18n_title": {
+                  "en_US": "Optic"
+                }
+              },
+              {
+                "title": "Physic",
+                "payload": "{\"type\":\"bot_jump\",\"bot_id\":\"bbsogzhkzrikinlixy\",\"title\":\"\",\"i18n_title\":{\"en-US\":\"Physic\"},\"from_action\":\"4\"}",
+                "i18n_title": {
+                  "en_US": "Physic"
+                }
+              }
+            ]
+          }
+        ],
+        "block": {
+          "type": "div",
+          "content": [
+            {
+              "type": "text",
+              "text": "cho agent tra loi"
+            }
+          ]
+        },
+        "i18n_block": {
+          "en_US": {
+            "type": "div",
+            "content": [
+              {
+                "type": "text",
+                "text": "cho agent tra loi"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

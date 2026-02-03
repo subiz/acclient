@@ -597,6 +597,7 @@ func listBotsDB(accid string) ([]*header.Bot, error) {
 	for iter.Scan(&botb) {
 		bot := &header.Bot{}
 		proto.Unmarshal(botb, bot)
+		bot.WelcomeMessages = searchWelcomeMessage(bot.Action)
 		bot.Action = nil
 		if bot.GetState() != pb.Agent_deleted.String() {
 			list = append(list, bot)
@@ -1905,4 +1906,31 @@ var shortencache = &ShortenCache{Mutex: &sync.Mutex{}}
 func GetSha256(b string) string {
 	result := sha256.Sum256([]byte(b))
 	return hex.EncodeToString(result[:])
+}
+
+type Out struct {
+	out []*header.Message
+}
+
+func searchWelcomeMessage(action *header.BotAction) []*header.Message {
+	out := &Out{}
+	_searchWelcomeMessage(out, action)
+	return out.out
+}
+
+func _searchWelcomeMessage(out *Out, action *header.BotAction) {
+	if action.GetType() == "ask_question" {
+		out.out = append(out.out, action.GetAskQuestion().GetMessages()...)
+		if action.GetAskQuestion().GetWaitForUserResponse() {
+			return
+		}
+	}
+	if len(action.GetNexts()) == 0 {
+		return
+	}
+
+	if len(action.GetNexts()) > 1 {
+		return
+	}
+	_searchWelcomeMessage(out, action.Nexts[0].GetAction())
 }
