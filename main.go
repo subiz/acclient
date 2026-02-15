@@ -1266,13 +1266,14 @@ func GetAttrAsString(user *header.User, key string) string {
 	return ""
 }
 
-func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, error) {
+// currency: VND, USD
+func GetCreditUsage(accid string, filters []string, currency string) (int64, error) {
 	ctx := header.ToGrpcCtx(&compb.Context{AccountId: accid, Credential: &compb.Credential{Type: compb.Type_subiz}})
-	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.Id{AccountId: accid, Id: creditId + "." + key})
+	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.CreditSpendReportRequest{AccountId: accid, Filters: filters, Currency: currency})
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return res.GetCreditUsage(), nil
+	return res.GetCreditUsage().GetFpvTotalSpent(), nil
 }
 
 func SpendItemToCredit(item string) Credit {
