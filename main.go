@@ -1275,17 +1275,25 @@ func GetCreditUsage(accid, creditId string, key string) (*header.CreditUsage, er
 	return res.GetCreditUsage(), nil
 }
 
-func TrySpendCredit(accid string, creditId Credit, unitprice float64) error {
+func SpendItemToCredit(item string) Credit {
+	switch item {
+	case "ai_message", "ai_training", "llm", "textembedding":
+		return BALANCE
+	case "zns", "zalo_call_request", "email":
+		return MARKETING
+	default:
+		log.Track(context.Background(), "wrong-credit-id", "item", item)
+		return BALANCE
+	}
+}
+
+func TrySpend(accid string, item string, fpvunitpricevnd int64) error {
 	waitUntilReady()
 	if accid == "" {
 		return nil // alway allow
 	}
 
-	if creditId != BALANCE && creditId != MARKETING {
-		log.Track(context.Background(), "wrong-credit-id", "account_id", accid, "credit_id", creditId)
-		return log.EMissing(string(creditId), "credit", log.M{"account_id": accid})
-	}
-
+	creditId := SpendItemToCredit(item)
 	sub, err := GetSubscription(accid)
 	if err != nil {
 		return err
@@ -1293,21 +1301,21 @@ func TrySpendCredit(accid string, creditId Credit, unitprice float64) error {
 
 	// quick estimated if credit is plenty
 	if creditId == BALANCE {
-		if sub.GetFpvNovatBalanceUsd() > 2_000_000 { // allow to spend more than $2
+		// 21840 is just clunky estimation, since $2 is large (compare to the actual spend), the result is acceptable.
+		if sub.GetFpvNovatBalanceUsd()-fpvunitpricevnd/21840 > 2_000_000 { // allow to spend more than $2
 			return nil
 		}
 	} else if creditId == MARKETING {
-		if sub.GetFpvMarketingBalanceVnd() > 20_000_000_000 { // allow to spend more than 20k
+		if sub.GetFpvMarketingBalanceVnd()-fpvunitpricevnd > 20_000_000_000 { // allow to spend more than 20k
 			return nil
 		}
 	}
 
-	// must ask
 	_, err = creditmgr.TrySpendCredit(context.Background(), &header.CreditSpendEntry{
-		AccountId:    accid,
-		CreditId:     string(creditId),
-		Quantity:     1,
-		FpvUnitPrice: int64(unitprice * 1_000_000),
+		AccountId:       accid,
+		CreditId:        string(creditId),
+		Quantity:        1,
+		FpvUnitPriceVnd: fpvunitpricevnd,
 	})
 	return err
 }
@@ -1317,35 +1325,23 @@ type Credit string
 const MARKETING Credit = "marketing" // currency VND
 const BALANCE Credit = "balance"     // currency USD
 
-func RecordCredit(ctx *compb.Context, accid string, creditId Credit, itemType, itemId string, unitprice float64, data *header.CreditEntryData) {
+func Spend(accid string, itemType, source string, fpvunitpricevnd int64, data *header.CreditEntryData) {
 	if accid == "" {
 		log.Track(context.Background(), "record-credit-missing-account-id")
 		return
 	}
 
-	if creditId != BALANCE && creditId != MARKETING {
-		log.Track(context.Background(), "wrong-credit-id", "account_id", accid, "credit_id", creditId)
-		return
-	}
-
-	byagid := ""
-	if ctx.GetCredential().GetType().String() == "agent" {
-		byagid = ctx.GetCredential().GetIssuer()
-	}
-
-	serviceid := ctx.GetFromService()
+	creditId := SpendItemToCredit(itemType)
 	kafka.Publish("kafka-1:9092", "credit-spend-log", &header.CreditSpendEntry{
-		AccountId:    accid,
-		CreditId:     string(creditId),
-		Id:           idgen.NewPaymentLogID(),
-		Item:         itemType,
-		ItemId:       itemId,
-		ServiceId:    serviceid,
-		Created:      time.Now().UnixMilli(),
-		Quantity:     1,
-		FpvUnitPrice: int64(unitprice * 1_000_000),
-		Data:         data,
-		ByAgentId:    byagid,
+		AccountId:       accid,
+		CreditId:        string(creditId),
+		Id:              idgen.NewPaymentLogID(),
+		Item:            itemType,
+		Created:         time.Now().UnixMilli(),
+		Quantity:        1,
+		FpvUnitPriceVnd: fpvunitpricevnd,
+		Data:            data,
+		Source:          source,
 	})
 }
 
