@@ -70,7 +70,7 @@ func GetConvoClient() header.ConversationMgrClient {
 }
 
 // zaloperson-0, or fabikon-4
-func OnIntegrationUpdate(connectorTypes []string, serviceid string, accLookup func(*header.Integration) string, cb func(*header.Integration)) error {
+func OnIntegrationUpdate(connectorTypes []string, serviceid string, cb func(*header.Integration)) error {
 	_, err := kafka.Consume("kafka-1:9092", serviceid, "integration-updated", func(_ int32, _ int64, data []byte, _ string) {
 		inte := &header.Integration{}
 		proto.Unmarshal(data, inte)
@@ -82,14 +82,12 @@ func OnIntegrationUpdate(connectorTypes []string, serviceid string, accLookup fu
 			return
 		}
 
-		if inte.GetCtx().GetCredential().GetType() == cpb.Type_connector { // prevent loop
-			return
-		}
-
-		correctAccid := accLookup(inte)
-		if inte.GetAccountId() != correctAccid {
-			return
-		}
+		/*
+			correctAccid := accLookup(inte)
+			if inte.GetAccountId() != correctAccid {
+				return
+			}
+		*/
 		cb(inte)
 	})
 	return err
@@ -103,7 +101,7 @@ func UpdateIntegration(service string, inte *header.Integration) error {
 		Credential: &cpb.Credential{
 			Scopes:   []string{"all"},
 			Issuer:   service,
-			Type:     cpb.Type_connector, // prevent loop
+			Type:     cpb.Type_connector,
 			ClientId: service,
 		},
 	}
@@ -121,7 +119,7 @@ func ActivateIntegration(service, accid, inteid string, oldaccid string) error {
 		Credential: &cpb.Credential{
 			Scopes:   []string{"all"},
 			Issuer:   service,
-			Type:     cpb.Type_connector, // prevent loop
+			Type:     cpb.Type_connector,
 			ClientId: service,
 		},
 	}
@@ -135,20 +133,21 @@ func ActivateIntegration(service, accid, inteid string, oldaccid string) error {
 			Credential: &cpb.Credential{
 				Scopes:   []string{"all"},
 				Issuer:   service,
-				Type:     cpb.Type_connector, // prevent loop
+				Type:     cpb.Type_connector,
 				ClientId: service,
 			},
-			Fields: []string{"state", "token_status", "token_status_updated", "error_code"},
+			Fields: []string{"state", "error_code"},
 		}
 		inteids := strings.Split(inteid, ".") // acqsulrowbxiugvginhw.instagram_17841452312522417.fabikon
 		inteids[0] = oldaccid                 // swap accountid
 		oldinteid := strings.Join(inteids, ".")
 		if _, err := GetConvoClient().UpsertIntegration(header.ToGrpcCtx(ctx), &header.Integration{
-			AccountId:          oldaccid,
-			Id:                 oldinteid,
-			State:              "failed",
-			ErrorCode:          "unlinked",
+			AccountId: oldaccid,
+			Id:        oldinteid,
+			State:     "failed",
+			ErrorCode: "unlinked",
 		}); err != nil {
+			log.Track(context.Background(), "channel-activation-error", "account_id", accid, "service", service, "inteid", inteid)
 			return err
 		}
 	}
