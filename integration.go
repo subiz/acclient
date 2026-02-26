@@ -3,11 +3,13 @@ package acclient
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/subiz/header"
 	cpb "github.com/subiz/header/common"
 	"github.com/subiz/kafka"
 	"github.com/subiz/log"
+	gocache "github.com/thanhpk/go-cache"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -53,6 +55,14 @@ import (
 // failed -> deleted, by convo when user delete the integration
 
 var convoclient header.ConversationMgrClient
+
+// 5 times in a row under 1 second -> loop
+type InteUpdateLog struct {
+	last  int64 // millisec
+	count int
+}
+
+var inteUpdateLogCache = gocache.New(5 * time.Minute)
 
 func GetConvoClient() header.ConversationMgrClient {
 	if convoclient != nil {
@@ -105,6 +115,34 @@ func UpdateIntegration(service string, inte *header.Integration) error {
 			ClientId: service,
 		},
 	}
+
+	now := time.Now().UnixMilli()
+	key := inte.GetId()
+	var logEntry InteUpdateLog
+
+	if val, found := inteUpdateLogCache.Get(key); found {
+		logEntry = val.(InteUpdateLog)
+		if now-logEntry.last < 1000 { // 1 second
+			logEntry.count++
+		} else {
+			// not a burst, reset counter
+			logEntry.count = 1
+		}
+	} else {
+		// first time seeing this integration
+		logEntry.count = 1
+	}
+
+	logEntry.last = now // Always update the last seen time
+
+	if logEntry.count >= 5 {
+		log.Track(context.Background(), "re-integrate-loop", "account_id", accid, "service", service, "inteid", inte.GetId())
+		inteUpdateLogCache.Set(key, logEntry) // Save the updated state
+		return nil                                                       // loop -> stop and swallow the update
+	}
+
+	inteUpdateLogCache.Set(key, logEntry)
+
 	if _, err := GetConvoClient().UpsertIntegration(header.ToGrpcCtx(ctx), inte); err != nil {
 		log.Track(context.Background(), "re-integrate-error", "account_id", accid, "service", service, "inte", inte)
 		return err
