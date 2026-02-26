@@ -3,7 +3,6 @@ package acclient
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/subiz/header"
 	cpb "github.com/subiz/header/common"
@@ -148,8 +147,6 @@ func ActivateIntegration(service, accid, inteid string, oldaccid string) error {
 			AccountId:          oldaccid,
 			Id:                 oldinteid,
 			State:              "failed",
-			TokenStatus:        "failed",
-			TokenStatusUpdated: time.Now().UnixMilli(),
 			ErrorCode:          "unlinked",
 		}); err != nil {
 			return err

@@ -1,12 +1,12 @@
 module github.com/subiz/acclient/v2
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/subiz/goutils v0.1.27
-	github.com/subiz/header v1.27.61
+	github.com/subiz/goutils v0.1.28
+	github.com/subiz/header v1.27.64
 	github.com/subiz/idgen v0.1.41
 	github.com/subiz/kafka v0.0.51
 	github.com/subiz/log v1.0.20
@@ -46,7 +46,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect
-	github.com/prometheus/procfs v0.19.2 // indirect
+	github.com/prometheus/procfs v0.20.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/subiz/executor/v2 v2.0.8 // indirect
 	github.com/subiz/squasher/v2 v2.0.5 // indirect
@@ -68,11 +68,11 @@ require (
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260223185530-2f722ef697dc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260223185530-2f722ef697dc // indirect
 	google.golang.org/grpc v1.79.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )
