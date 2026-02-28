@@ -138,13 +138,13 @@ func UpdateIntegration(service string, inte *header.Integration) error {
 	if logEntry.count >= 5 {
 		log.Track(context.Background(), "re-integrate-loop", "account_id", accid, "service", service, "inteid", inte.GetId())
 		inteUpdateLogCache.Set(key, logEntry) // Save the updated state
-		return nil                                                       // loop -> stop and swallow the update
+		return nil                            // loop -> stop and swallow the update
 	}
 
 	inteUpdateLogCache.Set(key, logEntry)
 
 	if _, err := GetConvoClient().UpsertIntegration(header.ToGrpcCtx(ctx), inte); err != nil {
-		log.Track(context.Background(), "re-integrate-error", "account_id", accid, "service", service, "inte", inte)
+		log.Track(context.Background(), "re-integrate-error", "account_id", accid, "service", service, "inte", inte, "error", err.Error())
 		return err
 	}
 	return nil
@@ -185,7 +185,7 @@ func ActivateIntegration(service, accid, inteid string, oldaccid string) error {
 			State:     "failed",
 			ErrorCode: "unlinked",
 		}); err != nil {
-			log.Track(context.Background(), "channel-activation-error", "account_id", accid, "service", service, "inteid", inteid)
+			log.Track(context.Background(), "channel-activation-error", "account_id", accid, "service", service, "inteid", inteid, "error", err)
 			return err
 		}
 	}
