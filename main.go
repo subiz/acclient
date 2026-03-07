@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/gocql/gocql"
 	"github.com/subiz/goutils/business_hours"
@@ -1096,7 +1097,24 @@ func ShortenLink(accid, link string) (string, error) {
 	return outlink.GetUrl(), nil
 }
 
+const SHORTENDOMAIN = "a.sbz.vn"
+
 func LookupLink(shorten string) (*header.Link, error) {
+	shorten = header.Norm(shorten, 100)
+	shorten = strings.TrimSpace(shorten)
+
+	shorten = strings.TrimPrefix(shorten, "https://"+SHORTENDOMAIN+"/")
+	shorten = strings.TrimPrefix(shorten, "http://"+SHORTENDOMAIN+"/")
+	shorten = strings.TrimPrefix(shorten, "//"+SHORTENDOMAIN+"/")
+
+	i := strings.IndexFunc(shorten, func(r rune) bool {
+		return !unicode.IsLetter(r)
+	})
+
+	if i >= 0 {
+		shorten = shorten[:i]
+	}
+
 	waitUntilReady()
 	cachekey := "shortenlink." + shorten
 	if val, has := cache.Get(cachekey); has {
