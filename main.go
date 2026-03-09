@@ -39,6 +39,9 @@ import (
 //go:embed do_not_crawl.txt
 var skipdomain string
 
+// 09 Mar, 2026
+var USD2VND = 26_277
+
 var (
 	readyLock  = &sync.Mutex{}
 	missingAcc = map[string]bool{}
@@ -1296,7 +1299,7 @@ func GetCreditUsage(accid string, filters []string, currency string) (int64, err
 
 func SpendItemToCredit(item string) Credit {
 	switch item {
-	case "ai_message", "ai_training", "llm", "textembedding":
+	case "ai_message", "ai_follow_message", "ai_training", "llm", "textembedding":
 		return BALANCE
 	case "zns", "zalo_call_request", "email":
 		return MARKETING
@@ -1316,6 +1319,14 @@ func TrySpend(accid string, item string, fpvunitpricevnd int64) error {
 	sub, err := GetSubscription(accid)
 	if err != nil {
 		return err
+	}
+
+	// must also check account/creditdb.go ListenCreditLog
+	if item == "llm" || item == "textembedding" || item == "ai_message" ||
+		item == "ai_training" || item == "ai_follow_message" {
+		if sub.GetLimit().GetUnlimitedAiSpending() > 0 {
+			return nil
+		}
 	}
 
 	// quick estimated if credit is plenty
