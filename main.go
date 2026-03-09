@@ -1108,7 +1108,7 @@ func LookupLink(shorten string) (*header.Link, error) {
 	shorten = strings.TrimPrefix(shorten, "//"+SHORTENDOMAIN+"/")
 
 	i := strings.IndexFunc(shorten, func(r rune) bool {
-		return !unicode.IsLetter(r)
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
 
 	if i >= 0 {
