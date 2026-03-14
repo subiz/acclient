@@ -39,8 +39,9 @@ import (
 //go:embed do_not_crawl.txt
 var skipdomain string
 
-// 09 Mar, 2026
-var USD2VND = 26_277
+// 09 Mar, 2026: 26_277
+// 14 Mar, 2026: 26_294
+var USD2VND = 26_294
 
 var (
 	readyLock  = &sync.Mutex{}
@@ -61,7 +62,7 @@ var (
 	subscribeTopics    = map[string]bool{}
 )
 
-var EACCESS_DENY = log.NewError(nil, log.M{}, log.E_access_deny)
+// var EACCESS_DENY = log.NewError(nil, log.M{}, log.E_access_deny)
 var skipDomainM = map[string]bool{}
 var skipWholeDomainM = map[string]bool{}
 
@@ -1430,7 +1431,7 @@ func MustBeSuperAdmin(cred *compb.Credential) error {
 	if cred.GetType() == compb.Type_subiz || cred.AdminRole == "manager" {
 		return nil
 	}
-	return EACCESS_DENY
+	return log.NewError(nil, log.M{}, log.E_access_deny)
 }
 
 func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
@@ -1446,7 +1447,7 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 	}
 
 	if accid == "" || cred.Type == compb.Type_unknown || cred.GetIssuer() == "" {
-		return EACCESS_DENY
+		return log.NewError(nil, log.M{"account_id": accid, "cred_type": cred.GetType()}, log.E_access_deny)
 	}
 
 	acc, err := GetAccount(accid)
@@ -1472,14 +1473,14 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 
 	// ticket:read ticket:write
 	if permM[string(objectType)+":"+string(action)+":none"] {
-		return EACCESS_DENY
+		return log.NewError(nil, log.M{"account_id": accid}, log.E_access_deny)
 	}
 
 	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
 		return nil
 	}
 
-	return EACCESS_DENY
+	return log.NewError(nil, log.M{"account_id": accid}, log.E_access_deny)
 }
 
 func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroups ...header.IResourceGroup) error {
@@ -1523,7 +1524,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 			}
 		}
 	}
-	return EACCESS_DENY
+	return log.NewError(nil, log.M{"account_id": accid}, log.E_access_deny)
 }
 
 func CheckAgentPerm(objectType header.ObjectType, action header.ObjectAction, permM map[string]bool, isOwned, isAssigned bool) bool {
