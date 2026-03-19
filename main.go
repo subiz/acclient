@@ -1447,7 +1447,7 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 	}
 
 	if accid == "" || cred.Type == compb.Type_unknown || cred.GetIssuer() == "" {
-		return log.NewError(nil, log.M{"account_id": accid, "cred_type": cred.GetType()}, log.E_access_deny)
+		return log.NewError(nil, log.M{"account_id": accid, "cred_type": cred.GetType(), "issuer": cred.GetIssuer()}, log.E_access_deny)
 	}
 
 	acc, err := GetAccount(accid)
@@ -1473,14 +1473,14 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 
 	// ticket:read ticket:write
 	if permM[string(objectType)+":"+string(action)+":none"] {
-		return log.NewError(nil, log.M{"account_id": accid}, log.E_access_deny)
+		return log.NewError(nil, log.M{"account_id": accid, "cred_type": cred.GetType(), "issuer": cred.GetIssuer()}, log.E_access_deny)
 	}
 
 	if permM[string(objectType)+":"+string(action)] || permM[string(objectType)+":"+string(action)+":all"] {
 		return nil
 	}
 
-	return log.NewError(nil, log.M{"account_id": accid}, log.E_access_deny)
+	return log.NewError(nil, log.M{"account_id": accid, "cred_type": cred.GetType(), "issuer": cred.GetIssuer()}, log.E_access_deny)
 }
 
 func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, issuer, issuertype string, isOwned, isAssigned bool, resourceGroups ...header.IResourceGroup) error {
@@ -1524,7 +1524,7 @@ func CheckPerm(objectType header.ObjectType, action header.ObjectAction, accid, 
 			}
 		}
 	}
-	return log.NewError(nil, log.M{"account_id": accid}, log.E_access_deny)
+	return log.NewError(nil, log.M{"account_id": accid, "cred_type": issuertype, "issuer": issuer}, log.E_access_deny)
 }
 
 func CheckAgentPerm(objectType header.ObjectType, action header.ObjectAction, permM map[string]bool, isOwned, isAssigned bool) bool {
@@ -1815,7 +1815,7 @@ func IsDomainVerified(accid, domain string) (bool, error) {
 
 	// example.com
 	if len(domains) <= 2 {
-		return isDomainVerified(accid, domain)
+		return IsExactDomainVerified(accid, domain)
 	}
 
 	// support upto 10 sub domains
@@ -1827,7 +1827,7 @@ func IsDomainVerified(accid, domain string) (bool, error) {
 	// e.g. domain is a.b.c.com, it will check c.com, then b.c.com, then a.b.c.com
 	for i := len(domains) - 2; i >= 0; i-- {
 		thedomain := strings.Join(domains[i:], ".")
-		verified, err := isDomainVerified(accid, thedomain)
+		verified, err := IsExactDomainVerified(accid, thedomain)
 		if err != nil {
 			return false, err
 		}
@@ -1859,7 +1859,7 @@ func IsDomainSkip(domain string) bool {
 	return false
 }
 
-func isDomainVerified(accid, domain string) (bool, error) {
+func IsExactDomainVerified(accid, domain string) (bool, error) {
 	waitUntilReady()
 	domain = strings.ToLower(strings.TrimPrefix(header.Norm(domain, 1000), "www."))
 	if skipDomainM[domain] {
