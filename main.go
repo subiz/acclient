@@ -129,6 +129,17 @@ func getAccountDB(id string) (*pb.Account, error) {
 	}
 	readyLock.Unlock()
 
+	if id == "acctest" {
+		return &pb.Account{
+			Name:     conv.S("SubizTest"),
+			Id:       conv.S(id),
+			Currency: conv.S("VND"),
+			State:    conv.S("activated"),
+			Timezone: conv.S("+07:00"),
+			Created:  conv.PI64(int(time.Now().UnixMilli() - 86400000*365)), // 1 year ago
+		}, nil
+	}
+
 	account, err := accmgr.GetAccount(header.ToGrpcCtx(&compb.Context{
 		AccountId:  id,
 		Credential: &compb.Credential{Issuer: hostname, Type: compb.Type_subiz},
