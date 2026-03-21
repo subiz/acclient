@@ -1707,84 +1707,18 @@ func listBannedUserDB(accid string) (map[string]*header.BannedUser, error) {
 
 const COUNTERSHARD = 4
 
-func IncreaseCounter(timeseries []string, count int64, createdMs int64) {
-	tss := [COUNTERSHARD][]string{}
-	for _, ts := range timeseries {
-		shard := int(crc32.ChecksumIEEE([]byte(ts))) % COUNTERSHARD
-		tss[shard] = append(tss[shard], ts)
-	}
-
-	for i, ts := range tss {
-		if len(ts) > 0 {
-			kafka.Publish("kafka-1:9092", "counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: ts, Created: createdMs, Count: count})
-		}
-	}
-}
-
-func ReportCounter(timeseries string, fromSec int64, _range string, limit int64) ([]int64, error) {
-	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
-	out, err := GetCounterClient(shard).Report(context.Background(), &header.CounterReportRequest{
-		TimeSeries: timeseries,
-		FromSec:    fromSec,
-		Range:      _range,
-		Limit:      limit,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return out.GetCounts(), nil
-}
-
-func IncreaseCounter2(timeserieCountM map[string]int64, id string, createdMs int64) {
-	tss := [COUNTERSHARD]map[string]int64{}
-	for ts, count := range timeserieCountM {
-		shard := int(crc32.ChecksumIEEE([]byte(ts))) % COUNTERSHARD
-		if tss[shard] == nil {
-			tss[shard] = map[string]int64{}
-		}
-		tss[shard][ts] = count
-	}
-
-	for i, tsM := range tss {
-		if len(tsM) > 0 {
-			tses := []string{}
-			counts := []int64{}
-			for ts, count := range tsM {
-				tses = append(tses, ts)
-				counts = append(counts, count)
-			}
-			kafka.Publish("kafka-1:9092", "counter-"+strconv.Itoa(i), &header.CounterDataPoint{TimeSeries: tses, Created: createdMs, Counts: counts, Id: id})
-		}
-	}
-}
-
-func CountCounter2(timeseries string, fromSec int64, _range string, limit int64) (int64, error) {
-	shard := int(crc32.ChecksumIEEE([]byte(timeseries))) % COUNTERSHARD
-	out, err := GetCounterClient(shard).Count(context.Background(), &header.CounterReportRequest{
-		TimeSeries: timeseries,
-		FromSec:    fromSec,
-		Range:      _range,
-		Limit:      limit,
-	})
-	if err != nil {
-		return 0, err
-	}
-	if len(out.GetCounts()) < 1 {
-		return 0, nil
-	}
-	return out.GetCounts()[0], nil
-}
-
-var _counterClient [COUNTERSHARD]header.CounterClient
-
-func GetCounterClient(shard int) header.CounterClient {
-	if _counterClient[shard] != nil {
-		return _counterClient[shard]
-	}
-	conn := header.DialGrpc(fmt.Sprintf("counter-%d.counter:12306", shard))
-	client := header.NewCounterClient(conn)
-	_counterClient[shard] = client
-	return client
+// TTL 30days
+// labels: ["code=success", "type=purchased"]
+func IncCounter(accid string, ts string, labels []string, payload []byte) {
+	topic := "counter-" + strconv.Itoa(header.GetAccShard(accid, 4))
+	kafka.Publish("kafka-1:9092", topic, &header.CounterDataPoint{
+		AccountId:  accid,
+		TimeSeries: []string{ts},
+		Labels:     labels,
+		Created:    time.Now().UnixMilli(),
+		Version:    2, // @deprecating
+		Payload:    payload,
+	}, ts)
 }
 
 func subscribe(accid, topic string) {
