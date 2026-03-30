@@ -87,13 +87,13 @@ func RemoveUserFromSegment(ctx context.Context, accid, segid string, userids []s
 	return cb.Execute(func() error {
 		var err error
 		for range 4 { // retry 4 times
-			if _, err = client.RemoveUsersFromSegment(context.Background(), &header.SegmentUsersRequest{
+			if _, err = client.RemoveUsersFromSegment(ctx, &header.SegmentUsersRequest{
 				AccountId: accid,
 				SegmentId: segid,
 				UserIds:   userids,
 			}); err != nil {
 				log.Err(accid, err)
-				log.Track(nil, "user_cache_down", "account_id", accid, "seg_id", segid, "user_ids", userids, "err", err)
+				log.Track(context.Background(), "user_cache_down", "account_id", accid, "seg_id", segid, "user_ids", userids, "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
@@ -115,7 +115,7 @@ func ListLeads(ctx context.Context, view *header.UserView) (*header.Response, er
 		for range 4 { // retry 4 times
 			if resp, err = client.ListLeads(ctx, view); err != nil {
 				log.Err(accid, err)
-				log.Track(nil, "user_cache_down", "account_id", accid, "view", view, "err", err)
+				log.Track(context.Background(), "user_cache_down", "account_id", accid, "view", view, "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
@@ -138,7 +138,7 @@ func CountLeads(ctx context.Context, view *header.UserView) (*header.Response, e
 		for range 4 { // retry 4 times
 			if resp, err = client.CountLeads(ctx, view); err != nil {
 				log.Err(accid, err)
-				log.Track(nil, "user_cache_down", "account_id", accid, "view", view, "err", err)
+				log.Track(context.Background(), "user_cache_down", "account_id", accid, "view", view, "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}

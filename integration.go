@@ -3,6 +3,7 @@ package acclient
 import (
 	"context"
 	"strings"
+	"slices"
 	"time"
 
 	"github.com/subiz/header"
@@ -89,7 +90,7 @@ func OnIntegrationUpdate(connectorTypes []string, serviceid string, cb func(*hea
 				return
 			}
 
-			if !header.ContainString(connectorTypes, inte.GetConnectorType()) {
+			if !slices.Contains(connectorTypes, inte.GetConnectorType()) {
 				return
 			}
 
@@ -109,7 +110,7 @@ func OnIntegrationUpdate(connectorTypes []string, serviceid string, cb func(*hea
 			return
 		}
 
-		if !header.ContainString(connectorTypes, inte.GetConnectorType()) {
+		if !slices.Contains(connectorTypes, inte.GetConnectorType()) {
 			return
 		}
 

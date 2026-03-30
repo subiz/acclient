@@ -6,7 +6,7 @@ require (
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.28
-	github.com/subiz/header v1.27.83
+	github.com/subiz/header v1.27.92
 	github.com/subiz/idgen v0.1.41
 	github.com/subiz/kafka v0.0.51
 	github.com/subiz/log v1.0.21

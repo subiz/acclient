@@ -56,7 +56,7 @@ func GetJob(accid, jobid string) *header.Job {
 func StartJob(accid, name, description, category string, timeoutsec int64) string {
 	waitUntilReady()
 	jobid := idgen.NewJobId()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		err := session.Query(`INSERT INTO account.job(accid, id, name, description, category, timeout_sec, created) VALUES(?,?,?,?,?,?,?) USING TTL 864000`, accid, jobid, name, description, category, timeoutsec, time.Now().UnixMilli()).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "name": name, "description": description, "category": category})
@@ -71,7 +71,7 @@ func StartJob(accid, name, description, category string, timeoutsec int64) strin
 func UpdateJobStatus(accid, jobid, status string) {
 	waitUntilReady()
 	updated := time.Now().UnixMilli()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		err := session.Query(`INSERT INTO account.job(accid, id, status, status_updated) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, status, updated).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
@@ -86,7 +86,7 @@ func UpdateJobStatus(accid, jobid, status string) {
 func ForceEndJob(accid, jobid string) {
 	waitUntilReady()
 	ended := time.Now().UnixMilli()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		err := session.Query(`INSERT INTO account.job(accid, id, force_ended, ended) VALUES(?,?,?,?) USING TTL 864000`, accid, jobid, ended, ended).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "job_id": jobid})
@@ -100,7 +100,7 @@ func ForceEndJob(accid, jobid string) {
 func EndJob(accid, jobid, status string, output []byte) {
 	waitUntilReady()
 	ended := time.Now().UnixMilli()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		err := session.Query(`INSERT INTO account.job(accid, id, status, ended, output, last_ping_ms) VALUES(?,?,?,?,?,?) USING TTL 864000`, accid, jobid, status, ended, output, ended).Exec()
 		if err != nil {
 			log.ERetry(err, log.M{"account_id": accid, "jobid": jobid, "status": status})
@@ -118,7 +118,7 @@ func PingJob(accid, jobid string) string {
 	var status string
 	var timeout_sec, created, force_ended, ended, last_ping_ms int64
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		err := session.Query(`SELECT timeout_sec, created, force_ended, ended, status, last_ping_ms FROM account.job WHERE accid=? AND id=?`, accid, jobid).Scan(&timeout_sec, &created, &force_ended, &ended, &status, &last_ping_ms)
 		if err != nil && err.Error() == gocql.ErrNotFound.Error() {
 			return "ended"

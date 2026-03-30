@@ -272,7 +272,7 @@ func HTMLContent2PDF(apikey, accid string, html []byte) ([]byte, error) {
 }
 
 // path must start with /
-func HTML2PDF(apikey, path, accid, filename, content_disposition string, input interface{}) (*header.File, error) {
+func HTML2PDF(apikey, path, accid, filename, content_disposition string, input any) (*header.File, error) {
 	body, err := json.Marshal(input)
 	if err != nil {
 		return nil, log.EData(err, nil, log.M{"account_id": accid, "path": path, "filename": filename})

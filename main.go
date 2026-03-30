@@ -14,6 +14,7 @@ import (
 	"net/http"
 	neturl "net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,15 +68,15 @@ var skipDomainM = map[string]bool{}
 var skipWholeDomainM = map[string]bool{}
 
 func _init() {
-	for _, domain := range strings.Split(skipdomain, "\n") {
+	for domain := range strings.SplitSeq(skipdomain, "\n") {
 		domain = strings.ToLower(strings.TrimSpace(strings.Split(domain, ";")[0]))
 		domain = strings.TrimPrefix(domain, ".")
 		domain = strings.TrimSuffix(domain, ".")
 		if domain == "" {
 			continue
 		}
-		if strings.HasPrefix(domain, "*") {
-			domain = strings.TrimPrefix(domain, "*")
+		if after, ok := strings.CutPrefix(domain, "*"); ok {
+			domain = after
 			domain = strings.TrimPrefix(domain, ".")
 			domain = strings.TrimSuffix(domain, ".")
 			skipWholeDomainM[domain] = true
@@ -1051,7 +1052,7 @@ var letterRunes = []rune("abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ12345678
 func randomID(sign string, randomfactor int) string {
 	var sb strings.Builder
 	sb.WriteString(sign)
-	for i := 0; i < randomfactor; i++ {
+	for range randomfactor {
 		sb.WriteRune(letterRunes[rand.Intn(len(letterRunes))])
 	}
 	return sb.String()
@@ -1146,7 +1147,7 @@ func LookupLink(shorten string) (*header.Link, error) {
 
 func NewID_(accid, scope string) int64 {
 	waitUntilReady()
-	for attempt := 0; attempt < 100; attempt++ {
+	for range 100 {
 		id, err := accmgr.NewID(context.Background(), &header.Id{AccountId: accid, Id: scope})
 		if err != nil {
 			time.Sleep(1 * time.Second)
@@ -1161,7 +1162,7 @@ func NewID_(accid, scope string) int64 {
 func NewID2(accid, scope string) int64 {
 	scope = header.Ascii(scope)
 	waitUntilReady()
-	for attempt := 0; attempt < 100; attempt++ {
+	for range 100 {
 		id, err := registryClient.NewID2(context.Background(), &header.Id{AccountId: accid, Id: scope})
 		if err != nil {
 			time.Sleep(1 * time.Second)
@@ -1176,7 +1177,7 @@ func NewID2(accid, scope string) int64 {
 func GetLastID(accid, scope string) int64 {
 	scope = header.Ascii(scope)
 	waitUntilReady()
-	for attempt := 0; attempt < 100; attempt++ {
+	for range 100 {
 		id, err := registryClient.GetLastID(context.Background(), &header.Id{AccountId: accid, Id: scope})
 		if err != nil {
 			time.Sleep(1 * time.Second)
@@ -1625,7 +1626,7 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 				return nil, err
 			}
 			for _, group := range groups {
-				if header.ContainString(group.GetAgentIds(), agid) {
+				if slices.Contains(group.GetAgentIds(), agid) {
 					myGroup[group.GetId()] = true
 				}
 			}
