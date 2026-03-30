@@ -81,6 +81,27 @@ func GetConvoClient() header.ConversationMgrClient {
 
 // zaloperson-0, or fabikon-4
 func OnIntegrationUpdate(connectorTypes []string, serviceid string, cb func(*header.Integration)) error {
+	go func() {
+		kafka.Consume("kafkaatm:9094", serviceid, "integration-updated", func(_ int32, _ int64, data []byte, _ string) {
+			inte := &header.Integration{}
+			proto.Unmarshal(data, inte)
+			if inte.GetAccountId() == "" {
+				return
+			}
+
+			if !header.ContainString(connectorTypes, inte.GetConnectorType()) {
+				return
+			}
+
+			/*
+				correctAccid := accLookup(inte)
+				if inte.GetAccountId() != correctAccid {
+					return
+				}
+			*/
+			cb(inte)
+		})
+	}()
 	_, err := kafka.Consume("kafka-1:9092", serviceid, "integration-updated", func(_ int32, _ int64, data []byte, _ string) {
 		inte := &header.Integration{}
 		proto.Unmarshal(data, inte)

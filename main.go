@@ -1374,7 +1374,7 @@ func Spend(accid string, itemType, source string, fpvunitpricevnd int64, data *h
 	}
 
 	creditId := SpendItemToCredit(itemType)
-	kafka.Publish("kafka-1:9092", "credit-spend-log", &header.CreditSpendEntry{
+	kafka.Publish("kafkaatm:9094", "credit-spend-log", &header.CreditSpendEntry{
 		AccountId:       accid,
 		CreditId:        string(creditId),
 		Id:              idgen.NewPaymentLogID(),
@@ -1722,7 +1722,7 @@ const COUNTERSHARD = 4
 // labels: ["code=success", "type=purchased"]
 func IncCounter(accid string, ts string, labels []string, payload []byte) {
 	topic := "counter-" + strconv.Itoa(header.GetAccShard(accid, 4))
-	kafka.Publish("kafka-1:9092", topic, &header.CounterDataPoint{
+	kafka.Publish("kafkaatm:9094", topic, &header.CounterDataPoint{
 		AccountId:  accid,
 		TimeSeries: []string{ts},
 		Labels:     labels,
