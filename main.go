@@ -42,7 +42,8 @@ var skipdomain string
 
 // 09 Mar, 2026: 26_277
 // 14 Mar, 2026: 26_294
-var USD2VND = 26_294
+// 09 Apr, 2026: 26_316
+var USD2VND = 26_316
 
 var (
 	readyLock  = &sync.Mutex{}
@@ -1302,6 +1303,7 @@ func GetAttrAsString(user *header.User, key string) string {
 
 // currency: VND, USD
 func GetCreditUsage(accid string, filters []string, currency string) (int64, error) {
+	waitUntilReady()
 	ctx := header.ToGrpcCtx(&compb.Context{AccountId: accid, Credential: &compb.Credential{Type: compb.Type_subiz}})
 	res, err := creditmgr.GetTotalCreditSpend(ctx, &header.CreditSpendReportRequest{AccountId: accid, Filters: filters, Currency: currency})
 	if err != nil {
