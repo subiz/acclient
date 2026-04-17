@@ -1087,9 +1087,9 @@ func ShortenLink(accid, link string) (string, error) {
 	params := neturl.Values{}
 	params.Add("url", link)
 	params.Add("account-id", accid)
-	resp, err := http.Post(apihost+"/4.1/shorten-links?"+params.Encode(), "application/json", nil)
+	resp, err := http.Post(getApiHost(accid)+"/4.1/shorten-links?"+params.Encode(), "application/json", nil)
 	if err != nil {
-		return "", log.EInternalConnect(err, log.M{"account_id": accid, "url": apihost + "/4.1/shorten-links/"})
+		return "", log.EInternalConnect(err, log.M{"account_id": accid, "url": "/4.1/shorten-links/"})
 	}
 
 	defer resp.Body.Close()
@@ -1103,7 +1103,7 @@ func ShortenLink(accid, link string) (string, error) {
 				return "", e
 			}
 		}
-		return "", log.EInternalConnect(err, log.M{"account_id": accid, "url": apihost + "/4.1/shorten-links"})
+		return "", log.EInternalConnect(err, log.M{"account_id": accid, "url": "/4.1/shorten-links"})
 	}
 
 	outlink := &header.Link{}
