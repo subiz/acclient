@@ -1722,16 +1722,28 @@ func listBannedUserDB(accid string) (map[string]*header.BannedUser, error) {
 const COUNTERSHARD = 4
 
 // TTL 30days
-// labels: ["code=success", "type=purchased"]
+// labels: ["code=success", "type=purchased", "_ts=ts"]
 func IncCounter(accid string, ts string, labels []string, payload []byte) {
-	topic := "counter-" + strconv.Itoa(header.GetAccShard(accid, 4))
+	topic := "counter-" + strconv.Itoa(header.GetAccShard(accid, COUNTERSHARD))
+	labels = append(labels, "_ts="+ts)
 	kafka.Publish("kafkaatm:9094", topic, &header.CounterDataPoint{
-		AccountId:  accid,
-		TimeSeries: []string{ts},
-		Labels:     labels,
-		Created:    time.Now().UnixMilli(),
-		Version:    2, // @deprecating
-		Payload:    payload,
+		AccountId: accid,
+		Labels:    labels,
+		Count:     1,
+		Created:   time.Now().UnixMilli(),
+		Payload:   payload,
+	}, ts)
+}
+
+func DecCounter(accid string, ts string, labels []string, payload []byte) {
+	topic := "counter-" + strconv.Itoa(header.GetAccShard(accid, COUNTERSHARD))
+	labels = append(labels, "_ts="+ts)
+	kafka.Publish("kafkaatm:9094", topic, &header.CounterDataPoint{
+		AccountId: accid,
+		Labels:    labels,
+		Count:     -1,
+		Created:   time.Now().UnixMilli(),
+		Payload:   payload,
 	}, ts)
 }
 
