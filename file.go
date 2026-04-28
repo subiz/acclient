@@ -121,14 +121,7 @@ func SummaryTextFile(accid, fileid string) (*header.File, error) {
 	out, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
-		// try to cast to error
-		e := &log.AError{}
-		if jserr := json.Unmarshal(out, e); jserr == nil {
-			if e.Code != "" && e.Class != 0 {
-				return nil, e
-			}
-		}
-		return nil, log.EInternalConnect(err, log.M{"url": "/4.1/files/" + fileid + "/summary?account-id=" + accid})
+		return nil, log.EInternalConnect(err, log.M{"account_id": accid, "url": "/4.0/accounts/" + accid + "summary", "file": fileid, "payload": header.Norm(string(out), 400)})
 	}
 
 	file := &header.File{}
@@ -159,21 +152,14 @@ func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, er
 
 	resp, err := http.Post(getApiHost(accid)+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		return nil, log.EInternalConnect(err, log.M{"url": "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"accid": accid, "url": url, "maxwidth": maxWidth, "maxheight": maxHeight})
 	}
 
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
-		// try to cast to error
-		e := &log.AError{}
-		if jserr := json.Unmarshal(out, e); jserr == nil {
-			if e.Code != "" && e.Class != 0 {
-				return nil, e
-			}
-		}
-		return nil, log.EInternalConnect(err, log.M{"url": "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"accid": accid, "url": url, "maxwidth": maxWidth, "maxheight": maxHeight, "payload": header.Norm(string(out), 400)})
 	}
 
 	file := &header.File{}
@@ -204,21 +190,14 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 
 	resp, err := http.Post(getApiHost(accid)+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		return nil, log.EInternalConnect(err, log.M{"url": "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"accid": accid, "url": url})
 	}
 
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
-		// try to cast to error
-		e := &log.AError{}
-		if jserr := json.Unmarshal(out, e); jserr == nil {
-			if e.Code != "" && e.Class != 0 {
-				return nil, e
-			}
-		}
-		return nil, log.EInternalConnect(err, log.M{"url": "/4.0/accounts/" + accid + "/files/url/download"})
+		return nil, log.EInternalConnect(err, log.M{"accid": accid, "url": url, "payload": header.Norm(string(out), 400)})
 	}
 
 	file := &header.File{}
