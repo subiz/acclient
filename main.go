@@ -1117,6 +1117,10 @@ func ShortenLink(accid, link string) (string, error) {
 const SHORTENDOMAIN = "a.sbz.vn"
 
 func LookupLink(shorten string) (*header.Link, error) {
+	if !strings.Contains(shorten, SHORTENDOMAIN) {
+		return &header.Link{Url: shorten}, nil
+	}
+
 	shorten = header.Norm(shorten, 100)
 	shorten = strings.TrimSpace(shorten)
 

@@ -176,6 +176,10 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 		return &header.File{}, nil
 	}
 
+	if strings.HasPrefix(url, "https://vcdn.subiz-cdn.com/file/https://vcdn") {
+		url = strings.TrimPrefix(url, "https://vcdn.subiz-cdn.com/file/")
+	}
+
 	theurl := fmt.Sprintf("%s.%s.%s", accid, filetype, url)
 	if value, found := fileurlcache.Get(theurl); found {
 		return value, nil
