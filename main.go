@@ -1116,9 +1116,12 @@ func ShortenLink(accid, link string) (string, error) {
 
 const SHORTENDOMAIN = "a.sbz.vn"
 
+// shorten=/11kG
 func LookupLink(shorten string) (*header.Link, error) {
-	if !strings.Contains(shorten, SHORTENDOMAIN) {
-		return &header.Link{Url: shorten}, nil
+	if strings.HasPrefix(shorten, "http:") || strings.HasPrefix(shorten, "https:") {
+		if !strings.Contains(shorten, SHORTENDOMAIN) {
+			return &header.Link{Url: shorten}, nil
+		}
 	}
 
 	shorten = header.Norm(shorten, 100)

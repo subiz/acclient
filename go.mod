@@ -6,7 +6,7 @@ require (
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.28
-	github.com/subiz/header v1.28.30
+	github.com/subiz/header v1.28.32
 	github.com/subiz/idgen v0.1.41
 	github.com/subiz/kafka v0.0.51
 	github.com/subiz/log v1.0.23
@@ -16,7 +16,7 @@ require (
 )
 
 require (
-	github.com/IBM/sarama v1.48.1 // indirect
+	github.com/IBM/sarama v1.48.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -71,6 +71,6 @@ require (
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
-	google.golang.org/grpc v1.81.0 // indirect
+	google.golang.org/grpc v1.81.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 )

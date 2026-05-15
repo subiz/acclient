@@ -1,5 +1,5 @@
-github.com/IBM/sarama v1.48.1 h1:x1dSWebprjjE7Wr7n8RVAxwa4mt4O9JejRxnZrGIXk0=
-github.com/IBM/sarama v1.48.1/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
+github.com/IBM/sarama v1.48.2 h1:QKUXRaHF46aoRwagtvDR/imrOdbdV/qWzv0u6e5my+w=
+github.com/IBM/sarama v1.48.2/go.mod h1:m/Q1aFezH82/AglfTpJbw/fO0ZybYXhPgTmvajiZX50=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932 h1:mXoPYz/Ul5HYEDvkta6I8/rnYM5gSdSV2tJ6XbZuEtY=
@@ -105,8 +105,8 @@ github.com/subiz/executor/v2 v2.0.8 h1:xHAkgZPtsh/RVlP39Jx1cdBlFPMyQ79XPjyqaKU1D
 github.com/subiz/executor/v2 v2.0.8/go.mod h1:gPEh4r4khVbxzcu6oO/C7eVwxbgbah3An725TH8M8HQ=
 github.com/subiz/goutils v0.1.28 h1:yh5Rq86fg6rgPSdHvfz4w6mArbfQzGbnREViznt2rGc=
 github.com/subiz/goutils v0.1.28/go.mod h1:A7DDFRtwPFNg/X3/HkQBMP2t4KY+QrcOEg6Q2CJ9JLA=
-github.com/subiz/header v1.28.30 h1:ee9MYqZkq4OolPUlQb4SIQ1jv3kT024Nd63tGPGOZOk=
-github.com/subiz/header v1.28.30/go.mod h1:ACsgNc2gKVfYi9hDB7kExKyhHySgcdyvyCEaVUYUJjU=
+github.com/subiz/header v1.28.32 h1:5Y3MX1pe+mceConmqNsQlUZdDWnrBisydVZMpAsuVFU=
+github.com/subiz/header v1.28.32/go.mod h1:ACsgNc2gKVfYi9hDB7kExKyhHySgcdyvyCEaVUYUJjU=
 github.com/subiz/idgen v0.1.41 h1:yre+dXafpWkm7Lxe0SYbhsPLmiDCOpTG+IhB49XOUtk=
 github.com/subiz/idgen v0.1.41/go.mod h1:hZ4AfPvd29wSSA/2GHL3gNoc+6iKwFP0fo6WUbn8wdA=
 github.com/subiz/kafka v0.0.51 h1:ScBNGPxEsiwxQrvGhpbaegDH3QnqLndXPJfWZJOEUYw=
@@ -205,8 +205,8 @@ google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60 h1:
 google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60/go.mod h1:7yoXV7RIh5gblj/xVYoogxAWvA9wUeVbpsK/M694l00=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 h1:seT2EwLWM78plQ7wcDfuWBc/4FAEAXDDiaSol4ku4qo=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60/go.mod h1:4Hqkh8ycfw05ld/3BWL7rJOSfebL2Q+DVDeRgYgxUU8=
-google.golang.org/grpc v1.81.0 h1:W3G9N3KQf3BU+YuCtGKJk0CmxQNbAISICD/9AORxLIw=
-google.golang.org/grpc v1.81.0/go.mod h1:xGH9GfzOyMTGIOXBJmXt+BX/V0kcdQbdcuwQ/zNw42I=
+google.golang.org/grpc v1.81.1 h1:VnnIIZ88UzOOKLukQi+ImGz8O1Wdp8nAGGnvOfEIWQQ=
+google.golang.org/grpc v1.81.1/go.mod h1:xGH9GfzOyMTGIOXBJmXt+BX/V0kcdQbdcuwQ/zNw42I=
 google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
 google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
