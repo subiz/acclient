@@ -3,15 +3,19 @@ module github.com/subiz/acclient/v2
 go 1.26.1
 
 require (
+	github.com/JohannesKaufmann/dom v0.2.0
+	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.1
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.28
-	github.com/subiz/header v1.28.39
+	github.com/subiz/header v1.28.40
+	github.com/subiz/html2block v0.0.3
 	github.com/subiz/idgen v0.1.41
 	github.com/subiz/kafka v0.0.51
 	github.com/subiz/log v1.0.23
 	github.com/thanhpk/go-cache v1.0.1
 	github.com/thanhpk/randstr v1.0.6
+	golang.org/x/net v0.55.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -64,7 +68,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
