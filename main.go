@@ -1742,18 +1742,6 @@ func IncCounter(accid string, ts string, labels []string, payload []byte) {
 	}, ts)
 }
 
-func DecCounter(accid string, ts string, labels []string, payload []byte) {
-	topic := "counter-" + strconv.Itoa(header.GetAccShard(accid, COUNTERSHARD))
-	labels = append(labels, "_ts="+ts)
-	kafka.Publish("kafkaatm:9094", topic, &header.CounterDataPoint{
-		AccountId: accid,
-		Labels:    labels,
-		Count:     -1,
-		Created:   time.Now().UnixMilli(),
-		Payload:   payload,
-	}, ts)
-}
-
 func subscribe(accid, topic string) {
 	waitUntilReady()
 	subscribeTopicLock.Lock()
