@@ -98,6 +98,9 @@ widget.subiz.net
 
 ; w
 *wikipedia.org
+*wa.me
+
+;z
 *zalo.com
 *zalo.com.vn
 *zalo.me

@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/subiz/header"
 	"github.com/subiz/log"
-	gocache "github.com/thanhpk/go-cache"
 )
 
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB
@@ -63,11 +63,11 @@ func loopfileapidomain() {
 
 type FileUrlCache struct {
 	*sync.Mutex
-	cache *gocache.Cache
+	cache *expirable.LRU[string, *header.File]
 }
 
 func (me *FileUrlCache) Set(key string, file *header.File) {
-	me.cache.Set(key, file)
+	me.cache.Add(key, file)
 	fileb, _ := json.Marshal(file)
 	cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
 	os.WriteFile(cachepath, fileb, 0644)
@@ -77,11 +77,11 @@ func (me *FileUrlCache) Get(key string) (*header.File, bool) {
 	me.Lock()
 	defer me.Unlock()
 
-	if value, found := me.cache.Get(key); found {
-		if value == nil {
+	if file, found := me.cache.Get(key); found {
+		if file == nil {
 			return nil, true
 		}
-		return value.(*header.File), true
+		return file, true
 	}
 
 	// check diskcache first
@@ -98,13 +98,17 @@ func (me *FileUrlCache) Get(key string) (*header.File, bool) {
 	}
 	file := &header.File{}
 	json.Unmarshal(cache, file)
-	me.cache.Set(key, file)
+	me.cache.Add(key, file)
 	return file, true
 }
 
 var fileurlcache = &FileUrlCache{
 	Mutex: &sync.Mutex{},
-	cache: gocache.New(60 * time.Minute),
+	cache: newFileURLLRUCache(),
+}
+
+func newFileURLLRUCache() *expirable.LRU[string, *header.File] {
+	return expirable.NewLRU[string, *header.File](10240, nil, 10*time.Minute) // 10k
 }
 
 func UploadFileUrl(accid, url string) (*header.File, error) {
