@@ -1,8 +1,11 @@
 package acclient
 
 import (
+	"encoding/json"
 	"fmt"
 	nethtml "golang.org/x/net/html"
+	"io"
+	"net/http"
 	neturl "net/url"
 	"regexp"
 	"sort"
@@ -15,6 +18,7 @@ import (
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
 	"github.com/subiz/header"
 	"github.com/subiz/html2block"
+	"github.com/subiz/log"
 )
 
 var textLock = &sync.Mutex{}
@@ -636,4 +640,47 @@ func PredictTrainingPrice(size int) int64 {
 	x2, y2 := float64(right.Size), *right.Price
 
 	return int64((y1 + (float64(size)-x1)*(y2-y1)/(x2-x1)) * 1000000)
+}
+
+func DownloadAsText(accid, url string) (string, error) {
+	defer header.KLock("download_as_text." + accid + "." + url)()
+
+	req, err := http.NewRequest("GET", getApiHost(accid)+"/4.1/crawls", nil)
+	if err != nil {
+		return "", log.EData(err, nil, log.M{"account_id": accid, "url": url})
+	}
+	q := req.URL.Query()
+	q.Add("account-id", accid)
+	q.Add("render_text", "markdown")
+	q.Add("url", url)
+	req.URL.RawQuery = q.Encode()
+	req.Header.Set("X-By", "acclient")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", log.ERetry(err, log.M{"account_id": accid, "url": url})
+	}
+	defer resp.Body.Close()
+
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", log.ERetry(err, log.M{"account_id": accid, "url": url})
+	}
+	if resp.StatusCode != 200 {
+		fields := log.M{"account_id": accid, "url": url, "_payload": out, "status_code": resp.StatusCode}
+		e := &log.AError{}
+		if jserr := json.Unmarshal(out, e); jserr == nil && e.Code != "" && e.Class != 0 {
+			return "", e
+		}
+		err = fmt.Errorf("download as text failed with status %d", resp.StatusCode)
+		if resp.StatusCode >= 500 {
+			return "", log.ERetry(err, fields)
+		}
+		return "", log.EData(err, out, fields)
+	}
+
+	res := &header.CrawlResponse{}
+	if err := json.Unmarshal(out, res); err != nil {
+		return "", log.EData(err, out, log.M{"account_id": accid, "url": url})
+	}
+	return res.GetText(), nil
 }

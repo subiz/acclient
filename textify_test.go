@@ -15,12 +15,12 @@ func TestResolveURLRejectsUnsafeSchemes(t *testing.T) {
 		"data:text/html,<h1>x</h1>",
 		"vbscript:msgbox(1)",
 	} {
-		if got := resolveUrl(base, raw); got != "" {
+		if got := ResolveUrl(base, raw); got != "" {
 			t.Fatalf("resolveUrl(%q) = %q, want empty", raw, got)
 		}
 	}
 
-	if got := resolveUrl(base, "../image.png"); got != "https://example.com/image.png" {
+	if got := ResolveUrl(base, "../image.png"); got != "https://example.com/image.png" {
 		t.Fatalf("resolveUrl(relative) = %q", got)
 	}
 }
@@ -59,5 +59,21 @@ func TestPredictTrainingPrice(t *testing.T) {
 	}
 	if got := PredictTrainingPrice(1500); got != 144_000_000 {
 		t.Fatalf("PredictTrainingPrice(1500) = %d", got)
+	}
+}
+
+func TestDownloadAsTextDocx(t *testing.T) {
+	const url = "http://didong24.sbz.vn/demo.docx"
+	oldApiHost := _apihost
+	t.Cleanup(func() { _apihost = oldApiHost })
+
+	_apihost = "https://api5.subiz.com.vn"
+	out, err := DownloadAsText("acpxkgumifuoofoosble", url)
+	if err != nil {
+		t.Fatalf("DownloadAsText(%q) returned error: %v", url, err)
+	}
+
+	if !strings.Contains(out, "AZW3") {
+		t.Fatalf("DownloadAsText(%q) output does not contain AZW3: %q", url, out)
 	}
 }
