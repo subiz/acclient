@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -63,48 +62,44 @@ func loopfileapidomain() {
 }
 
 type FileUrlCache struct {
-	*sync.Mutex
 	cache *expirable.LRU[string, *header.File]
 }
 
 func (me *FileUrlCache) Set(key string, file *header.File) {
+	// expirable.LRU is internally synchronized; safe to call without an outer lock.
 	me.cache.Add(key, file)
-	fileb, _ := json.Marshal(file)
-	cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
-	os.WriteFile(cachepath, fileb, 0644)
+
+	// Warm the on-disk cache off the request path — a slow disk must not block
+	// the caller. The path is bucketed by clock hour, so a stale write is harmless.
+	go func() {
+		fileb, _ := json.Marshal(file)
+		cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
+		os.WriteFile(cachepath, fileb, 0644)
+	}()
 }
 
 func (me *FileUrlCache) Get(key string) (*header.File, bool) {
-	me.Lock()
-	defer me.Unlock()
-
+	// In-memory hit (file may be nil — a cached negative; found is still true).
 	if file, found := me.cache.Get(key); found {
-		if file == nil {
-			return nil, true
-		}
 		return file, true
 	}
 
-	// check diskcache first
+	// Fall back to the on-disk cache. Deliberately lock-free: expirable.LRU has
+	// its own mutex, and reading the disk under a shared lock would serialize
+	// every concurrent lookup on disk I/O. Two racing readers both loading the
+	// same key is harmless (idempotent Add).
 	cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
-	cache, err := os.ReadFile(cachepath)
+	cacheb, err := os.ReadFile(cachepath)
 	if err != nil {
-		if _, err := os.Stat("./.cache"); os.IsNotExist(err) {
-			os.MkdirAll("./.cache", os.ModePerm)
-		}
-		_, err := os.Stat(cachepath)
-		if err == nil || !os.IsNotExist(err) {
-		}
 		return nil, false
 	}
 	file := &header.File{}
-	json.Unmarshal(cache, file)
+	json.Unmarshal(cacheb, file)
 	me.cache.Add(key, file)
 	return file, true
 }
 
 var fileurlcache = &FileUrlCache{
-	Mutex: &sync.Mutex{},
 	cache: newFileURLLRUCache(),
 }
 

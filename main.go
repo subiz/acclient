@@ -398,6 +398,7 @@ func GetLocale(accid, locale string) (*header.Lang, error) {
 	if !header.LocaleM[locale] {
 		return &header.Lang{}, nil
 	}
+	defer header.KLock("acclient_locale." + accid + "_" + locale)()
 	if value, found := cache.Get("lang." + accid + "_" + locale); found {
 		if value == nil {
 			return nil, nil
@@ -444,6 +445,7 @@ func MakeDefNotiSetting(accid, agid string) *header.NotiSetting {
 func GetNotificationSetting(accid, agid string) (*header.NotiSetting, error) {
 	subscribe(accid, "notification_setting")
 	waitUntilReady()
+	defer header.KLock("acclient_noti." + accid)()
 	if value, found := cache.Get("notification_setting." + accid); found {
 		if value == nil {
 			return MakeDefNotiSetting(accid, agid), nil
@@ -547,6 +549,7 @@ func listAttrDefsDB(accid string) (map[string]*header.AttributeDefinition, error
 
 func ListFanpageSyncLifecycleStages(accid string) (map[string]bool, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_fb_setting." + accid)()
 	if value, found := cache.Get("fb_setting." + accid); found {
 		if value == nil {
 			return nil, nil
@@ -760,6 +763,7 @@ func ListAgentM(accid string) (map[string]*pb.Agent, error) {
 
 func ListGroups(accid string) ([]*header.AgentGroup, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_agent_group." + accid)()
 	// cache exists
 	if value, found := cache.Get("agent_group." + accid); found {
 		if value == nil {
@@ -811,6 +815,7 @@ func listGroupsDB(accid string) ([]*header.AgentGroup, error) {
 
 func ListOnlineAgents(accid string) ([]*pb.Presence, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_presence." + accid)()
 	// cache exists
 	if value, found := cache.Get("presence." + accid); found {
 		if value == nil {
@@ -878,6 +883,7 @@ func GetBot(accid, botid string) (*header.Bot, error) {
 
 func ListBots(accid string) ([]*header.Bot, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_bot." + accid)()
 	// cache exists
 	if value, found := cache.Get("bot." + accid); found {
 		if value == nil {
@@ -890,6 +896,7 @@ func ListBots(accid string) ([]*header.Bot, error) {
 
 func ListAIAgents(accid string) (map[string]*header.AIAgent, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_ai_agent." + accid)()
 	// cache exists
 	if value, found := cache.Get("ai_agent." + accid); found {
 		if value == nil {
@@ -924,6 +931,7 @@ func listPipelineDB(accid string) ([]*header.Pipeline, error) {
 
 func ListPipelines(accid string) ([]*header.Pipeline, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_pipeline." + accid)()
 	// cache exists
 	if value, found := cache.Get("pipeline." + accid); found {
 		if value == nil {
@@ -963,6 +971,7 @@ func LookupSignedKey(key string) (string, string, string, string, []string, erro
 
 func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_attr_def." + accid)()
 	if value, found := cache.Get("attribute_definition." + accid); found {
 		if value == nil {
 			return nil, nil
@@ -980,6 +989,7 @@ func SetShopSetting(accid string, setting *header.ShopSetting) {
 
 func GetShopSetting(accid string) (*header.ShopSetting, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_shop_setting." + accid)()
 	// cache hit
 	if value, found := cache.Get("shop_setting." + accid); found {
 		if value == nil {
@@ -1657,6 +1667,7 @@ func GetAgentPerm(accid, agid string, resourceGroup header.IResourceGroup) (map[
 
 func ListBlacklistIPs(accid string) (map[string]*header.BlacklistIP, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_blacklist_ip." + accid)()
 
 	// cache exists
 	if value, found := cache.Get("blacklist_ip." + accid); found {
@@ -1698,6 +1709,7 @@ func listBlacklistIPsDB(accid string) (map[string]*header.BlacklistIP, error) {
 
 func ListBannedUsers(accid string) (map[string]*header.BannedUser, error) {
 	waitUntilReady()
+	defer header.KLock("acclient_banned_user." + accid)()
 
 	// cache exists
 	if value, found := cache.Get("banned_user." + accid); found {
@@ -1859,22 +1871,16 @@ func IsExactDomainVerified(accid, domain string) (bool, error) {
 	return verified, nil
 }
 
-type ShortenCache struct {
-	*sync.Mutex
-}
+type ShortenCache struct{}
 
 func (me *ShortenCache) Set(key, shorten string) {
-	me.Lock()
-	defer me.Unlock()
-
+	// Each key maps to its own file, so writes never contend; os.WriteFile is
+	// atomic enough for this warm cache. No shared lock needed.
 	cachepath := fmt.Sprintf("./.cache/shorten-%s", GetSha256(key))
 	os.WriteFile(cachepath, []byte(shorten), 0644)
 }
 
 func (me *ShortenCache) Get(key string) (string, bool) {
-	me.Lock()
-	defer me.Unlock()
-
 	cachepath := fmt.Sprintf("./.cache/shorten-%s", GetSha256(key))
 	cache, err := os.ReadFile(cachepath)
 	if err == nil {
@@ -1886,7 +1892,7 @@ func (me *ShortenCache) Get(key string) (string, bool) {
 	return "", false
 }
 
-var shortencache = &ShortenCache{Mutex: &sync.Mutex{}}
+var shortencache = &ShortenCache{}
 
 func GetSha256(b string) string {
 	result := sha256.Sum256([]byte(b))
