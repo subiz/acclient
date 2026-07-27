@@ -26,6 +26,7 @@ const BETAAPIHOST = "http://apibeta"
 
 func init() {
 	os.MkdirAll("./.cache", os.ModePerm)
+	startCacheJanitor()
 }
 
 var _apihost = REMOTEAPIHOST // will switch to http://api if available

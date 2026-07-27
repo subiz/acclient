@@ -1878,6 +1878,9 @@ func (me *ShortenCache) Get(key string) (string, bool) {
 	cachepath := fmt.Sprintf("./.cache/shorten-%s", GetSha256(key))
 	cache, err := os.ReadFile(cachepath)
 	if err == nil {
+		// Mark as recently used so the janitor keeps hot entries alive.
+		now := time.Now()
+		os.Chtimes(cachepath, now, now)
 		return string(cache), true
 	}
 	return "", false
