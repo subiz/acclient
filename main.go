@@ -981,10 +981,18 @@ func ListDefs(accid string) (map[string]*header.AttributeDefinition, error) {
 	return listAttrDefsDB(accid)
 }
 
-// for testing
+// for testing purpose
 func SetShopSetting(accid string, setting *header.ShopSetting) {
 	waitUntilReady()
 	cache.Set("shop_setting."+accid, setting)
+}
+
+func SetAccount(acc *pb.Account) {
+	if acc == nil || acc.GetId() == "" {
+		return
+	}
+	waitUntilReady()
+	cache.Set("account."+acc.GetId(), acc)
 }
 
 func GetShopSetting(accid string) (*header.ShopSetting, error) {
@@ -1430,6 +1438,10 @@ func pollLoop() {
 			topics = append(topics, topic)
 		}
 		subscribeTopicLock.Unlock()
+		if len(topics) == 0 {
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
 		out, err := numpubsub.Poll(context.Background(), &header.RealtimeSubscription{Events: topics, ConnectionId: connId})
 		if err != nil {
