@@ -43,7 +43,8 @@ var skipdomain string
 // 09 Mar, 2026: 26_277
 // 14 Mar, 2026: 26_294
 // 09 Apr, 2026: 26_316
-var USD2VND = 26_316
+// 23 Aug, 2026: 26_125
+var USD2VND = 26_125
 
 var (
 	readyLock  = &sync.Mutex{}
@@ -431,14 +432,13 @@ func MakeDefNotiSetting(accid, agid string) *header.NotiSetting {
 		AgentId:   agid,
 		Web: &header.NotiSubscription{
 			NewMessage:            true,
-			UserCreated:           true,
-			UserReturned:          true,
 			CampaignUserConverted: true,
 			UserOpenedEmail:       true,
 			TicketUpdated:         now,
 			TaskUpdated:           now,
 		},
 		Mobile: &header.NotiSubscription{NewMessage: true},
+		Email:  &header.NotiSubscription{WeeklyReportEmailDisabled: 0},
 	}
 }
 
