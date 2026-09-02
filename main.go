@@ -1477,6 +1477,7 @@ func MustBeSuperAdmin(cred *compb.Credential) error {
 	return log.NewError(nil, log.M{}, log.E_access_deny)
 }
 
+// cred is allowed to be nil
 func AccessFeature(accid string, objectType header.ObjectType, action header.ObjectAction, cred *compb.Credential) error {
 	if action == "" {
 		return nil
@@ -1485,11 +1486,11 @@ func AccessFeature(accid string, objectType header.ObjectType, action header.Obj
 	if cred.GetType() == compb.Type_subiz ||
 		cred.GetType() == compb.Type_workflow ||
 		cred.GetType() == compb.Type_connector ||
-		cred.AdminRole == "manager" {
+		cred.GetAdminRole() == "manager" {
 		return nil
 	}
 
-	if accid == "" || cred.Type == compb.Type_unknown || cred.GetIssuer() == "" {
+	if accid == "" || cred.GetType() == compb.Type_unknown || cred.GetIssuer() == "" {
 		return log.NewError(nil, log.M{"account_id": accid, "cred_type": cred.GetType(), "issuer": cred.GetIssuer()}, log.E_access_deny)
 	}
 
