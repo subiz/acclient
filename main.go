@@ -28,7 +28,6 @@ import (
 	"github.com/subiz/header"
 	pb "github.com/subiz/header/account"
 	compb "github.com/subiz/header/common"
-	pm "github.com/subiz/header/payment"
 	"github.com/subiz/idgen"
 	"github.com/subiz/kafka"
 	"github.com/subiz/log"
@@ -159,7 +158,7 @@ func getAccountDB(id string) (*pb.Account, error) {
 	return nil, err
 }
 
-func getSubDB(id string) (*pm.Subscription, error) {
+func getSubDB(id string) (*pb.Subscription, error) {
 	subscribe(id, "subscription")
 	waitUntilReady()
 
@@ -468,7 +467,7 @@ func GetNotificationSetting(accid, agid string) (*header.NotiSetting, error) {
 	return MakeDefNotiSetting(accid, agid), nil
 }
 
-func GetSubscription(accid string) (*pm.Subscription, error) {
+func GetSubscription(accid string) (*pb.Subscription, error) {
 	waitUntilReady()
 	defer header.KLock("acclient_getsub." + accid)()
 
@@ -477,7 +476,7 @@ func GetSubscription(accid string) (*pm.Subscription, error) {
 		if value == nil {
 			return nil, nil
 		}
-		return value.(*pm.Subscription), nil
+		return value.(*pb.Subscription), nil
 	}
 
 	return getSubDB(accid)
