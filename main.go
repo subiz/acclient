@@ -85,7 +85,12 @@ func _init() {
 	}
 
 	hostname, _ = os.Hostname()
-	session = header.ConnectDB([]string{"db-0"}, "account")
+	// Read before the first lazy initialization; production keeps db-0 by default.
+	dbHost := strings.TrimSpace(os.Getenv("ACCLIENT_CASSANDRA_HOST"))
+	if dbHost == "" {
+		dbHost = "db-0"
+	}
+	session = header.ConnectDB([]string{dbHost}, "account")
 	conn := header.DialGrpc("account-0.account:10283", header.WithShardRedirect())
 	accmgr = header.NewAccountMgrClient(conn)
 	paymgr = header.NewPaymentMgrClient(conn)
