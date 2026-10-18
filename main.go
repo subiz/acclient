@@ -1141,6 +1141,7 @@ func LookupLink(shorten string) (*header.Link, error) {
 	return link, nil
 }
 
+// @deprecated
 func NewID_(accid, scope string) int64 {
 	waitUntilReady()
 	for range 100 {
