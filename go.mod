@@ -8,7 +8,7 @@ require (
 	github.com/gocql/gocql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/subiz/goutils v0.1.28
-	github.com/subiz/header v1.29.94
+	github.com/subiz/header v1.29.96
 	github.com/subiz/html2block v0.0.4
 	github.com/subiz/idgen v0.1.42
 	github.com/subiz/kafka v0.0.51

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +32,7 @@ var sharedCDNClient = sync.OnceValue(func() header.CdnMgrClient {
 	}
 	return header.NewCdnMgrClient(header.DialGrpc(address, header.WithShardRedirect()))
 })
+
 var cdnUploadHTTP = &http.Client{Timeout: 2 * time.Minute, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 
 func cdnContext(account string, supplied *cpb.Context, timeout time.Duration) (context.Context, context.CancelFunc, *cpb.Context, error) {
@@ -55,6 +55,7 @@ func cdnContext(account string, supplied *cpb.Context, timeout time.Duration) (c
 	ctx, cancel := context.WithTimeout(header.ToGrpcCtx(cred), timeout)
 	return ctx, cancel, cred, nil
 }
+
 func cdnUploadRequest(req *header.UploadRequest) (*header.UploadRequest, error) {
 	if req == nil {
 		return nil, log.EInput(nil, "request", "required")
@@ -65,6 +66,7 @@ func cdnUploadRequest(req *header.UploadRequest) (*header.UploadRequest, error) 
 	}
 	return out, nil
 }
+
 func cdnResponseFile(out *header.Response, account string) (*header.File, error) {
 	if out == nil {
 		return nil, log.EServer(nil, log.M{"reason": "empty CDN response"})
@@ -90,9 +92,9 @@ func UploadCDNFile(accountID string, req *header.UploadRequest, data []byte) (*h
 	}
 	req = proto.Clone(req).(*header.UploadRequest)
 	req.AccountId = accountID
-	return uploadCDNFile(sharedCDNClient(), cdnUploadHTTP, req, data)
-}
-func uploadCDNFile(client header.CdnMgrClient, transport *http.Client, req *header.UploadRequest, data []byte) (*header.File, error) {
+	client := sharedCDNClient()
+	transport := cdnUploadHTTP
+
 	r, err := cdnUploadRequest(req)
 	if err != nil {
 		return nil, err
@@ -173,9 +175,8 @@ func ImportCDNFile(accountID, sourceURL string, req *header.UploadRequest) (*hea
 	req = proto.Clone(req).(*header.UploadRequest)
 	req.AccountId = accountID
 	req.ImportUrl = sourceURL
-	return importCDNFile(sharedCDNClient(), req)
-}
-func importCDNFile(client header.CdnMgrClient, req *header.UploadRequest) (*header.File, error) {
+	client := sharedCDNClient()
+
 	r, err := cdnUploadRequest(req)
 	if err != nil {
 		return nil, err
@@ -195,10 +196,9 @@ func importCDNFile(client header.CdnMgrClient, req *header.UploadRequest) (*head
 	}
 	return cdnResponseFile(out, r.AccountId)
 }
+
 func GetCDNFile(accountID, fileID string) (*header.File, error) {
-	return getCDNFile(sharedCDNClient(), accountID, fileID)
-}
-func getCDNFile(client header.CdnMgrClient, accountID, fileID string) (*header.File, error) {
+	client := sharedCDNClient()
 	ctx, cancel, cred, err := cdnContext(accountID, nil, cdnReadTimeout)
 	if err != nil {
 		return nil, err
@@ -219,79 +219,4 @@ func getCDNFile(client header.CdnMgrClient, accountID, fileID string) (*header.F
 		return nil, log.EServer(nil, log.M{"reason": "CDN file identity mismatch"})
 	}
 	return f, nil
-}
-func GetCDNFileURL(accountID, fileID string) (*header.File, error) {
-	files, err := GetCDNFileURLs(accountID, &header.BatchCreateReadURLsRequest{Items: []*header.CreateReadURLItem{{RequestId: "file", Fid: fileID}}})
-	if err != nil {
-		return nil, err
-	}
-	f := files[0]
-	if f.Url == "" {
-		code := log.E(f.ErrorCode)
-		if code == "" {
-			code = log.E_internal
-		}
-		return f, log.NewError(nil, log.M{"account_id": accountID, "file_id": fileID}, code)
-	}
-	return f, nil
-}
-func GetCDNFileURLs(accountID string, req *header.BatchCreateReadURLsRequest) ([]*header.File, error) {
-	if req == nil {
-		return nil, log.EInput(nil, "request", "required")
-	}
-	if req.AccountId != "" && req.AccountId != accountID {
-		return nil, log.EInput(nil, "account_id", "request account mismatch")
-	}
-	req = proto.Clone(req).(*header.BatchCreateReadURLsRequest)
-	req.AccountId = accountID
-	return getCDNFileURLs(sharedCDNClient(), req)
-}
-func getCDNFileURLs(client header.CdnMgrClient, req *header.BatchCreateReadURLsRequest) ([]*header.File, error) {
-	if req == nil {
-		return nil, log.EInput(nil, "request", "required")
-	}
-	r := proto.Clone(req).(*header.BatchCreateReadURLsRequest)
-	ctx, cancel, cred, err := cdnContext(r.AccountId, r.Ctx, cdnReadTimeout)
-	if err != nil {
-		return nil, err
-	}
-	defer cancel()
-	r.Ctx = cred
-	if r.ExpiresInSeconds < 0 || r.ExpiresInSeconds > 1800 {
-		return nil, log.EInput(nil, "expires_in_seconds", "must be between 0 and 1800")
-	}
-	seen := map[string]bool{}
-	for i, it := range r.Items {
-		if it == nil || !cdnFilePattern.MatchString(it.Fid) || it.ImageMaxWidth > 4096 || it.ImageMaxHeight > 4096 {
-			return nil, log.EInput(nil, "items", "invalid file or resize dimensions")
-		}
-		if it.RequestId == "" {
-			it.RequestId = "acclient-" + strconv.Itoa(i)
-		}
-		if len(it.RequestId) > 128 || seen[it.RequestId] {
-			return nil, log.EInput(nil, "request_id", "must be unique and at most 128 bytes")
-		}
-		seen[it.RequestId] = true
-	}
-	files := make([]*header.File, 0, len(r.Items))
-	for start := 0; start < len(r.Items); start += 100 {
-		batch := &header.BatchCreateReadURLsRequest{AccountId: r.AccountId, Ctx: cred, ExpiresInSeconds: r.ExpiresInSeconds, Items: r.Items[start:min(start+100, len(r.Items))]}
-		out, err := client.BatchCreateReadURLs(ctx, batch)
-		if err != nil {
-			return nil, err
-		}
-		if out.GetError() != nil {
-			return nil, header.ToErr(out.Error)
-		}
-		if len(out.GetFiles()) != len(batch.Items) {
-			return nil, log.EServer(nil, log.M{"reason": "CDN batch result count mismatch"})
-		}
-		for i, f := range out.Files {
-			if f == nil || f.Id != batch.Items[i].Fid || f.AccountId != r.AccountId {
-				return nil, log.EServer(nil, log.M{"reason": "CDN batch result identity mismatch"})
-			}
-			files = append(files, proto.Clone(f).(*header.File))
-		}
-	}
-	return files, nil
 }
