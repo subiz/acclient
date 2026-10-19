@@ -220,3 +220,42 @@ func GetCDNFile(accountID, fileID string) (*header.File, error) {
 	}
 	return f, nil
 }
+
+// ResizeImage prepares a permanent derivative of an account-owned CDN file.
+// Bounds are 0 (unbounded) or at most 4096; both 0 converts format only.
+// The image keeps its aspect ratio and is never cropped or enlarged.
+// Format must be "jpeg" or "webp". Import external URLs with ImportCDNFile first.
+// The returned File describes the derivative, including its actual size, MIME
+// type and public URL. The original file is unchanged.
+func ResizeImage(accountID, fileID string, maxWidth, maxHeight uint32, format string) (*header.File, error) {
+	if !cdnFilePattern.MatchString(fileID) {
+		return nil, log.EInput(nil, "file_id", "invalid CDN file ID", log.M{"account_id": accountID})
+	}
+	if maxWidth > 4096 || maxHeight > 4096 {
+		return nil, log.EInput(nil, "max_width,max_height", "must be between 0 and 4096", log.M{"account_id": accountID})
+	}
+	if format != "jpeg" && format != "webp" {
+		return nil, log.EInput(nil, "format", "must be jpeg or webp", log.M{"account_id": accountID})
+	}
+	ctx, cancel, cred, err := cdnContext(accountID, nil, cdnWorkTimeout)
+	if err != nil {
+		return nil, err
+	}
+	defer cancel()
+	out, err := sharedCDNClient().ResizeImage(ctx, &header.ResizeImageRequest{
+		AccountId: accountID, Ctx: cred, FileId: fileID,
+		MaxWidth: maxWidth, MaxHeight: maxHeight, Format: format,
+	})
+	if err != nil {
+		return nil, err
+	}
+	f, err := cdnResponseFile(out, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if f.Url == "" || f.Type != "image/"+format || f.Width <= 0 || f.Height <= 0 ||
+		(maxWidth > 0 && f.Width > int64(maxWidth)) || (maxHeight > 0 && f.Height > int64(maxHeight)) {
+		return nil, log.EServer(nil, log.M{"account_id": accountID, "reason": "invalid CDN resized image response"})
+	}
+	return f, nil
+}

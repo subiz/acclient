@@ -131,45 +131,6 @@ func SummaryTextFile(accid, fileid string) (*header.File, error) {
 	return file, nil
 }
 
-func UploadImage(accid, url string, maxWidth, maxHeight int64) (*header.File, error) {
-	url = strings.TrimSpace(url)
-	if url == "" {
-		return &header.File{}, nil
-	}
-
-	theurl := fmt.Sprintf("%s%dx%d.%s", accid, maxWidth, maxHeight, url)
-	if value, found := fileurlcache.Get(theurl); found {
-		return value, nil
-	}
-
-	body, _ := json.Marshal(&header.FileUrlDownloadRequest{
-		AccountId:  accid,
-		Url:        url,
-		TypePrefix: "image/",
-		MaxWidth:   maxWidth,
-		MaxHeight:  maxHeight,
-	})
-
-	resp, err := http.Post(getApiHost(accid)+"/4.0/accounts/"+accid+"/files/url/download", "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		return nil, log.EInternalConnect(err, log.M{"accid": accid, "url": url, "maxwidth": maxWidth, "maxheight": maxHeight})
-	}
-
-	defer resp.Body.Close()
-	out, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode >= 400 {
-		return nil, log.EInternalConnect(err, log.M{"accid": accid, "url": url, "maxwidth": maxWidth, "maxheight": maxHeight, "payload": header.Norm(string(out), 400)})
-	}
-
-	file := &header.File{}
-	if err = json.Unmarshal(out, file); err != nil {
-		return nil, log.EData(err, nil, log.M{"_payload": string(out)})
-	}
-	fileurlcache.Set(theurl, file)
-	return file, nil
-}
-
 func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {

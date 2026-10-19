@@ -195,3 +195,31 @@ Quy ước lưu trữ của `PrepareAttachments`:
 - `v = "cdn"` chỉ được gắn sau khi chuẩn hóa toàn bộ nhóm thành công. Nếu một import lỗi, helper trả lỗi và không sửa input; những file đã import trước đó có thể đã tồn tại trên CDN.
 
 `ResolveAttachmentURLs` gom tham chiếu trùng trước khi cấp URL. Attachment mới được nhận diện bằng `v = "cdn"`; helper kiểm tra đường dẫn và account, lấy file ID rồi yêu cầu CDN cấp URL hiện tại, không phụ thuộc domain đã lưu. Khi prepare attachment cũ, URL nguồn được gửi nguyên vẹn cho CDN xử lý import. Khi CDN báo file không khả dụng, helper xóa URL của vị trí đó; attachment file có thêm lỗi trong `Attachment.File.ErrorCode`. Những vị trí ảnh chỉ có string URL sẽ để rỗng. Lỗi RPC của cả nhóm trả `error`, không trả một nhóm URL được cấp dở dang.
+
+
+### Import HEIC and resize to JPEG
+
+```go
+original, err := acclient.ImportCDNFile(accountID, sourceURL, &header.UploadRequest{
+    Category: "attachment",
+    ImportTypePrefix: "image/",
+    ImportTimeout: 15000, // milliseconds for the source download
+})
+if err != nil {
+    return err
+}
+image, err := acclient.ResizeImage(accountID, original.Id, 1024, 1024, "jpeg")
+if err != nil {
+    return err
+}
+// image.Url is a prepared public JPEG URL; image.Width and image.Height
+// are the actual dimensions, each <= 1024. original remains unchanged.
+```
+
+`ResizeImage(accountID, fileID string, maxWidth, maxHeight uint32, format string)`
+returns `(*header.File, error)`. The file ID must belong to the account. Format
+must be `jpeg` or `webp`. Bounds are at most 4096 pixels; 0 leaves that dimension
+unbounded, and both 0 performs format conversion only. Resizing preserves aspect
+ratio without cropping or upscaling. Identical requests reuse the same variant.
+This requires a CDN deployment implementing the `CdnMgr.ResizeImage` RPC and the
+shared header contract containing `ResizeImageRequest`.
