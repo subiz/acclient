@@ -3,10 +3,16 @@ package acclient
 import (
 	"fmt"
 	"testing"
+
+	"github.com/subiz/header"
 )
 
 func TestUploadFile(t *testing.T) {
-	url, err := UploadFile("acpxkgumifuoofoosble", "thanhtest.md", "", []byte("Cộng hòa xã hội 6"), "", 3600, true)
+	url, err := UploadFile("acpxkgumifuoofoosble", &header.UploadRequest{
+		Name:       "thanhtest.md",
+		TtlSeconds: 3600,
+		Gentext:    true,
+	}, []byte("Cộng hòa xã hội 6"))
 	if err != nil {
 		t.Errorf("error %v", err)
 	}

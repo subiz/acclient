@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -173,45 +172,6 @@ func UploadTypedFileUrl(accid, url, extension, filetype string) (*header.File, e
 	return file, nil
 }
 
-func UploadFile(accid, name, category string, data []byte, cd string, ttlsec int64, gentext bool) (*header.File, error) {
-	req, _ := http.NewRequest("POST", getApiHost(accid)+"/4.1/files", bytes.NewBuffer(data))
-	q := req.URL.Query()
-	q.Add("account-id", accid)
-	q.Add("name", name)
-	if gentext {
-		q.Add("gentext", "true")
-	}
-	if category != "" {
-		q.Add("category", category)
-	}
-	if cd != "" {
-		q.Add("content_disposition", cd)
-		req.Header.Set("Content-Disposition", cd)
-	}
-	if ttlsec > 0 {
-		q.Add("ttl", strconv.Itoa(int(ttlsec)))
-	}
-	req.URL.RawQuery = q.Encode()
-	req.Header.Set("Content-Type", "application/octet-stream")
-	req.Header.Set("X-By", "acclient")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, log.ERetry(err, log.M{"account_id": accid})
-	}
-	defer resp.Body.Close()
-
-	out, _ := io.ReadAll(resp.Body)
-	res := &header.Response{}
-	json.Unmarshal(out, res)
-	if res.GetError() != nil {
-		return nil, header.ToErr(res.Error)
-	}
-	if resp.StatusCode != 200 {
-		return nil, log.ERetry(err, log.M{"account_id": accid, "_payload": out, "status_code": resp.StatusCode})
-	}
-	return res.GetFile(), nil
-}
-
 func HTMLContent2PDF(apikey, accid string, html []byte) ([]byte, error) {
 	url := "https://html2pdf-457995922934.asia-southeast1.run.app/content?secret=" + apikey
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(html))
@@ -251,7 +211,11 @@ func HTML2PDF(apikey, path, accid, filename, content_disposition string, input a
 
 	defer resp.Body.Close()
 	out, _ := io.ReadAll(resp.Body)
-	return UploadFile(accid, filename, "other", out, content_disposition, 0, false)
+	return UploadFile(accid, &header.UploadRequest{
+		Name:               filename,
+		Category:           "other",
+		ContentDisposition: content_disposition,
+	}, out)
 }
 
 func md5sum(text string) string {

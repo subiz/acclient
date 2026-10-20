@@ -439,7 +439,7 @@ func MakeDefNotiSetting(accid, agid string) *header.NotiSetting {
 			TicketUpdated:         now,
 			TaskUpdated:           now,
 		},
-		Email:  &header.NotiSubscription{WeeklyReportEmailDisabled: 0},
+		Email: &header.NotiSubscription{WeeklyReportEmailDisabled: 0},
 	}
 }
 
@@ -1357,6 +1357,7 @@ func TrySpend(accid string, item string, fpvunitpricevnd int64) error {
 		CreditId:        string(creditId),
 		Quantity:        1,
 		FpvUnitPriceVnd: fpvunitpricevnd,
+		Source:          hostname,
 	})
 	return err
 }

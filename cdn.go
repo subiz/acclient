@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/subiz/header"
 	cpb "github.com/subiz/header/common"
@@ -81,9 +82,26 @@ func cdnResponseFile(out *header.Response, account string) (*header.File, error)
 	return proto.Clone(f).(*header.File), nil
 }
 
-// UploadCDNFile sends bytes directly to R2, then publishes through CDN.
+// cdnUploadFilename preserves the legacy HTTP API's filename normalization.
+func cdnUploadFilename(name string) string {
+	name = header.Ascii(name)
+	var out strings.Builder
+	for _, r := range name {
+		if r != '-' && r != '.' && r != '_' && !unicode.IsNumber(r) && !unicode.IsLetter(r) {
+			continue
+		}
+		out.WriteRune(r)
+	}
+	name = header.Norm(out.String(), 200)
+	if name == "" {
+		return "untitled"
+	}
+	return name
+}
+
+// UploadFile sends bytes directly to R2, then publishes through CDN.
 // On failure after session creation, the shared error contains upload_id.
-func UploadCDNFile(accountID string, req *header.UploadRequest, data []byte) (*header.File, error) {
+func UploadFile(accountID string, req *header.UploadRequest, data []byte) (*header.File, error) {
 	if req == nil {
 		return nil, log.EInput(nil, "request", "required")
 	}
@@ -92,6 +110,7 @@ func UploadCDNFile(accountID string, req *header.UploadRequest, data []byte) (*h
 	}
 	req = proto.Clone(req).(*header.UploadRequest)
 	req.AccountId = accountID
+	req.Name = cdnUploadFilename(req.Name)
 	client := sharedCDNClient()
 	transport := cdnUploadHTTP
 
