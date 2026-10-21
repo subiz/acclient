@@ -2,28 +2,9 @@
 
 Thư viện Go dùng chung cho các service nội bộ Subiz.
 
-## CDN mới
+## File trên CDN
 
-Các helper dưới đây dùng CDN mới qua gRPC và upload byte trực tiếp lên R2. Những hàm file cũ giữ nguyên hành vi.
-
-Helper dùng các struct có sẵn trong `github.com/subiz/header`, không yêu cầu truyền `context.Context` và không tạo struct options riêng. Acclient tự tạo context nội bộ có timeout. Service gọi phải kiểm tra quyền của người dùng trước khi gọi helper.
-
-```go
-func UploadCDNFile(accountID string, req *header.UploadRequest, data []byte) (*header.File, error)
-func ImportCDNFile(accountID, sourceURL string, req *header.UploadRequest) (*header.File, error)
-func GetCDNFile(accountID, fileID string) (*header.File, error)
-func GetCDNFileURL(accountID, fileID string) (*header.File, error)
-func GetCDNFileURLs(accountID string, req *header.BatchCreateReadURLsRequest) ([]*header.File, error)
-
-func PrepareAttachments(accountID string, attachments []*header.Attachment) ([]*header.Attachment, error)
-func ResolveAttachmentURLs(accountID string, attachments []*header.Attachment) ([]*header.Attachment, error)
-```
-
-`CDN_SERVICE` tùy chọn địa chỉ gRPC, mặc định `cdn-0.cdn:18288`. Connection được khởi tạo một lần, độc lập với kết nối Cassandra của acclient. URL public do service CDN sinh ra; acclient không cấu hình hay hardcode domain CDN. Đặt biến môi trường trước khi dùng helper.
-
-Upload/import và chuẩn hóa một nhóm attachment có timeout 4 phút; PUT R2 có timeout 2 phút; lấy metadata/cấp URL cho một nhóm file có timeout 30 giây. Không tự retry. Helper clone request trước khi điền mặc định; không sửa input của caller.
-
-Các ví dụ sau dùng các import:
+Các helper trong `cdn.go` dùng gRPC tới `cdn-0.cdn:18288`; kết nối được khởi tạo một lần, độc lập với Cassandra. Địa chỉ này được cố định trong code. Upload byte đi trực tiếp lên R2 rồi gọi CDN hoàn tất file.
 
 ```go
 import (
@@ -32,17 +13,31 @@ import (
 )
 ```
 
+Các helper hiện có:
+
+```go
+func UploadFile(accountID string, req *header.UploadRequest, data []byte) (*header.File, error)
+func ImportCDNFile(accountID, sourceURL string, req *header.UploadRequest) (*header.File, error)
+func GetCDNFile(accountID, fileID string) (*header.File, error)
+func ResizeImage(accountID, fileID string, maxWidth, maxHeight uint32, format string) (*header.File, error)
+```
+
+Helper tự tạo context: upload/import/resize có timeout 4 phút, PUT R2 có timeout 2 phút, `GetCDNFile` có timeout 30 giây. Helper không có vòng lặp retry. Upload/import clone request trước khi điền mặc định và không sửa input; request không được nil, ngoại trừ import nguồn rỗng trả ngay `&header.File{}, nil`. `Category` rỗng mặc định là `attachment`. `AccountId` và `Ctx.AccountId`, nếu được truyền, phải khớp account của lời gọi.
+
+Service gọi phải kiểm tra quyền người dùng trước khi dùng helper. Nếu không có credential trong context, helper tạo credential nội bộ loại `subiz`, issuer `acclient`, scope `all`.
+
 ### Upload byte có sẵn
 
 ```go
-file, err := acclient.UploadCDNFile(accid, &header.UploadRequest{
-    Name:      "photo.png",
+file, err := acclient.UploadFile(accid, &header.UploadRequest{
+    Name:        "photo.png",
+    ContentType: "image/png",
 }, imageBytes)
 if err != nil {
     return err
 }
 
-// Lưu file.Id để có thể xin URL mới khi cần.
+// Lưu file.Id để lấy lại thông tin hoặc tạo ảnh resize khi cần.
 fileID := file.Id
 _ = fileID
 ```
@@ -50,7 +45,7 @@ _ = fileID
 Các tùy chọn dùng trực tiếp field của `header.UploadRequest`:
 
 ```go
-file, err := acclient.UploadCDNFile(accid, &header.UploadRequest{
+file, err := acclient.UploadFile(accid, &header.UploadRequest{
     Name:               "report.pdf",
     Category:           "attachment",
     ContentType:        "application/pdf",
@@ -64,11 +59,13 @@ if err != nil {
 _ = file
 ```
 
+`UploadFile` giới hạn dữ liệu ở 25.000.000 byte, tự đặt `Size` theo dữ liệu và xóa `Sha256` trên bản sao request. `ContentType` rỗng mặc định là `application/octet-stream`. Tên file được chuẩn hóa ASCII, chỉ giữ chữ, số, dấu `-`, `.`, `_`; tên rỗng sau chuẩn hóa thành `untitled`. `ImportUrl` phải rỗng; để import hãy dùng `ImportCDNFile`.
+
 `Gentext` yêu cầu trích xuất văn bản tài liệu trước khi trả kết quả. `MaxWidth` và `MaxHeight` là giới hạn ảnh đầu vào, không phải yêu cầu resize.
 
 Lỗi sau khi tạo upload session có `upload_id` trong `log.AError.Attrs`. Nếu đã xác nhận PUT thành công, service có thể gọi RPC `FinishUpload` với cùng credential để thử hoàn tất lại mà không upload lại.
 
-### Import URL hoặc data URI
+### Import URL
 
 ```go
 file, err := acclient.ImportCDNFile(accid, "https://example.com/report.pdf", &header.UploadRequest{})
@@ -96,130 +93,68 @@ _ = file
 
 Tham số `sourceURL` ghi đè `uploadRequest.ImportUrl` trên bản sao request, không thay đổi đầu vào. Truyền `&header.UploadRequest{}` nếu dùng tùy chọn mặc định.
 
-`sourceURL` cũng nhận data URI ảnh dạng `data:image/png;base64,...` hoặc file ID thuộc CDN mới trong cùng account. Data URI tối đa 2 MiB sau giải mã; giới hạn file chung là 25.000.000 byte. `ImportMaxSize = 0` dùng giới hạn chung; `ImportTimeout = 0` dùng mặc định 60.000 ms. `Force > 0` bỏ qua cache tải URL.
+`ImportCDNFile` trim nguồn; nguồn rỗng trả `&header.File{}, nil` trước khi kiểm tra request/account. URL bị lồng dạng `https://vcdn.subiz-cdn.com/file/https://vcdn...` được bỏ lớp `/file/` bên ngoài như helper cũ.
 
-### Lấy metadata hoặc URL tải mới
+Kết quả thành công được cache RAM tối đa 10.240 entry trong 10 phút và ghi bất đồng bộ vào `./.cache/fileurl-<md5>-<giờ>.json`. Đọc disk chỉ dùng bucket giờ hiện tại. Request tương đương helper cũ giữ nguyên cache key `account.typeHint.source` (kể cả việc không đưa extension vào key); request có thêm tùy chọn dùng key riêng theo toàn bộ request để không bỏ qua giới hạn dung lượng, MIME, kích thước, `Gentext` hoặc context. `Force > 0` bỏ qua cache và cập nhật lại kết quả. File trả về là bản sao để caller không sửa dữ liệu trong cache.
+
+Cache hit trả ngay như trước, **không kiểm tra lại trạng thái account**. Cache miss gọi Account service qua gRPC `account-0.account:10283`; account không ở trạng thái `activated` hoặc không đọc được trả lỗi `EAccountLocked`. Bước này không khởi tạo Cassandra trong acclient.
+
+HTTP(S), data URI và CDN file ID được chuyển cho RPC `CreateUpload`. File ID/đường dẫn legacy được resolve qua API metadata `GET /4.1/file/<source>?account-id=<account>` rồi truyền URL đã resolve cùng toàn bộ tùy chọn cho CDN. API này vẫn cần truy cập được khi import nguồn legacy. Việc tải nguồn, giải mã data URI và giới hạn import do service CDN xử lý. Helper đặt `R2Url = Url` như API cũ.
+
+Để thay lời gọi typed cũ, dùng `ImportExtension` và `ImportTypeHint`:
 
 ```go
-// Chỉ lấy metadata; không dùng GetCDNFile để xin URL tải.
-metadata, err := acclient.GetCDNFile(accid, fileID)
-if err != nil {
-    return err
-}
-_ = metadata
+file, err := acclient.ImportCDNFile(accid, sourceURL, &header.UploadRequest{
+    ImportExtension: "mp4",
+    ImportTypeHint:  "video/mp4",
+})
+```
 
-// Lấy file kèm URL tải và thumbnail nếu có.
-file, err := acclient.GetCDNFileURL(accid, fileID)
+`ImportTypeHint` không phải bộ lọc MIME; CDN hiện xác định MIME từ nội dung. Dùng `ImportTypePrefix` khi cần kiểm tra loại file.
+
+### Lấy thông tin file
+
+```go
+file, err := acclient.GetCDNFile(accid, fileID)
 if err != nil {
     return err
 }
+// Dùng thông tin và URL do CDN trả về.
 downloadURL := file.Url
-thumbnailURL := file.ThumbnailUrl
-_, _ = downloadURL, thumbnailURL
+_ = downloadURL
 ```
 
-URL đọc có hạn tối đa 30 phút và không vượt TTL file. Lưu file ID làm tham chiếu lâu dài; xin URL mới khi trả dữ liệu hoặc gửi nội dung. Không coi URL ký là đường dẫn vĩnh viễn.
+`GetCDNFile` gọi RPC `GetFile`, kiểm tra account và ID của kết quả rồi trả bản sao `header.File`. Helper không tự tạo hoặc làm mới URL ký; các field URL được trả theo response của CDN.
 
-### Cấp URL theo batch, có resize
+File ID dùng cho `GetCDNFile` và `ResizeImage` phải gồm 64 ký tự hex thường, có thể có tiền tố dạng `<scope>_` (scope bắt đầu bằng chữ thường, dài tối đa 32 ký tự, chỉ gồm chữ thường, số và dấu `-`). Không truyền URL thay cho file ID.
 
-```go
-files, err := acclient.GetCDNFileURLs(accid, &header.BatchCreateReadURLsRequest{
-    ExpiresInSeconds: 1800,
-    Items: []*header.CreateReadURLItem{
-        {RequestId: "original", Fid: fileID},
-        {
-            RequestId:      "preview",
-            Fid:            fileID,
-            ImageMaxWidth:  512,
-            ImageMaxHeight: 512,
-        },
-    },
-})
-if err != nil {
-    return err
-}
-
-// Kết quả giữ đúng thứ tự Items, kể cả khi một fid xuất hiện nhiều lần.
-for i, file := range files {
-    if file.ErrorCode != "" || file.Url == "" {
-        // Xử lý file không khả dụng ở vị trí i; không dùng URL rỗng.
-        continue
-    }
-    // Gắn file.Url vào vị trí i của response.
-    _, _ = i, file.Url
-}
-```
-
-Helper tự chia thành các RPC tối đa 100 mục. Mỗi `RequestId` được cung cấp phải duy nhất trong request helper; nếu bỏ trống, helper tự điền `acclient-<vị trí>`. Tránh dùng các ID này cho mục khác. Resize chỉ áp dụng cho ảnh, mỗi chiều từ 0 đến 4096 pixel; cả hai bằng 0 là bản gốc. `err` biểu thị lỗi toàn lời gọi; vẫn phải kiểm tra kết quả từng file khi `err == nil`. File gốc có thể đọc được dù hậu xử lý thất bại; caller có thể xử lý riêng trường hợp có `Url` nhưng có lỗi processing.
-
-### Chuẩn hóa attachment trước khi lưu
+### Import HEIC và resize sang JPEG
 
 ```go
-attachments, err := acclient.PrepareAttachments(accid, []*header.Attachment{
-    {
-        Type: "file",
-        Name: "report.pdf",
-        Url:  "https://example.com/report.pdf",
-    },
-})
-if err != nil {
-    return err
-}
-
-// Gắn kết quả vào message trước khi lưu.
-message.Attachments = attachments
-```
-
-Helper import/xác minh file, chuẩn hóa metadata và trả bản sao. Sau khi thành công, attachment dùng CDN mới được đánh dấu `v = "cdn"`; `v` rỗng là dữ liệu legacy. Đây là thao tác chủ động khi chuẩn bị nội dung, không gọi để tự chuyển đổi toàn bộ lịch sử lúc đọc.
-
-### Cấp URL attachment trước khi gửi
-
-```go
-// Chỉ gọi sau khi đã kiểm tra quyền đọc và lọc internal message.
-attachments, err := acclient.ResolveAttachmentURLs(accid, storedMessage.Attachments)
-if err != nil {
-    return err
-}
-
-// responseMessage là bản sao dành cho người nhận, không phải object trong cache.
-responseMessage.Attachments = attachments
-```
-
-Helper trả bản sao, cấp URL mới cho attachment có `v = "cdn"` và giữ URL legacy. Quote được duyệt đệ quy theo `v` của từng attachment bên trong. Version khác rỗng/`cdn` bị từ chối. Không ghi kết quả đã cấp URL ký ngược vào DB/cache.
-
-Quy ước lưu trữ của `PrepareAttachments`:
-
-- Attachment file lưu `file_id`, metadata trong `file`, và URL CDN chuẩn bỏ toàn bộ query/fragment, ví dụ `https://r2p.subiz.net/file/ac01/<fid>`.
-- Ảnh trong card/button, quick reply, ZaloTemplate/ZaloContact, product/order và form dùng cùng URL chuẩn làm tham chiếu lâu dài. Không thay `link_url` hay URL trang sản phẩm.
-- Các URL văn bản và field URL R2/GCS/resize cũ trong metadata `File` không được giữ như URL tải lâu dài.
-- `v = "cdn"` chỉ được gắn sau khi chuẩn hóa toàn bộ nhóm thành công. Nếu một import lỗi, helper trả lỗi và không sửa input; những file đã import trước đó có thể đã tồn tại trên CDN.
-
-`ResolveAttachmentURLs` gom tham chiếu trùng trước khi cấp URL. Attachment mới được nhận diện bằng `v = "cdn"`; helper kiểm tra đường dẫn và account, lấy file ID rồi yêu cầu CDN cấp URL hiện tại, không phụ thuộc domain đã lưu. Khi prepare attachment cũ, URL nguồn được gửi nguyên vẹn cho CDN xử lý import. Khi CDN báo file không khả dụng, helper xóa URL của vị trí đó; attachment file có thêm lỗi trong `Attachment.File.ErrorCode`. Những vị trí ảnh chỉ có string URL sẽ để rỗng. Lỗi RPC của cả nhóm trả `error`, không trả một nhóm URL được cấp dở dang.
-
-
-### Import HEIC and resize to JPEG
-
-```go
-original, err := acclient.ImportCDNFile(accountID, sourceURL, &header.UploadRequest{
-    Category: "attachment",
+original, err := acclient.ImportCDNFile(accid, sourceURL, &header.UploadRequest{
+    Category:         "attachment",
     ImportTypePrefix: "image/",
-    ImportTimeout: 15000, // milliseconds for the source download
+    ImportTimeout:    15000, // milliseconds cho việc tải nguồn
 })
 if err != nil {
     return err
 }
-image, err := acclient.ResizeImage(accountID, original.Id, 1024, 1024, "jpeg")
+image, err := acclient.ResizeImage(accid, original.Id, 1024, 1024, "jpeg")
 if err != nil {
     return err
 }
-// image.Url is a prepared public JPEG URL; image.Width and image.Height
-// are the actual dimensions, each <= 1024. original remains unchanged.
+// image.Url là URL public của ảnh JPEG đã xử lý.
+// image.Width và image.Height là kích thước thực, mỗi chiều <= 1024.
+// File original không bị thay đổi.
+_ = image
 ```
 
-`ResizeImage(accountID, fileID string, maxWidth, maxHeight uint32, format string)`
-returns `(*header.File, error)`. The file ID must belong to the account. Format
-must be `jpeg` or `webp`. Bounds are at most 4096 pixels; 0 leaves that dimension
-unbounded, and both 0 performs format conversion only. Resizing preserves aspect
-ratio without cropping or upscaling. Identical requests reuse the same variant.
-This requires a CDN deployment implementing the `CdnMgr.ResizeImage` RPC and the
-shared header contract containing `ResizeImageRequest`.
+`ResizeImage` trả `(*header.File, error)` mô tả file ảnh dẫn xuất, gồm ID, MIME, kích thước thực và URL public. File nguồn phải thuộc account. `format` chỉ nhận `jpeg` hoặc `webp`. Mỗi chiều tối đa 4096 pixel; 0 là không giới hạn chiều đó, cả hai bằng 0 chỉ chuyển định dạng. Ảnh giữ tỷ lệ, không crop hoặc phóng lớn. Service CDN cần hỗ trợ RPC `CdnMgr.ResizeImage`.
+
+Helper kiểm tra URL không rỗng, MIME đúng định dạng yêu cầu, kích thước dương và không vượt giới hạn đã truyền trước khi trả kết quả.
+
+## Các helper file qua HTTP
+
+`UploadFileUrl(accid, url)` gọi `ImportCDNFile(accid, url, &header.UploadRequest{})`, dùng chung xử lý URL, cache và kiểm tra account. Hàm `UploadTypedFileUrl` đã được xóa; caller cần chuyển sang `ImportCDNFile` với `ImportExtension` và `ImportTypeHint` như ví dụ trên.
+
+`SummaryTextFile` gọi API summary qua HTTP. `HTMLContent2PDF` trả byte PDF; `HTML2PDF` nhận kết quả từ dịch vụ chuyển đổi rồi gọi `UploadFile` với category `other`.

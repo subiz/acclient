@@ -577,11 +577,6 @@ type TrainingPricePoint struct {
 	Price *float64 // dùng pointer để biểu diễn giá có thể bị thiếu
 }
 
-//go:fix inline
-func floatPtr(v float64) *float64 {
-	return new(v)
-}
-
 var trainingPriceTable = []TrainingPricePoint{
 	{0, new(float64(0))},
 	{1000, new(float64(150))},

@@ -3,8 +3,14 @@ package acclient
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -12,6 +18,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/subiz/header"
 	cpb "github.com/subiz/header/common"
 	"github.com/subiz/log"
@@ -25,13 +32,161 @@ const cdnReadTimeout = 30 * time.Second
 var cdnAccountPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 var cdnFilePattern = regexp.MustCompile(`^([a-z][a-z0-9-]{0,31}_)?[a-f0-9]{64}$`)
 
+const MAX_SIZE = 25 * 1024 * 1024 // 25MB
+const REMOTEAPIHOST = "https://api.subiz.com.vn"
+const LOCALAPIHOST = "http://api"
+const BETAAPIHOST = "http://apibeta"
+
+func init() {
+	os.MkdirAll("./.cache", os.ModePerm)
+	startCacheJanitor()
+}
+
+var _apihost = REMOTEAPIHOST // will switch to http://api if available
+func getApiHost(accid string) string {
+	if _apihost != LOCALAPIHOST {
+		return _apihost
+	}
+
+	// local is available
+	if header.IsStagging(accid) {
+		return BETAAPIHOST
+	}
+	return _apihost // == LOCALAPIHOST
+}
+
+// check if local api server is available, use that instead
+func loopfileapidomain() {
+	for {
+		if _apihost == LOCALAPIHOST {
+			time.Sleep(60 * time.Second)
+			continue
+		}
+
+		if resp, _ := http.Get(LOCALAPIHOST + "/ping"); resp != nil {
+			out, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode == 200 && strings.HasPrefix(string(out), "SUBIZAPI") {
+				// local api server is available
+				_apihost = LOCALAPIHOST
+			}
+		}
+		time.Sleep(60 * time.Second)
+	}
+}
+
+type FileUrlCache struct {
+	cache  *expirable.LRU[string, *header.File]
+	writes sync.WaitGroup
+}
+
+func (me *FileUrlCache) Set(key string, file *header.File) {
+	// expirable.LRU is internally synchronized; safe to call without an outer lock.
+	me.cache.Add(key, file)
+
+	// Warm the on-disk cache off the request path — a slow disk must not block
+	// the caller. The path is bucketed by clock hour, so a stale write is harmless.
+	me.writes.Add(1)
+	go func() {
+		defer me.writes.Done()
+		fileb, _ := json.Marshal(file)
+		cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
+		os.WriteFile(cachepath, fileb, 0644)
+	}()
+}
+
+func (me *FileUrlCache) Get(key string) (*header.File, bool) {
+	// In-memory hit (file may be nil — a cached negative; found is still true).
+	if file, found := me.cache.Get(key); found {
+		return file, true
+	}
+
+	// Fall back to the on-disk cache. Deliberately lock-free: expirable.LRU has
+	// its own mutex, and reading the disk under a shared lock would serialize
+	// every concurrent lookup on disk I/O. Two racing readers both loading the
+	// same key is harmless (idempotent Add).
+	cachepath := fmt.Sprintf("./.cache/fileurl-%s-%d.json", md5sum(key), time.Now().Unix()/3600)
+	cacheb, err := os.ReadFile(cachepath)
+	if err != nil {
+		return nil, false
+	}
+	file := &header.File{}
+	json.Unmarshal(cacheb, file)
+	me.cache.Add(key, file)
+	return file, true
+}
+
+var fileurlcache = &FileUrlCache{
+	cache: newFileURLLRUCache(),
+}
+
+func newFileURLLRUCache() *expirable.LRU[string, *header.File] {
+	return expirable.NewLRU[string, *header.File](10240, nil, 10*time.Minute) // 10k
+}
+
+func UploadFileUrl(accid, url string) (*header.File, error) {
+	return ImportCDNFile(accid, url, &header.UploadRequest{})
+}
+
+func HTMLContent2PDF(apikey, accid string, html []byte) ([]byte, error) {
+	url := "https://html2pdf-457995922934.asia-southeast1.run.app/content?secret=" + apikey
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(html))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, log.ERetry(err)
+	}
+	defer resp.Body.Close()
+
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, log.ERetry(err)
+	}
+	return out, nil
+}
+
+// path must start with /
+func HTML2PDF(apikey, path, accid, filename, content_disposition string, input any) (*header.File, error) {
+	body, err := json.Marshal(input)
+	if err != nil {
+		return nil, log.EData(err, nil, log.M{"account_id": accid, "path": path, "filename": filename})
+	}
+	url := "https://html2pdf-457995922934.asia-southeast1.run.app/" + path
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	q := req.URL.Query()
+	q.Add("secret", apikey)
+	q.Add("filename", filename)
+	q.Add("account-id", accid)
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, log.ERetry(err, log.M{"account_id": accid, "path": path})
+	}
+
+	defer resp.Body.Close()
+	out, _ := io.ReadAll(resp.Body)
+	return UploadFile(accid, &header.UploadRequest{
+		Name:               filename,
+		Category:           "other",
+		ContentDisposition: content_disposition,
+	}, out)
+}
+
+func md5sum(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
+}
+
 // Independent of waitUntilReady: file operations do not need account Cassandra.
 var sharedCDNClient = sync.OnceValue(func() header.CdnMgrClient {
-	address := strings.TrimSpace(os.Getenv("CDN_SERVICE"))
-	if address == "" {
-		address = "cdn-0.cdn:18288"
-	}
-	return header.NewCdnMgrClient(header.DialGrpc(address, header.WithShardRedirect()))
+	return header.NewCdnMgrClient(header.DialGrpc("cdn-0.cdn:18288", header.WithShardRedirect()))
+})
+
+// Check account state without initializing the account Cassandra connection.
+var sharedCDNAccountClient = sync.OnceValue(func() header.AccountMgrClient {
+	return header.NewAccountMgrClient(header.DialGrpc("account-0.account:10283", header.WithShardRedirect()))
 })
 
 var cdnUploadHTTP = &http.Client{Timeout: 2 * time.Minute, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -184,7 +339,16 @@ func UploadFile(accountID string, req *header.UploadRequest, data []byte) (*head
 
 // ImportCDNFile imports sourceURL using the supplied upload settings.
 // sourceURL overrides req.ImportUrl; the input request is not modified.
+// Empty sources return an empty file. Successful imports use the legacy RAM/disk
+// cache; as before, account state is checked only on a cache miss.
 func ImportCDNFile(accountID, sourceURL string, req *header.UploadRequest) (*header.File, error) {
+	sourceURL = strings.TrimSpace(sourceURL)
+	if sourceURL == "" {
+		return &header.File{}, nil
+	}
+	if strings.HasPrefix(sourceURL, "https://vcdn.subiz-cdn.com/file/https://vcdn") {
+		sourceURL = strings.TrimPrefix(sourceURL, "https://vcdn.subiz-cdn.com/file/")
+	}
 	if req == nil {
 		return nil, log.EInput(nil, "request", "required")
 	}
@@ -194,26 +358,102 @@ func ImportCDNFile(accountID, sourceURL string, req *header.UploadRequest) (*hea
 	req = proto.Clone(req).(*header.UploadRequest)
 	req.AccountId = accountID
 	req.ImportUrl = sourceURL
-	client := sharedCDNClient()
 
 	r, err := cdnUploadRequest(req)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(r.ImportUrl) == "" {
-		return nil, log.EInput(nil, "import_url", "required")
+	if accountID == "" || accountID == "empty" || accountID == "undefined" {
+		return nil, log.EMissingId("account_id")
 	}
 	ctx, cancel, cred, err := cdnContext(r.AccountId, r.Ctx, cdnWorkTimeout)
 	if err != nil {
 		return nil, err
 	}
 	defer cancel()
+	cacheKey := cdnImportCacheKey(r)
+	if r.Force == 0 {
+		if f, found := fileurlcache.Get(cacheKey); found {
+			if f == nil {
+				return nil, nil
+			}
+			f = proto.Clone(f).(*header.File)
+			f.R2Url = f.Url
+			return f, nil
+		}
+	}
 	r.Ctx = cred
-	out, err := client.CreateUpload(ctx, r)
+	account, _ := sharedCDNAccountClient().GetAccount(ctx, &header.Id{AccountId: accountID, Id: accountID, Ctx: cred})
+	if account.GetState() != "activated" {
+		return nil, log.EAccountLocked(accountID)
+	}
+	if !strings.HasPrefix(sourceURL, "http://") && !strings.HasPrefix(sourceURL, "https://") && !strings.HasPrefix(sourceURL, "data:") && !cdnFilePattern.MatchString(sourceURL) {
+		r.ImportUrl, err = resolveLegacyCDNSource(ctx, accountID, sourceURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+	out, err := sharedCDNClient().CreateUpload(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-	return cdnResponseFile(out, r.AccountId)
+	f, err := cdnResponseFile(out, r.AccountId)
+	if err != nil {
+		return nil, err
+	}
+	if f.Url == "" {
+		return nil, log.EServer(nil, log.M{"account_id": r.AccountId, "reason": "CDN returned no imported file URL"})
+	}
+	f.R2Url = f.Url
+	fileurlcache.Set(cacheKey, proto.Clone(f).(*header.File))
+	return f, nil
+}
+
+func cdnImportCacheKey(req *header.UploadRequest) string {
+	r := proto.Clone(req).(*header.UploadRequest)
+	r.AccountId, r.ImportUrl, r.Category = "", "", ""
+	r.ImportTypeHint, r.ImportExtension = "", ""
+	r.Force = 0
+	// Reuse existing cache files for the old four-argument upload contract,
+	// including its historical omission of extension from the cache key.
+	if req.Category == "attachment" && proto.Equal(r, &header.UploadRequest{}) {
+		return fmt.Sprintf("%s.%s.%s", req.AccountId, req.ImportTypeHint, req.ImportUrl)
+	}
+	r = proto.Clone(req).(*header.UploadRequest)
+	r.Force = 0 // Force bypasses reads but refreshes the regular entry.
+	wire, _ := proto.MarshalOptions{Deterministic: true}.Marshal(r)
+	return fmt.Sprintf("cdn-import:%x", sha256.Sum256(wire))
+}
+
+// Keep legacy filedb resolution in the API, which owns all of its ID/path
+// aliases. Only metadata is read here; the resolved URL goes through CDN import
+// with the complete UploadRequest, including validation and processing options.
+func resolveLegacyCDNSource(ctx context.Context, accountID, source string) (string, error) {
+	endpoint := getApiHost(accountID) + "/4.1/file/" + url.PathEscape(source) + "?account-id=" + url.QueryEscape(accountID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", log.EInternalConnect(err, log.M{"accid": accountID, "url": source})
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", log.EInternalConnect(err, log.M{"accid": accountID, "url": source})
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", log.EInternalConnect(err, log.M{"accid": accountID, "url": source})
+	}
+	if resp.StatusCode >= 400 {
+		return "", log.EInternalConnect(nil, log.M{"accid": accountID, "url": source, "payload": header.Norm(string(body), 400)})
+	}
+	var file header.File
+	if err = json.Unmarshal(body, &file); err != nil {
+		return "", log.EData(err, nil, log.M{"_payload": string(body)})
+	}
+	if file.Url == "" {
+		return "", log.EMissing(source, "file")
+	}
+	return file.Url, nil
 }
 
 func GetCDNFile(accountID, fileID string) (*header.File, error) {
