@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -27,11 +26,7 @@ var cdnFilePattern = regexp.MustCompile(`^([a-z][a-z0-9-]{0,31}_)?[a-f0-9]{64}$`
 
 // Independent of waitUntilReady: file operations do not need account Cassandra.
 var sharedCDNClient = sync.OnceValue(func() header.CdnMgrClient {
-	address := strings.TrimSpace(os.Getenv("CDN_SERVICE"))
-	if address == "" {
-		address = "cdn-0.cdn:18288"
-	}
-	return header.NewCdnMgrClient(header.DialGrpc(address, header.WithShardRedirect()))
+	return header.NewCdnMgrClient(header.DialGrpc("cdn-0.cdn:18288", header.WithShardRedirect()))
 })
 
 var cdnUploadHTTP = &http.Client{Timeout: 2 * time.Minute, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
