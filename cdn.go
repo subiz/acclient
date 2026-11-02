@@ -205,6 +205,7 @@ func cdnContext(account string, supplied *cpb.Context, timeout time.Duration) (c
 		cred = &cpb.Context{}
 	}
 	cred.AccountId = account
+	cred.FromService = hostname
 	if cred.Credential == nil {
 		cred.Credential = &cpb.Credential{Type: cpb.Type_subiz, Issuer: "acclient", Scopes: []string{"all"}}
 	}
