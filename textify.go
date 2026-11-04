@@ -179,12 +179,12 @@ func ConvertAllImages(accid, baseurl string, block *header.Block) {
 		if strings.HasPrefix(baseurl, "https://testdata/") || strings.HasPrefix(baseurl, "http://testdata/") {
 			block.Image.Url = url
 		} else {
+			// Keep the original size: a resize per image of every converted page is
+			// a billed Cloudflare Images transformation each. Larger images are dropped.
 			file, err := ImportCDNFile(accid, url, &header.UploadRequest{
 				Category: "attachment", ImportTypePrefix: "image/", ImportTimeout: 15000,
+				ImportMaxSize: 5_000_000,
 			})
-			if err == nil {
-				file, err = ResizeImage(accid, file.Id, 1024, 1024, "jpeg")
-			}
 			// fmt.Println("UPLOAD DONE", time.Since(start), file, err)
 			if err != nil {
 				fmt.Println("EEEEEEEEE", url, err)
